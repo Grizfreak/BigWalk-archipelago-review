@@ -1233,7 +1233,7 @@ ISLAND_OBJECTS: tuple[IslandObject, ...] = (
     IslandObject("2141d27e-647c-401f-9a0c-a3c1aa029434", "BuoyProp", "Lamp (Tutorial 1)", "start"),
     IslandObject("0cb88fcc-6d33-4b08-9e5e-124a34f7f15b", "BuoyProp", "Lamp (Tutorial 2)", "start"),
     IslandObject("0460483f-1636-4ee6-8635-2168a9acaf34", "BuoyProp", "Lamp (Tutorial 3)", "start"),
-    IslandObject("4df70c57-8d1b-447e-bad5-5aa66c1169f4", "BuoyProp", "Lamp (Tutorial 4)", "start"),
+    IslandObject("4df70c57-8d1b-447e-bad5-5aa66c1169f4", "BuoyProp", "Lamp (Hub)", "overworld"),
     IslandObject("1ff0231c-4933-4bec-b878-4e6f1fe88856", "BuoyProp", "Lamp (Yellow Twist Tower)", "tower:bigKeyYellowZone"),
     IslandObject("c5e792c4-080b-4377-8d68-f09c00debc91", "BuoyProp", "Lamp (near Cabin Fever Long)", "overworld"),
     IslandObject("b5461e87-1a09-4f2c-b9b5-158f195adbf3", "BuoyProp", "Lamp (near Cannonball Commute)", "chairlift"),
@@ -1301,11 +1301,11 @@ ISLAND_OBJECTS: tuple[IslandObject, ...] = (
     IslandObject("4ee18fc7-2a43-44e0-9a2b-4508e9d2705d", "BuoyLight", "Pedestal Lamp (near Singer and Selector 1)", "overworld"),
     IslandObject("c716c86d-81a7-40cc-873f-0405821dbd72", "BuoyLight", "Pedestal Lamp (near Singer and Selector 2)", "overworld"),
     IslandObject("cef7ae31-a105-491d-8d0d-daab0253909c", "BuoyLight", "Pedestal Lamp (near Singer and Selector 3)", "overworld"),
-    IslandObject("007a1599-17ad-426f-a68b-37718423e9f7", "BuoyLight", "Pedestal Lamp (near Telescope to Box 1)", "overworld"),
-    IslandObject("99d8a99a-89eb-4ad0-8736-104aafe1fdd7", "BuoyLight", "Pedestal Lamp (near Telescope to Box 2)", "overworld"),
-    IslandObject("fa653354-bdfa-431d-aa19-7453e5730e80", "BuoyLight", "Pedestal Lamp (near Telescope to Box 3)", "overworld"),
-    IslandObject("942347f0-cd23-445f-8019-d296e5c92ead", "BuoyLight", "Pedestal Lamp (near Telescope to Box 4)", "overworld"),
-    IslandObject("0abc8402-398d-4f0d-bf5e-fb3051a16e21", "BuoyLight", "Pedestal Lamp (near Telescope to Box 5)", "overworld"),
+    IslandObject("007a1599-17ad-426f-a68b-37718423e9f7", "BuoyLight", "Pedestal Lamp (Hub 1)", "overworld"),
+    IslandObject("99d8a99a-89eb-4ad0-8736-104aafe1fdd7", "BuoyLight", "Pedestal Lamp (Hub 2)", "overworld"),
+    IslandObject("fa653354-bdfa-431d-aa19-7453e5730e80", "BuoyLight", "Pedestal Lamp (Hub 3)", "overworld"),
+    IslandObject("942347f0-cd23-445f-8019-d296e5c92ead", "BuoyLight", "Pedestal Lamp (Hub 4)", "overworld"),
+    IslandObject("0abc8402-398d-4f0d-bf5e-fb3051a16e21", "BuoyLight", "Pedestal Lamp (Hub 5)", "overworld"),
     IslandObject("c2756ad3-4f4a-45e5-93a3-4c10e892ebdc", "BuoyLight", "Pedestal Lamp (near Teller Window 1)", "overworld"),
     IslandObject("226bdfbc-c2ad-4bda-b9ec-2d72c09f1502", "BuoyLight", "Pedestal Lamp (near Teller Window 2)", "overworld"),
     IslandObject("d467b790-8968-46b1-9be9-e36eac9ebe52", "BuoyLight", "Pedestal Lamp (near Teller Window 3)", "overworld"),
@@ -1520,11 +1520,11 @@ OVERWORLD_ZONES: dict[str, str] = {
     "4ec6aca0-9961-4550-9c26-7cacb9917566": "red",  # Pedestal Lamp (near High Button 3)
     "38722a78-da82-4d6e-80c4-efd70e1be90f": "red",  # Pedestal Lamp (near Pointer's Paradise 1)
     "d368b4c7-8389-4f63-a20f-ba88ef17f0a5": "red",  # Pedestal Lamp (near Pointer's Paradise 2)
-    "007a1599-17ad-426f-a68b-37718423e9f7": "red",  # Pedestal Lamp (near Telescope to Box 1)
-    "99d8a99a-89eb-4ad0-8736-104aafe1fdd7": "red",  # Pedestal Lamp (near Telescope to Box 2)
-    "fa653354-bdfa-431d-aa19-7453e5730e80": "red",  # Pedestal Lamp (near Telescope to Box 3)
-    "942347f0-cd23-445f-8019-d296e5c92ead": "red",  # Pedestal Lamp (near Telescope to Box 4)
-    "0abc8402-398d-4f0d-bf5e-fb3051a16e21": "red",  # Pedestal Lamp (near Telescope to Box 5)
+    "007a1599-17ad-426f-a68b-37718423e9f7": "red",  # Pedestal Lamp (Hub 1)
+    "99d8a99a-89eb-4ad0-8736-104aafe1fdd7": "red",  # Pedestal Lamp (Hub 2)
+    "fa653354-bdfa-431d-aa19-7453e5730e80": "red",  # Pedestal Lamp (Hub 3)
+    "942347f0-cd23-445f-8019-d296e5c92ead": "red",  # Pedestal Lamp (Hub 4)
+    "0abc8402-398d-4f0d-bf5e-fb3051a16e21": "red",  # Pedestal Lamp (Hub 5)
     "c2756ad3-4f4a-45e5-93a3-4c10e892ebdc": "red",  # Pedestal Lamp (near Teller Window 1)
     "226bdfbc-c2ad-4bda-b9ec-2d72c09f1502": "red",  # Pedestal Lamp (near Teller Window 2)
     "d467b790-8968-46b1-9be9-e36eac9ebe52": "red",  # Pedestal Lamp (near Teller Window 3)
