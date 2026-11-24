@@ -542,18 +542,11 @@ class BigWalkWorld(World):
                     if loc.progress_type != LocationProgressType.EXCLUDED and loc.can_reach(with_state)}
 
         def opens(names: tuple[str, ...], now: set[str]) -> int:
-            player = self.player
-            saved = (state.prog_items[player].copy(), state.reachable_regions[player].copy(),
-                     state.blocked_connections[player].copy(), state.stale[player],
-                     state.advancements.copy(), state.locations_checked.copy())
-            try:
-                for name in names:
-                    state.collect(self.create_item(name), True)
-                state.sweep_for_advancements(own)
-                return len(reach(state) - now)
-            finally:
-                (state.prog_items[player], state.reachable_regions[player], state.blocked_connections[player],
-                 state.stale[player], state.advancements, state.locations_checked) = saved
+            trial = state.copy()
+            for name in names:
+                trial.collect(self.create_item(name), True)
+            trial.sweep_for_advancements(own)
+            return len(reach(trial) - now)
 
         for _ in range(len(mine)):
             now = reach(state)
