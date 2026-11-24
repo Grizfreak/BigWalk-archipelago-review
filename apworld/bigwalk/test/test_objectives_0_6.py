@@ -2,7 +2,7 @@
 
 from Options import OptionError
 
-from .. import data, locations
+from .. import checks, data, items, locations
 from .bases import BigWalkTestBase
 
 
@@ -11,17 +11,17 @@ class TestBigObjects(BigWalkTestBase):
                "lock_puzzle_needs": False}
 
     def test_target(self) -> None:
-        kinds = len(self.world.object_location_names())
-        self.assertEqual(self.world.objects_target(), -(-kinds // 2))
-        self.assertEqual(self.world.fill_slot_data()["objects_required_count"], self.world.objects_target())
+        kinds = len(checks.object_location_names(self.world))
+        self.assertEqual(checks.objects_target(self.world), -(-kinds // 2))
+        self.assertEqual(self.world.fill_slot_data()["objects_required_count"], checks.objects_target(self.world))
 
 
 class TestBigBody(BigWalkTestBase):
     options = {"lock_abilities": "handed", "objectives": ["big_body"], "body_required": 50}
 
     def test_target_and_rule(self) -> None:
-        self.assertEqual(len(self.world.ability_item_names()), 10)
-        self.assertEqual(self.world.body_target(), 5)
+        self.assertEqual(len(items.ability_item_names(self.world)), 10)
+        self.assertEqual(items.body_target(self.world), 5)
         victory = locations.VICTORY_EVENT_NAME
         self.collect_all_but(["Legs", "Seat", "Progressive Left Arm", "Progressive Right Arm", "Throwing", "Carrying"])
         self.assertFalse(self.can_reach_location(victory))

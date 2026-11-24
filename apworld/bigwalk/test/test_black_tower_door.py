@@ -1,4 +1,4 @@
-from .. import data
+from .. import data, monuments
 from .bases import BigWalkTestBase
 
 REACHED = data.tower_reached_location_name(data.BLACK_MONOLITH)
@@ -32,12 +32,12 @@ class TestTheDoorOpensAtTheBlackTowersTurn(BigWalkTestBase):
     run_default_tests = False
 
     def test_the_tower_waits_for_its_progressive_monument(self) -> None:
-        position = self.world.tower_index(data.BLACK_MONOLITH.prop_name) + 1
+        position = monuments.tower_index(self.world, data.BLACK_MONOLITH.prop_name) + 1
         self.collect_all_but(data.PROGRESSIVE_MONUMENT_ITEM_NAME)
-        monuments = self.get_items_by_name(data.PROGRESSIVE_MONUMENT_ITEM_NAME)
-        self.collect(monuments[:position - 1])
+        tower_items = self.get_items_by_name(data.PROGRESSIVE_MONUMENT_ITEM_NAME)
+        self.collect(tower_items[:position - 1])
         self.assertFalse(self.can_reach_location(REACHED))
-        self.collect(monuments[position - 1:position])
+        self.collect(tower_items[position - 1:position])
         self.assertTrue(self.can_reach_location(REACHED))
 
 

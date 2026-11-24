@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from BaseClasses import Item, ItemClassification
 from Options import OptionError
 
-from . import data
+from . import checks, data, monuments
 from . import options as bigwalk_options
 
 if TYPE_CHECKING:
@@ -30,7 +30,8 @@ ITEM_NAME_TO_ID: dict[str, int] = {
     **{name: data.BASE_ID + offset for name, offset in data.FILLER_ITEMS},
     **{name: data.BASE_ID + offset for name, offset in data.TRAP_ITEMS},
     **{name: data.BASE_ID + offset for name, offset in data.BONUS_ITEMS},
-    **{data.teleport_item_name(name): data.teleport_item_id(i) for i, (_, name) in enumerate(data.TELEPORT_DESTINATIONS)},
+    **{data.teleport_item_name(name): data.teleport_item_id(i)
+       for i, (_, name) in enumerate(data.TELEPORT_DESTINATIONS)},
     **{lock.item_name: data.zone_lock_item_id(lock) for lock in data.ZONE_LOCKS},
     **{door.item_name: data.tunnel_door_item_id(door) for door in data.TUNNEL_DOORS},
 }
@@ -247,7 +248,7 @@ def create_all_items(world: BigWalkWorld) -> None:
     gourds = world.gourd_count
     # `linear_puzzles`: not the purple puzzles, whose gourd could be needed to open the chairlift.
     if world.options.linear_puzzles:
-        for puzzle in [p for p in world.puzzles() if p.prop_name not in data.CHAIRLIFT_PUZZLES][:gourds]:
+        for puzzle in [p for p in checks.puzzles(world) if p.prop_name not in data.CHAIRLIFT_PUZZLES][:gourds]:
             world.get_location(puzzle.location_name).place_locked_item(world.create_item(data.GOURD_ITEM_NAME))
             gourds -= 1
     pool: list[Item] = [world.create_item(data.GOURD_ITEM_NAME) for _ in range(gourds)]
@@ -281,8 +282,8 @@ def create_all_items(world: BigWalkWorld) -> None:
 
     # Keys are never handed over (each is six checks); `linear_towers` puts one in its monument.
     for tower in world.towers:
-        if world.key_in_its_monument(tower):
-            world.get_location(world.key_location_name(tower)).place_locked_item(
+        if monuments.key_in_its_monument(world, tower):
+            world.get_location(monuments.key_location_name(world, tower)).place_locked_item(
                 world.create_item(data.key_item_name(tower)))
         else:
             pool.append(world.create_item(data.key_item_name(tower)))
@@ -315,7 +316,7 @@ def create_all_items(world: BigWalkWorld) -> None:
             else:
                 pool.append(world.create_item(need.item_name))
 
-    for lock in world.zone_locks():
+    for lock in checks.zone_locks(world):
         if lock.key in world.options.start_with_zone_locks.value:
             world.push_precollected(world.create_item(lock.item_name))
         else:
@@ -350,7 +351,8 @@ def create_all_items(world: BigWalkWorld) -> None:
         filler_needed -= take
     # Flare guns also come from the headroom, as many as `island_object_limits` allows.
     limits = island_object_limits(world)
-    flare_guns = [*(data.FLARE_GUN_ITEM_NAMES if world.options.flare_gun_sanity else ()), data.RAINBOW_FLARE_GUN_ITEM_NAME]
+    flare_guns = [*(data.FLARE_GUN_ITEM_NAMES if world.options.flare_gun_sanity else ()),
+                  data.RAINBOW_FLARE_GUN_ITEM_NAME]
     for name in flare_guns:
         take = min(limits.get(name, 0), max(0, filler_needed))
         pool += [world.create_item(name) for _ in range(take)]
@@ -358,3 +360,15 @@ def create_all_items(world: BigWalkWorld) -> None:
     pool += [world.create_filler() for _ in range(filler_needed)]
 
     world.multiworld.itempool += pool
+
+
+def ability_item_names(world: BigWalkWorld) -> list[str]:
+    """Ability items the logic counts, once per copy; Running is only useful, so not counted."""
+    return [ability.item_name for ability in abilities_in_pool(world) for _ in range(ability.copies)
+            if ability.item_name != data.RUNNING_ITEM_NAME]
+
+
+def body_target(world: BigWalkWorld) -> int:
+    """`body_required` percent of the ability items, rounded up, at least one."""
+    count = len(ability_item_names(world))
+    return max(1, -(-count * world.options.body_required.value // 100)) if count else 0
