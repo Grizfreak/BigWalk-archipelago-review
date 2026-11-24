@@ -1,8 +1,5 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using BigWalkArchipelago.Core;
 using UnityEngine;
 
 namespace BigWalkArchipelago.Debug

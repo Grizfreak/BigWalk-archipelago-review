@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using Mirror;
-using UnityEngine;
-
 namespace BigWalkArchipelago.Core.Items
 {
     // Clones the island's hand props as filler items; each machine hides its own vanilla copies.

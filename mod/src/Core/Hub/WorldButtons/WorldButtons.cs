@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Hub
 {
@@ -13,7 +11,6 @@ namespace BigWalkArchipelago.Core.Hub
         }
 
         private const float ReachMetres = 4f;
-        private const float CheckEverySeconds = 0f;
 
         internal sealed class Button
         {

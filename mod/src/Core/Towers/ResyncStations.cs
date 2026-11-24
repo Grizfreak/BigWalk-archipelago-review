@@ -1,6 +1,4 @@
-﻿using System;
-using BigWalkArchipelago.Core.Net;
-using Mirror;
+﻿using Mirror;
 using TMPro;
 using UnityEngine;
 

@@ -1,4 +1,3 @@
-using BigWalkArchipelago.Core;
 using UnityEngine;
 
 namespace BigWalkArchipelago.Debug

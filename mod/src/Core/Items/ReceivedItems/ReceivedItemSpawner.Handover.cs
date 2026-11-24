@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Reflection;
-using Mirror;
+﻿using Mirror;
 using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Items
@@ -185,21 +182,6 @@ namespace BigWalkArchipelago.Core.Items
                 Plugin.Log.LogWarning($"[{nameof(ReceivedItemSpawner)}] Could not read the published hold: {ex.Message}");
                 return false;
             }
-        }
-
-        private static PlayerCharacter FindLocalPlayerCharacter()
-        {
-            var all = PlayerCharacter.allPlayerCharacters;
-            if (all == null)
-                return null;
-
-            foreach (var pc in all)
-            {
-                if (pc != null && pc.isLocalPlayer)
-                    return pc;
-            }
-
-            return null;
         }
     }
 }

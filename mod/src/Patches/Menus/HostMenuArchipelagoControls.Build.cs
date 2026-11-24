@@ -1,7 +1,4 @@
-﻿using System;
-using BigWalkArchipelago.Core;
-using BigWalkArchipelago.Core.Net;
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;

@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 namespace BigWalkArchipelago.Core.Gourds
 {
     // Reveals the purple variant gourds on the map, which GourdMap.Initialize hides on each load.

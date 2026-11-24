@@ -1,5 +1,3 @@
-using System;
-
 namespace BigWalkArchipelago.Debug
 {
     // Full SaveManager dump, to diff before and after an action whose save key is not visible.

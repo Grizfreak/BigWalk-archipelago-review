@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using Mirror;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Net
 {
@@ -64,12 +60,6 @@ namespace BigWalkArchipelago.Core.Net
             // "reached" means reported to the server, not merely met.
             GoalLine = _goalSent ? $"Goal: {goal} - reached" : $"Goal: {goal}";
             GoalLineIsWarning = false;
-        }
-
-        // Called when the second ending's gourd comes loose; needs no world, only a socket.
-        internal static void ReportGoalIfReached()
-        {
-            CheckGoal();
         }
 
         private static void CheckGoal()

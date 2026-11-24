@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using UnityEngine;
-
 namespace BigWalkArchipelago.Debug
 {
     // Logs saved values and nearby peck states as they change, for buttons the mod cannot see yet.

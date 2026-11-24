@@ -1,6 +1,4 @@
 ﻿using BepInEx.Configuration;
-using BepInEx.Unity.IL2CPP.Configuration;
-using UnityEngine;
 
 namespace BigWalkArchipelago
 {
@@ -197,8 +195,10 @@ namespace BigWalkArchipelago
                 10,
                 "How many copies of each received object (map, torch, radio...) the world keeps at most. Past that, a reload puts back no more, and a new one takes the place of the oldest left lying around (never one held, worn or stowed). Backpacks, belts and cartons are only limited on reload. 0: no limit.");
 
+#if DEBUG
             BindDebugWorldKeys(debug);
             BindDebugSessionKeys(debug);
+#endif
 
             if (DebugModeEnabled.Value)
                 debug.Save();

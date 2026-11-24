@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Reflection;
-using Mirror;
+﻿using Mirror;
 using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Items
@@ -118,7 +115,7 @@ namespace BigWalkArchipelago.Core.Items
 
         private static Vector3? FindLocalPlayerPosition()
         {
-            var player = FindLocalPlayerCharacter();
+            var player = LocalPlayer.Find();
             return player != null ? player.transform.position : null;
         }
 
@@ -152,7 +149,7 @@ namespace BigWalkArchipelago.Core.Items
 
             if (toPlayer && ModConfig.SpawnGourdAtPlayer.Value)
             {
-                var player = near != null ? near : FindLocalPlayerCharacter();
+                var player = near != null ? near : LocalPlayer.Find();
                 if (player != null)
                 {
                     var t = player.transform;

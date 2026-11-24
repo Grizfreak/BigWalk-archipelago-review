@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using BigWalkArchipelago.Core;
-using BigWalkArchipelago.Core.Net;
 using UnityEngine;
 
 namespace BigWalkArchipelago.Debug

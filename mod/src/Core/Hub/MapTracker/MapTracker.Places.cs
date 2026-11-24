@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using BigWalkArchipelago.Core.Net;
 using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Hub
@@ -187,7 +184,6 @@ namespace BigWalkArchipelago.Core.Hub
             return null;
         }
 
-        private static readonly Dictionary<string, Marker> Objectives = new();
         private const float ObjectiveStick = 0.6f;
         private const float OpenStick = 1.6f;
         private static readonly Color ObjectiveColour = new(1.2f, 1.2f, 1.2f, 1f);
@@ -276,18 +272,10 @@ namespace BigWalkArchipelago.Core.Hub
         {
             foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                if (t != null && t.name == path.Substring(path.LastIndexOf('/') + 1) && PathOf(t) == path)
+                if (t != null && t.name == path.Substring(path.LastIndexOf('/') + 1) && SceneObjects.PathOf(t) == path)
                     return t;
             }
             return null;
-        }
-
-        private static string PathOf(Transform t)
-        {
-            var path = t.name;
-            for (var p = t.parent; p != null; p = p.parent)
-                path = p.name + "/" + path;
-            return path;
         }
     }
 }

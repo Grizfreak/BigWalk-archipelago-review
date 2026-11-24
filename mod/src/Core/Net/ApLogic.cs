@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 
 namespace BigWalkArchipelago.Core.Net
@@ -43,8 +41,6 @@ namespace BigWalkArchipelago.Core.Net
         private readonly List<(string from, string to, Rule rule)> _exits = new();
         private readonly List<Location> _locations = new();
         private readonly Dictionary<string, Location> _byName = new();
-
-        internal int LocationCount => _locations.Count;
 
         internal string RegionOf(long id)
         {

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Mirror;
+﻿using Mirror;
 using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Puzzles
@@ -100,7 +97,7 @@ namespace BigWalkArchipelago.Core.Puzzles
                     continue;
 
                 foreach (var go in group.Value.Values)
-                    parts.Add((group.Key, PathOf(go.transform) + "/"));
+                    parts.Add((group.Key, SceneObjects.PathOf(go.transform) + "/"));
             }
 
             var withNeeds = 0;
@@ -123,13 +120,13 @@ namespace BigWalkArchipelago.Core.Puzzles
             for (var t = pole.parent; t != null; t = t.parent)
             {
                 if (t.parent != null && t.parent.name.StartsWith("Level", StringComparison.Ordinal))
-                    return PathOf(t) + "/";
+                    return SceneObjects.PathOf(t) + "/";
 
                 if (t.name.IndexOf("ositioner", StringComparison.OrdinalIgnoreCase) >= 0)
-                    return PathOf(t.parent != null ? t.parent : t) + "/";
+                    return SceneObjects.PathOf(t.parent != null ? t.parent : t) + "/";
             }
 
-            return PathOf(pole.parent != null ? pole.parent : pole) + "/";
+            return SceneObjects.PathOf(pole.parent != null ? pole.parent : pole) + "/";
         }
 
         // One line a stage, to set against the apworld's GAUNTLET_STAGE_TAGS.
@@ -143,7 +140,7 @@ namespace BigWalkArchipelago.Core.Puzzles
                     if (go == null || !_inGauntlet.Contains(go.GetInstanceID()))
                         continue;
 
-                    var path = PathOf(go.transform);
+                    var path = SceneObjects.PathOf(go.transform);
                     var at = path.IndexOf("/Level", StringComparison.Ordinal);
                     if (at < 0 || at + 7 > path.Length || !int.TryParse(path.Substring(at + 6, 1), out var level))
                         continue;
@@ -159,15 +156,6 @@ namespace BigWalkArchipelago.Core.Puzzles
                 Plugin.Log.LogInfo(
                     $"[{nameof(PuzzleNeedHider)}] Gauntlet stage {stage.Key + 1} (Level{stage.Key}) parts: "
                     + string.Join(", ", stage.Value.Select(n => $"{n.Key} x{n.Value}")));
-        }
-
-        private static string PathOf(Transform transform)
-        {
-            var parts = new List<string>();
-            for (var t = transform; t != null; t = t.parent)
-                parts.Add(t.name);
-            parts.Reverse();
-            return string.Join("/", parts);
         }
 
         private static void Gather<T>(Dictionary<int, Transform> into, Func<T, Transform> transformOf)

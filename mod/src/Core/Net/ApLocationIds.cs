@@ -1,7 +1,4 @@
-﻿using System;
-using BigWalkArchipelago.Core;
-
-namespace BigWalkArchipelago.Core.Net
+﻿namespace BigWalkArchipelago.Core.Net
 {
     // Maps game identifiers to Archipelago ids by the same arithmetic as the apworld.
     internal static class ApLocationIds

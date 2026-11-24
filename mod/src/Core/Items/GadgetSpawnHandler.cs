@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Il2CppInterop.Runtime.Attributes;
 using Mirror;
 using UnityEngine;

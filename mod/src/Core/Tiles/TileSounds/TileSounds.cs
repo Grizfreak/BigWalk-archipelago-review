@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using BigWalkArchipelago.Core.Net;
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Mirror;
 using UnityEngine;
 

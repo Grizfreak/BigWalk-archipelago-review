@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-
-namespace BigWalkArchipelago.Core.Net
+﻿namespace BigWalkArchipelago.Core.Net
 {
     // Typed view over slot_data; mirrors apworld/protocol.md, so change both together.
     internal sealed partial class ApSlotData

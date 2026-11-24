@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace BigWalkArchipelago.Core.Net
 {
     // The seed's `objectives`, all required in any order; a lone `goal` is a list of one.

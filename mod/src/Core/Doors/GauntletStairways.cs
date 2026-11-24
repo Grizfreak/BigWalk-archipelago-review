@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using Mirror;
+﻿using Mirror;
 using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Doors
 {
     // Holds the Gauntlet stairways shut until their items arrive (`locked_stages`).
-    internal static class GauntletStairways
+    internal static partial class GauntletStairways
     {
         private const string KeyPrefix = "ap_gauntlet_";
         private const string GateName = "GourdTowerGateNetworking";
@@ -229,21 +227,6 @@ namespace BigWalkArchipelago.Core.Doors
                 OpenGate(WallByLevel[level], $"Stage {level + 1} wall");
         }
 
-        internal static void DebugOpenLast()
-        {
-            Discover();
-            var gate = GateByLevel[Chambers.Length - 1];
-            if (gate == null)
-            {
-                Plugin.Log.LogInfo($"[{nameof(GauntletStairways)}] Debug: the last stairway is not in this world.");
-                return;
-            }
-
-            Plugin.Log.LogInfo($"[{nameof(GauntletStairways)}] Debug: asking the last stairway to open (state {gate.currentPeckContext.state}).");
-            gate.SetState(1);
-            Plugin.Log.LogInfo($"[{nameof(GauntletStairways)}] Debug: the last stairway is now at state {gate.currentPeckContext.state}.");
-        }
-
         private static void OpenGate(TrackedPeckState gate, string what)
         {
             if (gate == null || gate.currentPeckContext.state >= 1)
@@ -290,7 +273,7 @@ namespace BigWalkArchipelago.Core.Doors
             if (state.gameObject.name != GateName)
                 return false;
 
-            var path = PathOf(state.transform);
+            var path = SceneObjects.PathOf(state.transform);
             if (!path.Contains(GauntletPath) || !TryLevelOf(path, out level))
                 return false;
 
@@ -312,7 +295,7 @@ namespace BigWalkArchipelago.Core.Doors
             if (transform == null)
                 return false;
 
-            var path = PathOf(transform);
+            var path = SceneObjects.PathOf(transform);
             return path.Contains(GauntletPath) && TryLevelOf(path, out level);
         }
 
@@ -329,15 +312,6 @@ namespace BigWalkArchipelago.Core.Doors
             }
 
             return false;
-        }
-
-        private static string PathOf(Transform transform)
-        {
-            var parts = new List<string>();
-            for (var t = transform; t != null; t = t.parent)
-                parts.Add(t.name);
-            parts.Reverse();
-            return string.Join("/", parts);
         }
     }
 }

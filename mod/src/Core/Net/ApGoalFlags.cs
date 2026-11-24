@@ -1,9 +1,7 @@
-using System.Collections.Generic;
-
 namespace BigWalkArchipelago.Core.Net
 {
     // Goal flags latch on a change while playable: EndingGate rests at 1 and is written at load.
-    internal static class ApGoalFlags
+    internal static partial class ApGoalFlags
     {
         private const string KeyPrefix = "ap_flag_";
 
@@ -51,14 +49,6 @@ namespace BigWalkArchipelago.Core.Net
             SaveManager.SetIntValue(key, 1);
             Plugin.Log.LogInfo(
                 $"[{nameof(ApGoalFlags)}] {system} changed during play ({previous} -> {value}): goal reached, latched as {key}.");
-        }
-
-        // Debug (Alt + 4): latches both flags to test sending the goal.
-        internal static void DebugLatchBoth()
-        {
-            SaveManager.SetIntValue(KeyPrefix + SavableSystem.EndingGate, 1);
-            SaveManager.SetIntValue(KeyPrefix + SavableSystem.GauntletComplete, 1);
-            Plugin.Log.LogInfo($"[{nameof(ApGoalFlags)}] Debug: the bell and the Gauntlet are latched.");
         }
 
         internal static bool IsLatched(SavableSystem system)

@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using BigWalkArchipelago.Core;
 using HarmonyLib;
 
 namespace BigWalkArchipelago.Patches.Gourds

@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Text;
-using BigWalkArchipelago.Core.Net;
 using Mirror;
 using UnityEngine;
 
@@ -56,7 +53,6 @@ namespace BigWalkArchipelago.Core.Hub
         internal static bool IsLocked(PeckEffectTextInput input) =>
             input != null && (_checkLocked && input == _checkSign
                               || IsGuest && input == _hintSign && IsOurs(_hintSign) && !_mirroredMayAsk);
-
 
 
         // What the mod last wrote on the hint sign: anything else there is a player asking.
@@ -324,18 +320,10 @@ namespace BigWalkArchipelago.Core.Hub
         {
             foreach (var input in UnityEngine.Object.FindObjectsByType<PeckEffectTextInput>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                if (input != null && PathOf(input.transform).EndsWith(pathEnd, StringComparison.Ordinal))
+                if (input != null && SceneObjects.PathOf(input.transform).EndsWith(pathEnd, StringComparison.Ordinal))
                     return input;
             }
             return null;
-        }
-
-        private static string PathOf(Transform t)
-        {
-            var path = t.name;
-            for (var p = t.parent; p != null; p = p.parent)
-                path = p.name + "/" + path;
-            return path;
         }
     }
 }

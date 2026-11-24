@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace BigWalkArchipelago.Core.Net
+﻿namespace BigWalkArchipelago.Core.Net
 {
     // Items of the slot's received list already applied to this save; the server resends them all.
     internal static class ApItemCursor

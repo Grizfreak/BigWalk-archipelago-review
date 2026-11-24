@@ -1,5 +1,3 @@
-using BigWalkArchipelago.Core;
-using BigWalkArchipelago.Core.Net;
 using HarmonyLib;
 using Mirror;
 

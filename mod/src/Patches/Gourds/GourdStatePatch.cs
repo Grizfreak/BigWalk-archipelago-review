@@ -1,6 +1,4 @@
-using BigWalkArchipelago.Core;
 using HarmonyLib;
-using Mirror;
 
 namespace BigWalkArchipelago.Patches.Gourds
 {
