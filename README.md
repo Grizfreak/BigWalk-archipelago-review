@@ -6,7 +6,7 @@ separate client to run while you play.
 
 ## Download
 
-From the [releases](https://github.com/Grizfreak/BigWalk-archipelago/releases):
+From the [releases](https://github.com/Grizfreak/BigWalk-archipelago-review/releases):
 
 | File | Who needs it |
 | --- | --- |
@@ -61,7 +61,7 @@ Archipelago website shows.
 
 ## Reporting a problem
 
-Open an [issue](https://github.com/Grizfreak/BigWalk-archipelago/issues) and
+Open an [issue](https://github.com/Grizfreak/BigWalk-archipelago-review/issues) and
 attach `BepInEx/LogOutput.log` from the **host's** machine, and from any other
 player whose screen showed the problem: in co-op, what goes wrong on a machine
 is usually only visible in that machine's own log.

@@ -4,7 +4,7 @@
 
 - Big Walk on Steam (Windows, or Linux and the Steam Deck through Proton). Every player needs their own copy.
 - The Big Walk Archipelago mod, from
-  [its releases](https://github.com/Grizfreak/BigWalk-archipelago/releases).
+  [its releases](https://github.com/Grizfreak/BigWalk-archipelago-review/releases).
   It is an all-in-one zip: BepInEx is inside it, so there is nothing to
   install separately.
 - The Big Walk apworld, `bigwalk.apworld`, from the same release.
