@@ -35,6 +35,8 @@ jobs:
       - name: Install Archipelago with the world
         working-directory: archipelago
         run: |
+          # The other worlds' requirements conflict with each other, and their tests are not ours.
+          find worlds -mindepth 1 -maxdepth 1 -type d ! -name generic ! -name apquest -exec rm -rf {} +
           cp -r ../bigwalk/apworld/bigwalk worlds/bigwalk
           python -m pip install --upgrade pip
           pip install -r ci-requirements.txt
