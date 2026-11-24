@@ -1,6 +1,4 @@
-// Cherche les fonctions dont le nom contient l'argument, et liste qui les
-// appelle. Sert à remonter d'un champ réseau vers le code qui l'écrit,
-// plutôt que de deviner quelle méthode « a l'air » responsable.
+// The functions whose name holds the argument, and what calls each.
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionIterator;

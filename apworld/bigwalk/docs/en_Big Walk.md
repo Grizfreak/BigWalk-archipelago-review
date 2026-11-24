@@ -649,7 +649,7 @@ just starts running. A Radio Music item starts its station for the rest of the
 run. A filler prop lands next to you. A trap or bonus plays on every player at
 once. A puzzle part puts its objects back on the map everywhere.
 
-`Ctrl+R` brings back anything of yours that got stuck somewhere you can't reach:
+The resync station in the hub brings back anything of yours that got stuck somewhere you can't reach:
 gourds, keys and filler props, even ones in someone's hands. Placed keys and
 deposited gourds stay put, since their checks are already sent.
 

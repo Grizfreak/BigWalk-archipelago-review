@@ -1,7 +1,4 @@
-// Cherche les symboles (données, pas seulement fonctions) dont le nom contient
-// l'argument, et liste les fonctions qui y font référence. Sert à retrouver qui
-// lit un champ statique ou la « TypeInfo » d'une classe il2cpp, là où
-// FindCallers ne voit que des appels de fonctions.
+// The symbols whose name holds the argument, and the functions that refer to them.
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.symbol.Reference;

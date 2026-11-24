@@ -1,5 +1,4 @@
-// Décompile les fonctions dont les adresses sont passées en arguments.
-// Lancé par analyzeHeadless sur le projet Ghidra déjà analysé.
+// Decompiles the functions at the addresses given.
 import ghidra.app.script.GhidraScript;
 import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
