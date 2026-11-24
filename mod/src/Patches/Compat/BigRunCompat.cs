@@ -1,9 +1,6 @@
-using System;
 using System.Reflection;
 using BepInEx.Configuration;
 using BepInEx.Unity.IL2CPP.Configuration;
-using BigWalkArchipelago.Core;
-using BigWalkArchipelago.Core.Net;
 using HarmonyLib;
 using UnityEngine;
 

@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Il2CppInterop.Runtime.Attributes;
-using Mirror;
+﻿using Mirror;
 using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Net

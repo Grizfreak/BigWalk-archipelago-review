@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using Mirror;
-using UnityEngine;
-
 namespace BigWalkArchipelago.Core.Items
 {
     // Hand props used as filler items, in data.py's FILLER_ITEMS order (TryResolveGadgetItem).

@@ -1,6 +1,3 @@
-using System;
-using BigWalkArchipelago.Core;
-using HarmonyLib;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -153,7 +150,6 @@ namespace BigWalkArchipelago.Patches.Menus
             var left = text != null ? text.textBounds.min.x : r.rect.xMin;
             return r.TransformPoint(new Vector3(left, 0f, 0f)).x;
         }
-        private static readonly Vector3[] Corners = new Vector3[4];
 
         // The panel has no layout component, so the gourd row is placed by hand every frame.
         private static void PlaceGourdRow()

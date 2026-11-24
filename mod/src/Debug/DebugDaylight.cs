@@ -1,5 +1,3 @@
-using System;
-
 namespace BigWalkArchipelago.Debug
 {
     // Toggles a fixed noon (SetFixedTime also stops the clock). Local only, nothing is saved.

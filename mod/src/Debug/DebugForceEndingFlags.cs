@@ -1,5 +1,3 @@
-using BigWalkArchipelago.Core;
-
 namespace BigWalkArchipelago.Debug
 {
     // Pins the seven big keys at once through ItemApplier.

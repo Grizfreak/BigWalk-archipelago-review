@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Mirror;
+﻿using Mirror;
 using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Tiles
@@ -105,7 +103,7 @@ namespace BigWalkArchipelago.Core.Tiles
             {
                 if (prop == null || prop.propGroups == null || !prop.propGroups.Contains(PropGroup.PegTile)
                     || prop.name.Contains("(AP", StringComparison.Ordinal) || _moved.Contains(prop.GetInstanceID())
-                    || IsHeld(prop))
+                    || SceneObjects.IsHeld(prop))
                     continue;
 
                 // A tile in a puzzle's slot (display or answer) or stowed in a pack: left alone.
@@ -118,7 +116,7 @@ namespace BigWalkArchipelago.Core.Tiles
                 if (root == null)
                     continue;
 
-                var key = Path(root) + "|" + FamilyOf(prop) + (prop.name.Contains("Speaker", StringComparison.Ordinal) ? "|speaker" : string.Empty);
+                var key = SceneObjects.PathOf(root) + "|" + FamilyOf(prop) + (prop.name.Contains("Speaker", StringComparison.Ordinal) ? "|speaker" : string.Empty);
                 if (_done.Contains(key))
                     continue;
 
@@ -242,7 +240,7 @@ namespace BigWalkArchipelago.Core.Tiles
 
         private static string IdOf(Prop prop)
         {
-            return string.IsNullOrEmpty(prop.savablePropGuid) ? Path(prop.transform) : prop.savablePropGuid;
+            return string.IsNullOrEmpty(prop.savablePropGuid) ? SceneObjects.PathOf(prop.transform) : prop.savablePropGuid;
         }
 
         // By the home's place in the scene, else by the spot's place in the set, to the decimetre.
@@ -254,7 +252,7 @@ namespace BigWalkArchipelago.Core.Tiles
                     return 1;
                 if (b.Home == null)
                     return -1;
-                return string.CompareOrdinal(Path(a.Home.transform), Path(b.Home.transform));
+                return string.CompareOrdinal(SceneObjects.PathOf(a.Home.transform), SceneObjects.PathOf(b.Home.transform));
             }
 
             var byX = Mathf.RoundToInt(a.Local.x * 10f).CompareTo(Mathf.RoundToInt(b.Local.x * 10f));
@@ -301,29 +299,6 @@ namespace BigWalkArchipelago.Core.Tiles
                 if (tile.rb != null && !PuzzleNeedHider.IsSoftHidden(tile.gameObject))
                     tile.rb.isKinematic = false;
             }
-        }
-
-        private static bool IsHeld(Prop prop)
-        {
-            var players = PlayerCharacter.allPlayerCharacters;
-            if (players == null)
-                return false;
-
-            foreach (var pc in players)
-            {
-                if (pc != null && pc.hands != null && pc.hands.heldProp == prop)
-                    return true;
-            }
-
-            return false;
-        }
-
-        private static string Path(Transform t)
-        {
-            var path = t.name;
-            for (var parent = t.parent; parent != null; parent = parent.parent)
-                path = parent.name + "/" + path;
-            return path;
         }
 
         // The same number on every run and every machine (string.GetHashCode is not).

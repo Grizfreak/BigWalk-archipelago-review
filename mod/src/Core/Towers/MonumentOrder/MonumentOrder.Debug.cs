@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using BigWalkArchipelago.Core.Net;
-using Mirror;
-using UnityEngine;
-
 namespace BigWalkArchipelago.Core.Towers
 {
     internal static partial class MonumentOrder

@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using UnityEngine;
-
 namespace BigWalkArchipelago.Core.Net
 {
     internal static partial class ApSounds

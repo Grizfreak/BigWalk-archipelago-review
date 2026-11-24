@@ -1,7 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
-using BigWalkArchipelago.Core;
 using HarmonyLib;
 
 // References the BepInEx Il2CppInterop assemblies, never the Il2CppInspector dummy DLLs.

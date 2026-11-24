@@ -1,4 +1,3 @@
-using System;
 using HarmonyLib;
 
 namespace BigWalkArchipelago.Patches.Menus

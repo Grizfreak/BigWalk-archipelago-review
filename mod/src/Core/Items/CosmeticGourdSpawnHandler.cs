@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Il2CppInterop.Runtime.Attributes;
 using Mirror;
 using UnityEngine;
@@ -277,20 +275,6 @@ namespace BigWalkArchipelago.Core.Items
         }
 
         [HideFromIl2Cpp]
-        private static bool IsHeldByAnyone(Prop prop)
-        {
-            var players = PlayerCharacter.allPlayerCharacters;
-            if (players == null)
-                return false;
-
-            foreach (var pc in players)
-            {
-                if (pc != null && pc.hands != null && pc.hands.heldProp == prop)
-                    return true;
-            }
-
-            return false;
-        }
 
         private static GameObject Spawn(Vector3 position, uint assetId)
         {

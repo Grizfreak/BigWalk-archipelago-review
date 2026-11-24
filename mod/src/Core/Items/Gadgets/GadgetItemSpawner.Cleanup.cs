@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Mirror;
 using UnityEngine;
 
@@ -26,7 +24,7 @@ namespace BigWalkArchipelago.Core.Items
             for (var i = 0; i < list.Count - 1 && list.Count > limit;)
             {
                 var prop = list[i];
-                if (prop.currentHome != null || IsHeldByAnyone(prop))
+                if (prop.currentHome != null || SceneObjects.IsHeld(prop))
                 {
                     i++;
                     continue;
@@ -47,21 +45,6 @@ namespace BigWalkArchipelago.Core.Items
             if (removed > 0)
                 Plugin.Log.LogInfo(
                     $"[{nameof(GadgetItemSpawner)}] {removed} old {kind}(s) removed to keep {limit} in the world.");
-        }
-
-        private static bool IsHeldByAnyone(Prop prop)
-        {
-            var players = PlayerCharacter.allPlayerCharacters;
-            if (players == null)
-                return false;
-
-            foreach (var pc in players)
-            {
-                if (pc != null && pc.hands != null && pc.hands.heldProp == prop)
-                    return true;
-            }
-
-            return false;
         }
 
         // Counted so the rebuild does not restock what the sweep left standing.

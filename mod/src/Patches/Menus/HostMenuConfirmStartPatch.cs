@@ -1,5 +1,3 @@
-using System;
-using BigWalkArchipelago.Core.Net;
 using HarmonyLib;
 
 namespace BigWalkArchipelago.Patches.Menus

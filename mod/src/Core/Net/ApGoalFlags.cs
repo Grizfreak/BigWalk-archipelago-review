@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace BigWalkArchipelago.Core.Net
 {
     // Goal flags latch on a change while playable: EndingGate rests at 1 and is written at load.

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace BigWalkArchipelago.Core.Diagnostics
+﻿namespace BigWalkArchipelago.Core.Diagnostics
 {
     // What the mod is doing right now, so a check fired by the mod's own hands is never a solve.
     internal static class ModActivity

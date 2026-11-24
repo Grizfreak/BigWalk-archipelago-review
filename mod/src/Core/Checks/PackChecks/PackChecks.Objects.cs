@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using BigWalkArchipelago.Core.Net;
-using Mirror;
 using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Checks

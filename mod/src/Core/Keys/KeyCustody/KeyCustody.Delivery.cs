@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Mirror;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Keys
 {
@@ -125,7 +122,7 @@ namespace BigWalkArchipelago.Core.Keys
                 var prop = FindKey(entry.key);
 
                 // A held key moves with its player; putting it back would take it from them.
-                if (prop != null && IsHeld(prop))
+                if (prop != null && SceneObjects.IsHeld(prop))
                 {
                     Delivered.RemoveAt(i);
                     Plugin.Log.LogInfo($"[{nameof(KeyCustody)}] {entry.key}: in somebody's hands, left alone.");
@@ -158,21 +155,6 @@ namespace BigWalkArchipelago.Core.Keys
             }
         }
 
-        private static bool IsHeld(Prop prop)
-        {
-            var players = PlayerCharacter.allPlayerCharacters;
-            if (players == null)
-                return false;
-
-            foreach (var pc in players)
-            {
-                if (pc != null && pc.hands != null && pc.hands.heldProp == prop)
-                    return true;
-            }
-
-            return false;
-        }
-
         private static void Report(SaveablePropName propName, Vector3 target)
         {
             var prop = FindKey(propName);
@@ -202,7 +184,6 @@ namespace BigWalkArchipelago.Core.Keys
             var visible = renderer != null
                 ? $"renderer.enabled={renderer.enabled} isVisible={renderer.isVisible}"
                 : "no renderer";
-
 
             Plugin.Log.LogInfo(
                 $"[{nameof(KeyCustody)}] {propName} {RecheckDelaySeconds}s later: "

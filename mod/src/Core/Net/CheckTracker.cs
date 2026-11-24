@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace BigWalkArchipelago.Core.Net
 {
     // Saved dedup: the game re-asserts solved gourds on each zone load, by more than one path.

@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Mirror;
+﻿using Mirror;
 using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Doors
@@ -275,7 +273,7 @@ namespace BigWalkArchipelago.Core.Doors
             if (state.gameObject.name != GateName)
                 return false;
 
-            var path = PathOf(state.transform);
+            var path = SceneObjects.PathOf(state.transform);
             if (!path.Contains(GauntletPath) || !TryLevelOf(path, out level))
                 return false;
 
@@ -297,7 +295,7 @@ namespace BigWalkArchipelago.Core.Doors
             if (transform == null)
                 return false;
 
-            var path = PathOf(transform);
+            var path = SceneObjects.PathOf(transform);
             return path.Contains(GauntletPath) && TryLevelOf(path, out level);
         }
 
@@ -314,15 +312,6 @@ namespace BigWalkArchipelago.Core.Doors
             }
 
             return false;
-        }
-
-        private static string PathOf(Transform transform)
-        {
-            var parts = new List<string>();
-            for (var t = transform; t != null; t = t.parent)
-                parts.Add(t.name);
-            parts.Reverse();
-            return string.Join("/", parts);
         }
     }
 }

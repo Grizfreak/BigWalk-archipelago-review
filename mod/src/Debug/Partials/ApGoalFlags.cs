@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace BigWalkArchipelago.Core.Net
 {
     internal static partial class ApGoalFlags

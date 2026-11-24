@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Mirror;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Puzzles
 {
@@ -26,7 +22,7 @@ namespace BigWalkArchipelago.Core.Puzzles
                 if (renderer == null || renderer.GetComponent<Prop>() == null)
                     continue;
 
-                var path = PathOf(renderer.transform);
+                var path = SceneObjects.PathOf(renderer.transform);
                 if (!path.StartsWith(PuzzleRoot, StringComparison.Ordinal) || IsExcluded(path))
                     continue;
 

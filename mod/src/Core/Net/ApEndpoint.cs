@@ -1,5 +1,3 @@
-using System;
-
 namespace BigWalkArchipelago.Core.Net
 {
     // Slot and password come from the save (the game stores them); host:port from the config.

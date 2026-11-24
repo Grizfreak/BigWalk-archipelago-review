@@ -1,5 +1,3 @@
-using System;
-
 namespace BigWalkArchipelago.Core.Net
 {
     // The game saves nothing when the second ending is reached, so the mod latches it in the save.

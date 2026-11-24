@@ -1,5 +1,3 @@
-using BigWalkArchipelago.Core;
-
 namespace BigWalkArchipelago.Debug
 {
     // Unlocks a gourd or big key without its puzzle, to test the check patches.

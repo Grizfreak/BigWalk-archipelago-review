@@ -1,5 +1,3 @@
-using System;
-using BigWalkArchipelago.Core.Net;
 using Mirror;
 using UnityEngine;
 

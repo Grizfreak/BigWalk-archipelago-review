@@ -1,6 +1,3 @@
-using BigWalkArchipelago.Core;
-using BigWalkArchipelago.Core.Net;
-
 namespace BigWalkArchipelago.Debug
 {
     // Plays the overlay lines and sounds one at a time, without a server.

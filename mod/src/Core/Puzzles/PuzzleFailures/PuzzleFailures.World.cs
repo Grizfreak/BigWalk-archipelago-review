@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using Mirror;
 using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Puzzles
@@ -58,14 +55,6 @@ namespace BigWalkArchipelago.Core.Puzzles
             return false;
         }
 
-        private static string PathOf(Transform transform)
-        {
-            var parts = new List<string>();
-            for (var t = transform; t != null; t = t.parent)
-                parts.Insert(0, t.name);
-            return string.Join("/", parts);
-        }
-
         private static World Build()
         {
             var world = new World { ReadyAt = Time.unscaledTime + WorldSettleSeconds };
@@ -112,7 +101,7 @@ namespace BigWalkArchipelago.Core.Puzzles
                 string Name(Component owner, int id)
                 {
                     var puzzle = PuzzleOf(owner.transform, id).name;
-                    world.Rows.Add($"{owner.GetIl2CppType().Name}	{puzzle}	{PathOf(owner.transform)}");
+                    world.Rows.Add($"{owner.GetIl2CppType().Name}	{puzzle}	{SceneObjects.PathOf(owner.transform)}");
                     return $"{puzzle} ({owner.GetIl2CppType().Name})";
                 }
 
@@ -169,7 +158,7 @@ namespace BigWalkArchipelago.Core.Puzzles
 
                     var puzzle = PuzzleOf(state.transform, state.GetInstanceID());
                     world.Tomatoes[state.GetInstanceID()] = new KeyValuePair<string, string>(puzzle.name, puzzle.location);
-                    world.Rows.Add($"Pomodoro	{puzzle.name}	{PathOf(state.transform)}");
+                    world.Rows.Add($"Pomodoro	{puzzle.name}	{SceneObjects.PathOf(state.transform)}");
                 }
 
                 Plugin.Log.LogInfo(

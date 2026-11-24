@@ -1,4 +1,3 @@
-using BigWalkArchipelago.Core;
 using HarmonyLib;
 
 namespace BigWalkArchipelago.Patches.Doors

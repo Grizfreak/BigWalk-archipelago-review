@@ -1,6 +1,3 @@
-using BigWalkArchipelago.Core;
-using BigWalkArchipelago.Core.Net;
-
 namespace BigWalkArchipelago.Debug
 {
     // Simulates a received item through the real ItemApplier path, on the nearest uncollected prop.

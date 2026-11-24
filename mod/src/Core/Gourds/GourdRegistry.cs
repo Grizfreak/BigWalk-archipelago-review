@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace BigWalkArchipelago.Core.Gourds
 {
     // Maps a SaveablePropName to its Archipelago location id (the enum name).

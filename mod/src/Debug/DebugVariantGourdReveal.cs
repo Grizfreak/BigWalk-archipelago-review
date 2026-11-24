@@ -1,5 +1,3 @@
-using BigWalkArchipelago.Core;
-
 namespace BigWalkArchipelago.Debug
 {
     // Runs the variant gourd reveal by hand, without waiting for the map unlocker's next poll.
