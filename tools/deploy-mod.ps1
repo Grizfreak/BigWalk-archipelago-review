@@ -1,39 +1,6 @@
 <#
 .SYNOPSIS
-    Builds the mod, deploys it to every known installation of the game, and
-    checks that they all carry the same binary.
-
-.DESCRIPTION
-    Replaces the "package-mod.ps1 -> send the zip -> the other player
-    installs it" loop, which produced three wasted tests in one weekend:
-    every time, the guest was running an older build and reproducing a bug
-    that had already been fixed. The second machine's folder is reachable
-    over the local network, so both sides are now deployed together.
-
-    The SHA-256 fingerprint printed at the end is not decoration: it is the
-    only way to know that both players are really running the same code
-    before measuring anything. Two identical lines, and a difference in
-    behaviour between the two machines is a real bug; two different lines,
-    and there is nothing to conclude.
-
-    `package-mod.ps1` is still needed for anyone whose folder is not
-    reachable: it carries BepInEx, which this script does not.
-
-.PARAMETER Configuration
-    Build configuration (Debug by default: it is the one that gets tested).
-
-.PARAMETER Targets
-    The game's installation folders. By default: the host machine, the guest
-    machine over the network share, and the Steam copy. Any that do not
-    exist are reported and skipped rather than treated as an error - the
-    machines are not all switched on at the same time.
-
-.PARAMETER SharedDrop
-    A folder that also receives BigWalkArchipelago.dll on its own, for the
-    other machine to pick up (F:\shared by default). Skipped if absent.
-
-.PARAMETER SkipBuild
-    Deploys the existing build output without rebuilding.
+    Builds the mod, deploys it to every known install and checks they carry the same binary.
 #>
 [CmdletBinding()]
 param(
@@ -53,9 +20,7 @@ $repo = Resolve-Path (Join-Path $PSScriptRoot '..')
 $sln = Join-Path $repo 'mod\BigWalkArchipelago.sln'
 $buildOut = Join-Path $repo "mod\src\bin\$Configuration\net6.0"
 
-# The three DLLs to deploy. Leaving one out fails the load of the whole mod,
-# not just the connection: BepInEx resolves a plugin's dependencies inside
-# that plugin's own folder (see mod/README.md).
+# Leaving out one of the three DLLs fails the whole mod: BepInEx resolves deps in its folder.
 $dlls = @(
     'BigWalkArchipelago.dll',
     'Archipelago.MultiClient.Net.dll',
@@ -96,10 +61,7 @@ foreach ($target in $Targets) {
             Copy-Item (Join-Path $buildOut $dll) $pluginDir -Force
         }
         catch {
-            # Common and harmless: the game is running and holding the DLL.
-            # Said out loud rather than left to interpretation, because a
-            # silently partial deployment is exactly what this script exists
-            # to eliminate.
+            # Usually the game holding the DLL; said out loud, since a partial deploy is the bug.
             $failed = $_.Exception.Message
             break
         }
@@ -116,9 +78,7 @@ foreach ($target in $Targets) {
     Write-Host ("  {0,-45} OK" -f $target) -ForegroundColor Green
 }
 
-# The second machine takes its copy from the root of the share, not from the
-# game folder under it (player, 2026-09-25): the DLL goes there on every
-# deploy, so a guest update is one copy on their side.
+# The second machine takes its copy from the share's root: one copy on its side per update.
 if ($SharedDrop -and (Test-Path $SharedDrop)) {
     try {
         Copy-Item (Join-Path $buildOut 'BigWalkArchipelago.dll') $SharedDrop -Force
@@ -137,16 +97,14 @@ if ($results.Count -eq 0) {
     exit 1
 }
 
-# Forced into an array: with a single distinct fingerprint, Select-Object
-# returns a string, and [0] would index its first character.
+# Forced into an array: with one fingerprint Select-Object returns a string, [0] a char.
 $distinct = @($results.Hash | Select-Object -Unique)
 Write-Host ("Mod fingerprint: {0}" -f $distinct[0].Substring(0, 16))
 
 if ($distinct.Count -eq 1) {
     Write-Host ("{0} installation(s) up to date and identical." -f $results.Count) -ForegroundColor Green
 } else {
-    # Should not happen, since everything comes from the same build output,
-    # but saying so beats assuming it.
+    # Should not happen, since everything comes from the same build output.
     Write-Host 'WARNING: the installations do not carry the same binary.' -ForegroundColor Red
     $results | ForEach-Object { "  {0}  {1}" -f $_.Hash.Substring(0, 16), $_.Target }
 }

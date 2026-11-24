@@ -7,25 +7,14 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // The census for the 0.4 locations (ROADMAP S1, S10): every backpack, belt (HolsterProp) and
-    // gourd carton of the island, and everything that could be a firework launcher, written to
-    // BepInEx/pickup-census.tsv in one press (Ctrl + Keypad 1), from anywhere: the game builds
-    // every prop everywhere (2026-09-21), hidden ones included.
-    //
-    // For each one: its guid (the game's own identity for a prop, which a location can be keyed
-    // on), where it is, the nearest puzzle (to give it a region), and which versions of the map
-    // it belongs to. The map has a version per player count (PlayerCountSwapper: target2, target3,
-    // target4, one switched on at load) and more players get fewer tools, so a location must only
-    // count on an object that every version has: "2,3,4" in the `versions` column.
+    // Writes every pack, belt and carton to BepInEx/pickup-census.tsv (Ctrl+Keypad 1).
     internal static class DebugPickupCensus
     {
         private const string Tag = "[" + nameof(DebugPickupCensus) + "]";
 
-        // The flare guns too (flare_gun_sanity, player 2026-10-07): FlareGunProp, ...Blue, ...Green, ...Yellow.
         private static readonly string[] PackPrefabs = { "BackpackProp", "HolsterProp", "GourdCartonProp", "FlareGunProp" };
 
-        // Names a firework launcher might carry: the game's class list names none, so the scene's
-        // object names are all there is (ROADMAP S10).
+        // The game's class list names no firework launcher, so object names are all there is.
         private static readonly string[] FireworkHints = { "firework", "rocket", "launcher", "pyro", "flare station", "flarestation" };
 
         internal static void Dump()
@@ -94,9 +83,7 @@ namespace BigWalkArchipelago.Debug
             }
         }
 
-        // S7 (0.6): every island object a player can pick up, of every kind, to BepInEx/object-census.tsv
-        // (Ctrl + Shift + 5). The kind is the object's name less its " (n)" suffix; the mod's own clones are left
-        // out. Hidden ones are listed too (the mod hides the island's gadgets while Archipelago is on).
+        // Every island object a player can pick up, to BepInEx/object-census.tsv (Ctrl+Shift+5).
         internal static void DumpObjects()
         {
             try
@@ -117,8 +104,7 @@ namespace BigWalkArchipelago.Debug
                     count++;
                 }
 
-                // S9 recon: every lamp pedestal of the island, full or empty (a pedestal is a PropHome; an empty one
-                // has no prop, so the object rows above cannot show it).
+                // Every lamp pedestal, full or empty: an empty PropHome has no prop row.
                 var pedestals = 0;
                 foreach (var home in UnityEngine.Object.FindObjectsByType<PropHome>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 {
@@ -134,8 +120,7 @@ namespace BigWalkArchipelago.Debug
                 }
                 Plugin.Log.LogInfo($"{Tag} {pedestals} lamp pedestal(s) listed (kind Pedestal).");
 
-                // The lamp nearest the player (2026-10-13, lit lamp with an orange body and a green light): what its body
-                // block and its light hold, against the seed's two colours for it.
+                // The lamp nearest the player: its body block and light, against the seed colours.
                 var local = Mirror.NetworkClient.localPlayer;
                 Vector3? here = local != null ? local.transform.position : Camera.main != null ? Camera.main.transform.position : null;
                 Prop nearest = null;
@@ -174,7 +159,7 @@ namespace BigWalkArchipelago.Debug
                     Plugin.Log.LogInfo($"{Tag} nearest lamp: none found (player position known: {here != null}).");
                 }
 
-                // A BuoyProp too, whose body the tint does reach, to compare the two models' materials.
+                // A BuoyProp too, whose body the tint does reach, to compare the materials.
                 foreach (var prop in UnityEngine.Object.FindObjectsByType<Prop>(FindObjectsSortMode.None))
                 {
                     if (prop != null && prop.gameObject.name == "BuoyProp")
@@ -185,8 +170,7 @@ namespace BigWalkArchipelago.Debug
                     }
                 }
 
-                // Lamp colours (2026-10-13: a BuoyLight showed an orange body and a green light): the parts of one
-                // lamp of each model, with their renderers and lights, to compare with what ColourPainter paints.
+                // The parts of one lamp of each model, to compare with what ColourPainter paints.
                 foreach (var model in new[] { "BuoyLight", "BuoyProp" })
                 {
                     foreach (var prop in UnityEngine.Object.FindObjectsByType<Prop>(FindObjectsInactive.Include, FindObjectsSortMode.None))
@@ -210,7 +194,7 @@ namespace BigWalkArchipelago.Debug
                     }
                 }
 
-                // T8 Big Time recon: what makes a clock's hands turn (LobbyClock? something else?).
+                // What makes a clock's hands turn.
                 foreach (var prop in UnityEngine.Object.FindObjectsByType<Prop>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 {
                     if (prop == null || !prop.gameObject.name.StartsWith("ClockProp", StringComparison.Ordinal))
@@ -231,7 +215,7 @@ namespace BigWalkArchipelago.Debug
             }
         }
 
-        // Every colour and float property of a lamp body's shader, with the material's value and the block's.
+        // Every colour and float property of a lamp body's shader, from the material and the block.
         private static void LogBodyShader(GameObject lamp)
         {
             foreach (var renderer in lamp.GetComponentsInChildren<Renderer>(true))
@@ -257,11 +241,10 @@ namespace BigWalkArchipelago.Debug
 
         private static int _nextSpot;
 
-        // Ctrl + F3: the local player to the next pack or firework launcher, in turn, beside it.
-        // For walking every one of the 20 checks without crossing the island on foot.
+        // Ctrl+F3: teleports the local player beside the next pack or firework launcher.
         internal static void TeleportNext()
         {
-            var player = DebugPlayerLookup.FindLocalPlayer();
+            var player = Core.LocalPlayer.Find();
             if (player == null)
                 return;
 
@@ -296,8 +279,7 @@ namespace BigWalkArchipelago.Debug
             Core.Net.ApNotices.Post($"Teleport {_nextSpot}/{spots.Count}: {spot.Key.Split(' ')[0]}");
         }
 
-        // For every object under a PlayerCountSwapper's targets, the versions it belongs to. An
-        // object under no swapper is in every version.
+        // An object under no PlayerCountSwapper is in every version.
         private static Dictionary<int, string> VersionsByObject()
         {
             var result = new Dictionary<int, string>();

@@ -3,12 +3,7 @@ using HarmonyLib;
 
 namespace BigWalkArchipelago.Patches
 {
-    // `tower_mode` (ROADMAP G4, 0.5): a monument that is not the next one refuses a gourd, and the button that
-    // opens its tower does not move. Both are asked on the game's own calls, so a flag comes first.
-    //
-    // A gourd is placed where the player stands, so the refusal is on every machine
-    // (MonumentOrder.Tick also sets PropHome.blockPlacing there). The host decides which monuments are
-    // open and tells the guests.
+    // `tower_mode`: a monument that is not the next one refuses a gourd, on every machine.
     [HarmonyPatch(typeof(PropHome), nameof(PropHome.IsSafeToPlace))]
     internal static class MonumentPlacePatch
     {
@@ -25,9 +20,7 @@ namespace BigWalkArchipelago.Patches
         }
     }
 
-    // The pin itself, on the host: the game never asked IsSafeToPlace for the gourd put into the Yellow tower's monument
-    // (2026-10-12, Ghidra: no caller of it found), so the operation that really pins a prop is refused as well. A
-    // monument that already holds a gourd is never closed (MonumentOrder.IsClosed), so what a save restores goes through.
+    // IsSafeToPlace is not asked for every pin, so the host refuses the pin itself too.
     [HarmonyPatch(typeof(PropHome), nameof(PropHome.SetPinned))]
     internal static class MonumentPinPatch
     {
@@ -46,9 +39,7 @@ namespace BigWalkArchipelago.Patches
         }
     }
 
-    // What the game really calls on the host when a player places a prop in a home: the command
-    // `PlayerNetworking.CmdPlaceInHome`, then `Prop.ServerSetPinned(home)` (the first patch above is on
-    // `PropHome.SetPinned`, which it does not go through: a gourd was put into a closed monument, 2026-10-12).
+    // Placing a prop in a home goes through ServerSetPinned, not PropHome.SetPinned.
     [HarmonyPatch(typeof(Prop), nameof(Prop.ServerSetPinned))]
     internal static class MonumentServerPinPatch
     {
@@ -67,8 +58,7 @@ namespace BigWalkArchipelago.Patches
         }
     }
 
-    // The towers' buttons: a state raise on a closed tower's is refused, like a Gauntlet stairway's
-    // (GauntletStairwayHoldPatch), which is the same call.
+    // A closed tower's button refuses the state raise, like a Gauntlet stairway.
     [HarmonyPatch(typeof(TrackedPeckState), nameof(TrackedPeckState.SetState), new[] { typeof(PeckContext) })]
     internal static class TowerButtonHoldPatch
     {
@@ -87,16 +77,13 @@ namespace BigWalkArchipelago.Patches
         }
     }
 
-    // `lock_endings_until_objectives` with the goal big_wall (the player, 2026-10-12): the chapel's bell, the game's
-    // `EndingGate` (0 off, 1 on, 2 animating; F9 at the bell, 2026-10-12), does not ring while the other objectives are not
-    // done. The same call as the towers' buttons; the host decides, and a guest follows what the host said is shut.
+    // `lock_endings_until_objectives` with big_wall: the chapel bell waits for the objectives.
     [HarmonyPatch(typeof(TrackedPeckState), nameof(TrackedPeckState.SetState), new[] { typeof(PeckContext) })]
     internal static class ChapelBellHoldPatch
     {
         private static bool Prefix(TrackedPeckState __instance, PeckContext __0)
         {
-            // Not while the world loads: that is the save's own state coming back, not a ring (2026-10-12: refusing it
-            // there left the goal flags with no baseline).
+            // Not while the world loads: that is the save's state coming back, not a ring.
             if (__0 == null || __0.compressedState < 1 || __instance.savableSystem != SavableSystem.EndingGate
                 || !WorldManager.isReadyForEffects)
                 return true;

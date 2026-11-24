@@ -14,10 +14,7 @@ if TYPE_CHECKING:
     from .world import BigWalkWorld
 
 
-# This table must list every location the world could ever create, whatever the
-# options: Archipelago reads it as a static class attribute, long before any
-# option is known. Which of these are actually created is decided in
-# create_all_locations below.
+# Every location any options could create: Archipelago reads it before options are known.
 LOCATION_NAME_TO_ID: dict[str, int] = {
     **{puzzle.location_name: data.puzzle_location_id(puzzle) for puzzle in data.PUZZLES},
     **{tower.location_name: data.key_deposit_location_id(tower) for tower in data.TOWERS},
@@ -65,7 +62,7 @@ OBJECT_ZONE_REGIONS: dict[str, str] = {
     "tunnels": regions.TUNNEL_ZONE,
     "big_wall": regions.ENDING_ZONE,
 }
-"""An island object's region by its zone; the rest (overworld, map_room, tower:...) are in the overworld."""
+"""An island object's region by its zone; other zones are in the overworld."""
 
 VICTORY_EVENT_NAME = "Victory"
 
@@ -75,14 +72,7 @@ class BigWalkLocation(Location):
 
 
 def gated_regions() -> dict[str, str]:
-    """
-    Which region each location behind a big key belongs in, keyed by location
-    name. Everything not in here lives in the overworld.
-
-    Built from data.py rather than listed here, because the membership is
-    measured in game (see the "What sits behind a big key" section there) and
-    two places holding the same list is how they drift apart.
-    """
+    """Location name -> region for locations behind a big key; the rest are in the overworld."""
     mapping = {name: regions.CHAIRLIFT_ZONE for name in data.chairlift_locations()}
     mapping.update({name: regions.TUNNEL_ZONE for name in data.tunnel_locations()})
     mapping.update({name: regions.STARTING_ZONE for name in starting_zone_locations()})
@@ -93,8 +83,7 @@ def gated_regions() -> dict[str, str]:
                     for firework in data.FIREWORKS if firework.past_chairlift})
     mapping.update({obj.location_name: OBJECT_ZONE_REGIONS[obj.zone]
                     for obj in data.ISLAND_OBJECTS if obj.zone in OBJECT_ZONE_REGIONS})
-    # A kind with one in the tutorial is a starting-zone check (the cowbells); every other kind has one
-    # in the overworld or behind an item there (rules.set_object_rules).
+    # A kind with one in the tutorial (the cowbells) is a starting-zone check.
     mapping.update({data.object_kind_location_name(label): regions.STARTING_ZONE
                     for kind, label in data.OBJECT_KINDS
                     if any(obj.kind == kind and obj.zone == "start" for obj in data.ISLAND_OBJECTS)})
@@ -102,15 +91,7 @@ def gated_regions() -> dict[str, str]:
 
 
 def starting_zone_locations() -> list[str]:
-    """
-    Everything reachable from the hub without the drawbridge or the first arch
-    door: the tutorial's four puzzles, the drawbridge key's cutting trail and
-    plinth, and as many gourd deposits as the tutorial's monument has slots.
-
-    Only what the player placed in the zone is here. Anything uncertain stays
-    in the overworld, which can make a location later in logic than it is in
-    play but never makes a seed unbeatable.
-    """
+    """Locations reachable from the hub without the drawbridge or the first arch door."""
     by_prop = {puzzle.prop_name: puzzle.location_name for puzzle in data.PUZZLES}
     drawbridge = next(tower for tower in data.TOWERS if tower.item_name == data.DRAWBRIDGE_ITEM_NAME)
     names = [by_prop[prop_name] for prop_name in data.START_ZONE_PUZZLES]
@@ -122,10 +103,7 @@ def starting_zone_locations() -> list[str]:
 
 
 def tower_of_deposit(world: BigWalkWorld, amount: int) -> data.Tower | None:
-    """
-    With the monuments opening in order, the tower the `amount`-th gourd placed lands in: the towers'
-    slots, added up in the seed's order. None when every monument is open from the start.
-    """
+    """The tower the `amount`-th gourd lands in when monuments open in order, else None."""
     if not world.tower_order:
         return None
     total = 0
@@ -140,8 +118,7 @@ def tower_of_deposit(world: BigWalkWorld, amount: int) -> data.Tower | None:
 def create_all_locations(world: BigWalkWorld) -> None:
     gated = gated_regions()
     if world.tower_order:
-        # The tutorial's monument is the first only if the seed says so: the deposits that were in the
-        # starting zone go where the order puts them.
+        # The tutorial's monument comes first only if the order says so.
         for amount in range(1, data.MAX_MONUMENT_SLOTS + 1):
             name = data.deposit_location_name(amount)
             gated.pop(name, None)
@@ -149,33 +126,16 @@ def create_all_locations(world: BigWalkWorld) -> None:
                 gated[name] = regions.STARTING_ZONE
 
     def place(location_names: list[str]) -> None:
-        """Puts each location in its own region, which is the overworld unless
-        a big key or the starting zone's exit stands between the players and it."""
         for name in location_names:
             region = world.get_region(gated.get(name, regions.OVERWORLD))
             region.add_locations({name: LOCATION_NAME_TO_ID[name]}, BigWalkLocation)
 
     place([puzzle.location_name for puzzle in world.puzzles()])
 
-    # A key deposit sits at the foot of its own tower, all of which are open
-    # from the start: nothing in the game locks a tower's entrance, and the mod
-    # opens the hub shortcuts on the first session of a save anyway. What gates
-    # these locations is the gourd count in rules.py, not where they are.
+    # Towers are all open: the gourd count in rules.py gates the deposits, not the region.
     place([tower.location_name for tower in world.towers])
 
-    # The 25 cut segments, in the overworld beside the deposit they lead to.
-    #
-    # VERIFIED IN PLAY (2026-09-21): every one of the five cutting trails is
-    # reachable without any big key. This was the last thing in this world
-    # that could still have made a seed unbeatable, and it deserved checking
-    # rather than assuming — the identical claim about the puzzles turned
-    # out to be false earlier the same day, and cost a seed-breaking bug.
-    #
-    # If a future update moves a trail, the mod's Ctrl+K dump lists every
-    # `UnlockTrailStation` sorted by distance to the player, which is how
-    # both this question and the chairlift one were settled: stand in the
-    # gated zone, read the distances, then stand somewhere plainly open and
-    # read them again. This is the line that would change.
+    # Every cutting trail is reachable without a big key.
     if world.options.cut_key_sanity != CutKeySanity.option_off:
         place([name for tower in world.towers for name in data.cut_locations(tower)])
 
@@ -199,8 +159,7 @@ def create_all_locations(world: BigWalkWorld) -> None:
     if world.options.tower_sanity:
         place([data.tower_reached_location_name(tower) for tower in data.reached_towers()])
 
-    # The lights (player, 2026-10-13): a check each with light_sanity, and an event the logic counts for big_lights
-    # (also without light_sanity, when the lamps count for the objective only).
+    # Each light is also an event for big_lights, even when light_sanity gives it no check.
     checks = {light.key for light in world.lights()}
     for light in world.lights_counted():
         region = world.get_region(OBJECT_ZONE_REGIONS.get(light.zone, regions.OVERWORLD))
@@ -209,11 +168,7 @@ def create_all_locations(world: BigWalkWorld) -> None:
         region.add_event(data.light_event_name(light), data.LIGHT_EVENT_ITEM_NAME,
                          location_type=BigWalkLocation, item_type=BigWalkItem)
 
-    # A monument full sits beside its monument: the overworld, but the drawbridge's in the tutorial when its monument
-    # takes the first gourds (all open, or first in the order), as its deposits do. Kept in the overworld, the game's
-    # own way out (the four tutorial gourds, then the key, then the drawbridge) was out of logic, and with
-    # `linear_arch_doors`, `linear_keys` and `linear_towers` no seed could be made (the fuzzer, 2026-10-13).
-    # A monument key (`linear_towers: one_deposit_box`) beside its monument the same way.
+    # Like its deposits, the tutorial monument's checks are in the starting zone if it fills first.
     for name, tower in [*((data.monument_full_location_name(tower), tower) for tower in world.monuments_full()),
                         *((data.monument_key_location_name(tower), tower) for tower in world.monument_keys())]:
         in_tutorial = tower is data.TOWERS[0] and world.tutorial_monument_first()
@@ -221,7 +176,7 @@ def create_all_locations(world: BigWalkWorld) -> None:
         world.get_region(region).add_locations({name: LOCATION_NAME_TO_ID[name]}, BigWalkLocation)
 
     place(world.object_location_names())
-    # big_objects counts them through an event beside each (the logic cannot count reachable locations).
+    # big_objects counts events beside them: the logic cannot count reachable locations.
     if "big_objects" in world.objectives:
         for name in world.object_location_names():
             world.get_location(name).parent_region.add_event(
@@ -231,29 +186,10 @@ def create_all_locations(world: BigWalkWorld) -> None:
 
 
 def create_victory_event(world: BigWalkWorld) -> None:
-    """
-    The goal is an event, not a real check: the mod reports it by sending a
-    ClientStatus of GOAL rather than a location id (see ../protocol.md).
-
-    Which region it lives in is the whole point — both bell goals sit past the
-    Black Monolith Key, the second ending sits past the Spawn Secret Door, and a
-    deposit goal is reachable without ever going near any of them.
-
-    `big_game` requires the Spawn Secret Door and nothing else, and that is
-    now MEASURED (2026-09-22). The ending was reached and reported on a save
-    whose log read `EndingGate latched: False, GauntletComplete latched:
-    False` — neither bell had been rung. In vanilla the path is sealed by a
-    sphere that only breaks once the game has been finished, and the mod
-    disables that sphere from a save's first session
-    (`SecondEndingSphereUnlocker.cs`), which is what makes the door the only
-    requirement left. Walked on foot from the door and finished that way too
-    (player, 2026-09-22), so nothing here rests on the debug flight that the
-    first run used.
-    """
+    """The goal is an event: the mod reports it with a GOAL ClientStatus, not a location."""
     goal = world.options.goal
     if world.objectives:
-        # Several things asked for at once: the event sits in the first region and its rule
-        # (rules.set_completion_rule) asks for each objective's own place or count.
+        # Several objectives: rules.set_completion_rule asks for each one's place or count.
         region_name = regions.OVERWORLD
     elif goal == Goal.option_big_collection:
         region_name = regions.OVERWORLD

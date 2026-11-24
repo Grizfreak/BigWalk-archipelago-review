@@ -2,18 +2,12 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Answers "what is in my hands right now, and what is it actually
-    // called" — the question that came up trying to identify an object by
-    // description alone (2026-09-22, "the ray-gun I can hold in hands").
-    // heldProp is the local, gameplay-side answer (cf.
-    // CosmeticGourdSpawnHandler.FindHolderName's comment on the same field),
-    // which is exactly what is wanted here: this machine's own player,
-    // holding whatever they are currently holding.
+    // Logs what the local player is holding and what it is called (heldProp is local).
     internal static class DebugHeldItemLookup
     {
         internal static void LogHeldItem()
         {
-            var player = DebugPlayerLookup.FindLocalPlayer();
+            var player = Core.LocalPlayer.Find();
             if (player == null)
             {
                 Plugin.Log.LogInfo($"[{nameof(DebugHeldItemLookup)}] Local player not found.");
@@ -44,11 +38,6 @@ namespace BigWalkArchipelago.Debug
                 + (hasGuid ? prop.savablePropGuid : "<none>")
                 + $" | saveablePropName={prop.saveablePropName} | saveType={prop.propSaveType} | groups [{groups}]");
 
-            // Added 2026-09-22 to tell apart two candidate causes of the
-            // pink/magenta clones: a stale lightmapIndex (ruled out — the
-            // pink persisted after clearing it) versus a shader/material
-            // that isn't what MaterialPropertyBlock capture/reapply assumed.
-            // Prints exactly what each renderer is actually drawing with.
             var renderers = prop.gameObject.GetComponentsInChildren<Renderer>(true);
             Plugin.Log.LogInfo($"[{nameof(DebugHeldItemLookup)}]   {renderers.Length} renderer(s):");
             foreach (var renderer in renderers)

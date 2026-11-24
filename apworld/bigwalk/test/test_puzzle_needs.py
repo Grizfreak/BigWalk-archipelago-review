@@ -1,8 +1,4 @@
-"""
-`lock_puzzle_needs` turns what a puzzle is built from into items, and gates
-the puzzle behind them in logic only. The mod never blocks a puzzle itself: it
-hides the parts until their item arrives.
-"""
+"""`lock_puzzle_needs` makes a puzzle's parts items; the mod hides them until they arrive."""
 
 from Options import OptionError
 
@@ -62,8 +58,7 @@ class TestPuzzleNeedsDisabled(BigWalkTestBase):
 
 
 class TestPuzzleNeedsEnabled(BigWalkTestBase):
-    # Sync buttons alone open Easy Simultaneous Press, one of the tutorial's,
-    # which is the foothold generation insists on.
+    # Sync buttons alone open Easy Simultaneous Press, the foothold generation insists on.
     options = {"lock_puzzle_needs": True, "gourd_sanity": "every_gourd",
                "start_with_random_puzzle_need": False, "start_with_puzzle_needs": ["sync_buttons"]}
     run_default_tests = False

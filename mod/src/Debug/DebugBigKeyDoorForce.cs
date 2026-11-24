@@ -6,36 +6,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Opens a big-key door without the key, to settle the one question the
-    // "big keys as forage checks" design still rested on: what actually
-    // opens a door.
-    //
-    // Five candidates are now dead, and this tool exists to kill or confirm
-    // the sixth without a guess reaching production code.
-    //
-    // Dead: no `PropHomeBlock` watches a plinth; no plinth fires a
-    // `PeckSwitch` on pin; no switch in the game is keyed on a big key;
-    // `Prop.taggedPinSystems` is EMPTY on all seven keys; and the key's own
-    // `pinDirectControlSystem` is null on all seven. The first three were
-    // measured before 2026-09-21, the last two on it — and the last two
-    // refuted a decompiled reading of
-    // `Prop.SetPinDirectControlSystem` that had looked conclusive.
-    //
-    // Alive: the HOME's `pinDirectControlSystem`, the only one of the three
-    // states that function touches which is non-null for a big key. This
-    // drives it and prints how many effects are registered on it first,
-    // because "nothing listens" and "the mechanism is wrong" look identical
-    // from in front of a door that stays shut.
-    //
-    // If it opens a door, that is the feature working, one call short of
-    // Core/KeyFeatures.cs being able to do it on an item. If it does not,
-    // `PropHome.onPinServer`/`onChangeServer` are what is left.
-    //
-    // Host only, like every other write in this mod. `SetState` is the same
-    // call Core/ArchDoorUnlocker.cs already uses for the hub shortcuts, for
-    // the same reason: a raw SaveManager write changes nothing on screen
-    // until the next load, while SetState performs the identical write AND
-    // runs the visual side.
+    // Opens a big-key door without the key by driving its plinth's pinDirectControlSystem.
     internal static class DebugBigKeyDoorForce
     {
         internal static void ForceOne(string nameFilter)
@@ -50,10 +21,7 @@ namespace BigWalkArchipelago.Debug
             var candidates = Collect();
             if (candidates.Count == 0)
             {
-                // Never silent on an empty result: "the tool found nothing"
-                // and "the key never registered" are indistinguishable from
-                // the outside, and this project has paid for that confusion
-                // twice.
+                // Never silent: "found nothing" and "never registered" look alike.
                 Plugin.Log.LogInfo(
                     $"[{nameof(DebugBigKeyDoorForce)}] No big key prop found at all. Nothing to drive.");
                 return;
@@ -80,13 +48,7 @@ namespace BigWalkArchipelago.Debug
             Drive(chosen);
         }
 
-        // The KEY item, as opposed to the door. Hands one over exactly as a
-        // real Archipelago item would — Core/KeyCustody.Grant — so what this
-        // exercises is the shipping path and not an imitation of it.
-        //
-        // Exists because the keys are shuffled into the multiworld like
-        // everything else now, so in a solo seed they sit in this world's own
-        // locations and no longer turn up simply by connecting.
+        // Hands over a key item through KeyCustody.Grant, the path a real item takes.
         internal static void GrantOne(string nameFilter)
         {
             if (!NetworkServer.active)
@@ -98,9 +60,7 @@ namespace BigWalkArchipelago.Debug
 
             if (!KeyCustody.KeysAreItems)
             {
-                // Said rather than done silently: with the flag off the keys
-                // are vanilla and granting one would be meaningless, which is
-                // indistinguishable from a key that failed to arrive.
+                // With the flag off the keys are vanilla: a silent no-op looks like a lost key.
                 Plugin.Log.LogInfo(
                     $"[{nameof(DebugBigKeyDoorForce)}] This slot does not have big keys as items "
                     + "(slot_data big_key_items is off), so there is nothing to grant.");
@@ -126,17 +86,7 @@ namespace BigWalkArchipelago.Debug
                 + $"Clear {nameof(ModConfig.BigKeyDoorName)} to take the nearest one.");
         }
 
-        // The FEATURE item, through the path a real one takes.
-        //
-        // ForceBigKeyDoorKey drives the door's TrackedPeckState directly, which
-        // proves the mechanism but bypasses `Core/KeyFeatures`: no ledger entry
-        // is written, so the door is shut again after a world reload and the
-        // forcing is indistinguishable from a grant while the world is up. That
-        // distinction cost a confusing test on 2026-09-21, where a door forced
-        // earlier in the session looked like a key opening it.
-        //
-        // This calls `KeyFeatures.Grant`, so it writes the ledger and survives a
-        // reload — which is the half worth testing.
+        // Grants the feature via KeyFeatures.Grant, so the ledger is written and survives a reload.
         internal static void GrantFeature(string nameFilter)
         {
             if (!NetworkServer.active)
@@ -172,13 +122,10 @@ namespace BigWalkArchipelago.Debug
                 + $"Clear {nameof(ModConfig.BigKeyDoorName)} to take the nearest one.");
         }
 
-        // Every big key, with whatever of its wiring is currently resolvable.
-        // Deliberately collected even when incomplete: a key whose plinth is
-        // not loaded still belongs in the printed table, because the table is
-        // how the operator sees WHY nothing was driven.
+        // Collected even when incomplete: the table shows why nothing was driven.
         private static List<Candidate> Collect()
         {
-            var localPlayer = DebugPlayerLookup.FindLocalPlayer();
+            var localPlayer = Core.LocalPlayer.Find();
             Vector3? origin = localPlayer != null ? localPlayer.transform.position : (Vector3?)null;
 
             var candidates = new List<Candidate>();
@@ -201,21 +148,7 @@ namespace BigWalkArchipelago.Debug
                     candidate.Door = FindTaggedSystem(prop, candidate.Home.pinGroup);
                     candidate.Channel = "taggedPinSystems";
 
-                    // MEASURED 2026-09-21, and it refuted the first answer:
-                    // every big key reports `taggedPinSystems: NONE` and a
-                    // null `pinDirectControlSystem` of its own. So of the
-                    // three states `Prop.SetPinDirectControlSystem` drives on
-                    // a pin, two are empty for these props and only the
-                    // HOME's is left — a TrackedPeckState living on a
-                    // GameObject called `BigKeyPlinthNetworking`, non-null on
-                    // all seven plinths.
-                    //
-                    // It is therefore either the door or the end of this
-                    // function as a lead, and driving it is how to tell. If
-                    // nothing opens, what is left is
-                    // `PropHome.onPinServer`/`onChangeServer` — the plain C#
-                    // delegates fired by `PropHome.FireServerEvents`, which no
-                    // dump has ever enumerated.
+                    // Big keys have no pin state of their own: only the plinth's is left.
                     if (candidate.Door == null)
                     {
                         candidate.Door = candidate.Home.pinDirectControlSystem;
@@ -223,14 +156,7 @@ namespace BigWalkArchipelago.Debug
                     }
                 }
 
-                // Distance to the PLINTH, not to the key: the plinth is where
-                // the feature is, and the operator is standing next to the
-                // door they want opened. Keys are a poor ruler anyway — the
-                // lesson of 2026-09-21 is that the game instantiates this
-                // kind of object everywhere, so two dumps taken in two zones
-                // came back byte-identical. Both distances are printed so
-                // that if the plinths turn out to be replicated the same way,
-                // the table says so instead of quietly lying.
+                // Distance to the plinth, where the door is; the key's is printed too.
                 candidate.PlinthDistance = Distance(origin, candidate.Home);
                 candidate.KeyDistance = Distance(origin, prop);
 
@@ -258,8 +184,7 @@ namespace BigWalkArchipelago.Debug
             return null;
         }
 
-        // The door for this key: the tagged pin system whose group is the one
-        // its plinth accepts. Exactly the test the game's own loop makes.
+        // The tagged pin system whose group its plinth accepts, as the game's loop tests.
         private static TrackedPeckState FindTaggedSystem(Prop prop, PropGroup pinGroup)
         {
             var tagged = prop.taggedPinSystems;
@@ -281,9 +206,7 @@ namespace BigWalkArchipelago.Debug
             var door = candidate.Door;
             var saveKey = SaveKeyOf(door);
 
-            // Bracketed before and after, like the combinator and radio keys.
-            // A state that was already at 1 and a call that did nothing look
-            // the same on screen, and the difference is the whole result.
+            // Before and after: a state already at 1 and a no-op look the same on screen.
             Plugin.Log.LogInfo(
                 $"[{nameof(DebugBigKeyDoorForce)}] Driving {candidate.PropName} via {candidate.Channel} -> "
                 + $"'{door.label}' on '{door.name}' (savableSystem {door.savableSystem}); "
@@ -303,10 +226,7 @@ namespace BigWalkArchipelago.Debug
                 $"[{nameof(DebugBigKeyDoorForce)}] SetState(1) returned; after: {ReadSaved(saveKey)}. "
                 + $"Now look at what {candidate.HomeName} is supposed to open.");
 
-            // The half of the answer that decides whether Core/ needs a
-            // ledger of its own. NotSavable means the unlock lives in RAM and
-            // nowhere else, so it would have to be re-applied to every world
-            // that loads — the shape Core/RadioStations.cs already has.
+            // NotSavable: the unlock lives in memory only and must be re-applied on each load.
             if (door.savableSystem == SavableSystem.NotSavable && string.IsNullOrEmpty(saveKey))
             {
                 Plugin.Log.LogInfo(
@@ -315,17 +235,14 @@ namespace BigWalkArchipelago.Debug
             }
         }
 
-        // How many effects are registered on this state. Zero means driving
-        // it cannot possibly do anything visible, which is worth knowing
-        // BEFORE concluding that the mechanism is wrong — the two look
-        // identical from in front of a door that stays shut.
+        // Zero listeners means driving it cannot do anything visible.
         private static string DescribeListeners(TrackedPeckState state)
         {
             try
             {
                 var refs = state.systemRefences;
                 return refs == null
-                    ? "systemRefences is null — nothing listens."
+                    ? "systemRefences is null, nothing listens."
                     : $"{refs.Count} effect(s) registered on it.";
             }
             catch (Exception ex)
@@ -357,8 +274,7 @@ namespace BigWalkArchipelago.Debug
             return Vector3.Distance(origin.Value, component.transform.position);
         }
 
-        // NaN sorts last rather than unpredictably: an unloaded plinth is the
-        // least interesting row, not a random one.
+        // NaN sorts last: an unloaded plinth is the least interesting row.
         private static float Sortable(float distance)
         {
             return float.IsNaN(distance) ? float.MaxValue : distance;

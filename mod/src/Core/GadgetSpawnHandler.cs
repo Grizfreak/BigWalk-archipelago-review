@@ -6,25 +6,10 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // Client-side counterpart of GadgetItemSpawner, exactly
-    // CosmeticGourdSpawnHandler's reasoning applied to the island's own hand
-    // props instead of a RewardGourd: NetworkServer.Spawn alone never
-    // reaches a remote client for an object that is neither a scene object
-    // (its sceneId was cleared) nor a registered prefab, so each client
-    // registers a Mirror spawn handler per GadgetKind's assetId and builds
-    // its own clone locally rather than trusting anything to travel over
-    // the wire.
-    //
-    // One static method behind every asset id, reading the kind and the
-    // vanilla instance back out of the id Mirror hands it. Still a plain
-    // static method group rather than a closure: SpawnDelegate crosses the
-    // IL2CPP interop boundary, and that is the only cast proven to work
-    // there (cf. CosmeticGourdSpawnHandler). Until 2026-09-23 there was one
-    // method per kind; the id already carried everything, it simply had
-    // not needed to carry the instance.
+    // Builds gadget clones on clients: they are neither scene objects nor registered prefabs.
     internal class GadgetSpawnHandler : MonoBehaviour
     {
-        // Constructor required by Il2CppInterop for any type injected into IL2CPP.
+        // Required by Il2CppInterop for any type injected into IL2CPP.
         public GadgetSpawnHandler(IntPtr ptr) : base(ptr)
         {
         }
@@ -113,12 +98,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // A clone inherits the template's physical state (fixed, no
-        // gravity) — SetLoose() here is this machine's own copy of the
-        // SpawnCosmeticPickup call the host already made for itself.
-        // Deferred by a frame past the handler itself, same reasoning as
-        // CosmeticGourdSpawnHandler: called immediately it would run before
-        // Mirror has finished applying the spawn payload.
+        // Deferred a frame: run at once, it would beat Mirror applying the spawn payload.
         [HideFromIl2Cpp]
         private static void DrainPendingLoose()
         {
@@ -148,9 +128,6 @@ namespace BigWalkArchipelago.Core
                     SettleDeadline[id] = deadline;
                 }
 
-                // Same two steps as the gourd handler: make the server's
-                // claim true on this machine if it names the local player,
-                // then leave a genuinely held prop's physics alone.
                 CosmeticGourdSpawnHandler.TryAttachToLocalHands(prop);
 
                 var holder = CosmeticGourdSpawnHandler.FindHolderName(prop);
@@ -163,8 +140,7 @@ namespace BigWalkArchipelago.Core
                     continue;
                 }
 
-                // Worn or stowed: taking it loose would pull a backpack off
-                // somebody's back (see CosmeticGourdSpawnHandler.FindHomeName).
+                // Worn or stowed: making it loose would pull a backpack off somebody's back.
                 var homedIn = CosmeticGourdSpawnHandler.FindHomeName(prop);
                 if (homedIn != null)
                 {
@@ -212,8 +188,6 @@ namespace BigWalkArchipelago.Core
 
             if (!GadgetItemSpawner.TryDecodeAssetId(assetId, out var kind, out var index))
             {
-                // Not expected — the handler is only registered for ids this
-                // decodes — but the rule below holds here too: never null.
                 Plugin.Log.LogWarning(
                     $"[{nameof(GadgetSpawnHandler)}] Asset id {assetId:X} names no gadget; placing an empty stand-in.");
                 return GadgetItemSpawner.BuildResolvablePlaceholder(GadgetKind.Megaphone, position);
@@ -222,14 +196,7 @@ namespace BigWalkArchipelago.Core
             return Spawn(kind, index, position, assetId);
         }
 
-        // THIS MUST NEVER RETURN NULL, and it used to (2026-09-22, found in
-        // co-op the first time a guest was sent a gadget it could not build).
-        // Mirror leaves the netId unresolved, the holder's
-        // PlayerHeldInformation then dereferences a null identity inside
-        // DeserializeSyncVars, and that player's network state is broken for
-        // the rest of the session — hundreds of exceptions a second, gourds
-        // no longer claimed, the lot. The reasoning and the two fallbacks are
-        // in GadgetItemSpawner; the rule lives here, where the null was.
+        // Never return null: Mirror would break that player's network state for the whole session.
         private static GameObject Spawn(GadgetKind kind, int index, Vector3 position, uint assetId)
         {
             try

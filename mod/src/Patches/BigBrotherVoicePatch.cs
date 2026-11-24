@@ -6,14 +6,7 @@ using UnityEngine.Audio;
 
 namespace BigWalkArchipelago.Patches
 {
-    // Big Brother (Core/TrapEffects): the voices pitched up while the players are small, on the game's own exposed
-    // "VoicePitch" (the one the Silent Gauntlet's speechlessness lowers), written after the game's Update.
-    //
-    // The game ships AudioMixer.SetFloat only (GetFloat was stripped from the build), and Il2CppInterop's proxy for it
-    // fails (MissingMethodException on ReadOnlySpan, 2026-10-14): the native method is called through
-    // il2cpp_runtime_invoke instead. With no way to read the pitch back, 1 is taken as the voices' own pitch: the raise
-    // is written while the trap lasts, then 1 once. The Gauntlet's speechlessness is spared by the traps
-    // (`traps_spare_the_gauntlet`). Any failure turns the effect off for the session, logged once.
+    // Big Brother trap: raises "VoicePitch"; SetFloat is invoked natively, its interop proxy fails.
     [HarmonyPatch(typeof(GlobalAudioEffects), "Update")]
     internal static class BigBrotherVoicePatch
     {

@@ -2,23 +2,10 @@ using System;
 
 namespace BigWalkArchipelago.Core.Net
 {
-    // Everything needed to open a session, gathered from where the player
-    // actually typed it (apworld/protocol.md §1).
-    //
-    // Two of the three values are read back out of the save rather than
-    // captured from the UI, and that is deliberate: the hosting screen
-    // already writes the slot name and the password into SaveData
-    // (HostMenuConfirmPatch relabelled those two fields as Archipelago
-    // identifiers on 2026-09-15), so reading them from there also covers the
-    // session where the player loads an existing save instead of filling the
-    // form in again. Only the host:port has nowhere to live in the save, so
-    // it persists in the BepInEx config.
-    //
-    // Reads SaveManager, so main thread only.
+    // Slot and password come from the save (the game stores them); host:port from the config.
     internal readonly struct ApEndpoint
     {
-        // The port Archipelago rooms use unless told otherwise; players
-        // routinely paste just a hostname.
+        // Players often paste just a hostname.
         private const int DefaultPort = 38281;
 
         internal string Host { get; }
@@ -47,17 +34,13 @@ namespace BigWalkArchipelago.Core.Net
                 return false;
             }
 
-            // filenameUid is the game's own per-save identifier, so the same
-            // save reconnects under the same uuid and the server recognises
-            // it as the same client rather than a new one each time.
+            // The game's per-save id, so the server sees the same client on every reconnect.
             var uuid = !string.IsNullOrWhiteSpace(save.filenameUid) ? save.filenameUid : save.slotName;
 
             return TryBuild(CurrentHostAndPort(), save.slotName, save.password, uuid, out endpoint, out problem);
         }
 
-        // Used from the hosting screen, where the player is still typing and
-        // the save being configured is not the loaded one: the values come
-        // straight from the three input fields rather than from SaveData.
+        // From the hosting screen: the save being set up is not the loaded one.
         internal static bool TryResolveFromFields(string rawHostPort, string slotName, string password,
                                                   out ApEndpoint endpoint, out string problem)
         {
@@ -93,11 +76,7 @@ namespace BigWalkArchipelago.Core.Net
             return true;
         }
 
-        // Whether the address field names a port, as opposed to one this
-        // mod filled in. Only ever used to explain a failure: a missing port
-        // is fine for a server you run yourself (it listens on 38281 unless
-        // told otherwise), and almost certainly the mistake on
-        // archipelago.gg, where every room has a port of its own.
+        // Only used to explain a failure: archipelago.gg rooms each have their own port.
         internal static bool HasExplicitPort(string raw)
         {
             if (string.IsNullOrWhiteSpace(raw))
@@ -126,9 +105,6 @@ namespace BigWalkArchipelago.Core.Net
 
         internal const int DefaultPortForDisplay = DefaultPort;
 
-        // Accepts what players actually paste: "archipelago.gg:38281",
-        // "archipelago.gg", "wss://host:1234", a bare IPv4. Anything the
-        // library can be handed as (hostname, port).
         private static bool TryParseHostPort(string raw, out string host, out int port)
         {
             host = string.Empty;
@@ -156,9 +132,7 @@ namespace BigWalkArchipelago.Core.Net
                 var portText = value.Substring(separator + 1);
                 host = value.Substring(0, separator);
 
-                // "archipelago.gg:" is the value the field is prefilled with
-                // on a first launch — a host with no port yet, not an error
-                // worth refusing, so it just falls back to the default port.
+                // "archipelago.gg:" is the first-launch prefill: fall back to the default port.
                 if (portText.Length > 0 && (!int.TryParse(portText, out port) || port is < 1 or > 65535))
                     return false;
 

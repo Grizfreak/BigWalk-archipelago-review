@@ -6,25 +6,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // What this process's Mirror setup actually is. Read-only: it calls
-    // getters and nothing else.
-    //
-    // Written for the loopback guest — a second instance of the game joining
-    // the first over 127.0.0.1 (docs/NEXT-SESSION.md, "Why two local
-    // instances do not work"). The decompiled NetworkMinder.StartHost says a
-    // host started while Steam is up runs a MultiplexTransport over
-    // [KcpTransport, EosTransport] — that it ALREADY listens on UDP besides
-    // EOS. No log to date can confirm it: KcpTransport says
-    // "KcpTransport initialized!" in Awake and then nothing, because its Info
-    // log is a no-op unless its debugLog is ticked, so a Kcp server starting
-    // is silent. This dump says it from inside the game (serverActive on the
-    // Kcp line), and Get-NetUDPEndpoint says it from outside.
-    //
-    // It also names the two things a second instance of the same Steam
-    // account would share with the first: the player identifier sent to the
-    // host (masked — it is a SteamID), which the host uses to hand a
-    // returning player their Corpse, and the command line, which is where the
-    // guest's role is meant to come from rather than from the shared .cfg.
+    // Read-only dump of this process's Mirror setup, for the loopback guest.
     internal static class DebugNetworkLookup
     {
         private const string Tag = "[" + nameof(DebugNetworkLookup) + "]";
@@ -33,9 +15,7 @@ namespace BigWalkArchipelago.Debug
         {
             Plugin.Log.LogInfo($"{Tag} === network dump (process {Environment.ProcessId}) ===");
 
-            // One section at a time, each on its own try: a getter that
-            // throws must not hide the lines after it, and "the dump stopped
-            // halfway" has to read differently from "there was nothing".
+            // Each section on its own try: a throwing getter must not hide the lines after it.
             Section("process", DumpProcess);
             Section("manager", DumpManager);
             Section("connections", DumpConnections);
@@ -66,17 +46,14 @@ namespace BigWalkArchipelago.Debug
                 $"{Tag} Application.runInBackground={Application.runInBackground}, isFocused={Application.isFocused}");
             Plugin.Log.LogInfo($"{Tag} SteamManager.Initialized={SteamManager.Initialized}");
 
-            // The same call HouseAuthenticator.OnClientAuthenticate made (before the 2026-10-06
-            // game patch) to fill the request's player identifier; when it
-            // fails, the game sends SystemInfo.deviceName instead.
+            // When this fails, the game sends SystemInfo.deviceName instead.
             var found = HouseSteamManager.TryGetLocalUserIdentifier(out var identifier);
             Plugin.Log.LogInfo(
                 $"{Tag} Player identifier this machine would send a host: "
                 + (found ? Mask(identifier) : $"<none; the game falls back to the machine name, {Mask(SystemInfo.deviceName)}>"));
         }
 
-        // Every name the game keeps for each player (0.4.0, version warnings): the host's warnings
-        // name a guest, and the first try, `username`, read "127.0.0.1-1" on a loopback guest.
+        // On a loopback guest `username` reads "127.0.0.1-1", so all the game's names are logged.
         private static void DumpPlayerNames()
         {
             var players = PlayerCharacter.allPlayerCharacters;
@@ -101,7 +78,6 @@ namespace BigWalkArchipelago.Debug
             }
         }
 
-        // The label the version warnings give this player, found through their connection.
         private static string LabelOf(PlayerCharacter player)
         {
             foreach (var connection in Mirror.NetworkServer.connections.Values)
@@ -143,8 +119,7 @@ namespace BigWalkArchipelago.Debug
             Plugin.Log.LogInfo($"{Tag} Transport.active: {Describe(Transport.active)}");
             Plugin.Log.LogInfo($"{Tag} NetworkManager.transport: {Describe(manager.transport)}");
 
-            // Every transport under the manager, active or not: the question
-            // is what the game COULD switch to, not only what it is using.
+            // Inactive ones too: what the game could switch to, not only what it uses.
             var transports = manager.GetComponentsInChildren<Transport>(true);
             Plugin.Log.LogInfo($"{Tag} {transports.Length} Transport component(s) under '{manager.gameObject.name}':");
             foreach (var transport in transports)
@@ -166,10 +141,7 @@ namespace BigWalkArchipelago.Debug
                 if (connection == null)
                     continue;
 
-                // The netId, not the object's name: the game names a player
-                // "PlayerCharacter <identifier>-<n>", which would print in
-                // full the SteamID the identifier column masks (measured
-                // 2026-09-25).
+                // The netId, not the object's name: the name holds the full SteamID.
                 var player = connection.identity != null ? $"netId {connection.identity.netId}" : "<no player yet>";
                 Plugin.Log.LogInfo(
                     $"{Tag}   #{connection.connectionId} address='{Safe(() => connection.address)}' "
@@ -178,10 +150,7 @@ namespace BigWalkArchipelago.Debug
             }
         }
 
-        // Which controllers this instance listens to, and whether it listens
-        // at all while unfocused. The game reads its input through Rewired
-        // (no Unity Input System in the build); this is what deciding
-        // "keyboard for the host, gamepad for the guest" needs measured.
+        // The game reads input through Rewired; there is no Unity Input System in the build.
         private static void DumpInput()
         {
             if (!Rewired.ReInput.isReady)
@@ -207,16 +176,7 @@ namespace BigWalkArchipelago.Debug
             }
         }
 
-        // What a game WITHOUT the mod can build when the host spawns something
-        // (roadmap X1). Mirror builds a dynamically spawned object on a client
-        // from the prefab registered under its asset id, and a vanilla client
-        // registers exactly NetworkManager.spawnPrefabs. The mod's received
-        // gourds and gadgets are spawned under asset ids of its own, which is
-        // why a player without the mod never sees them; if any prop is in this
-        // list, received items could be spawned from it instead. The save's
-        // inventory is a list of savablePropGuids (the game moves existing
-        // scene props to the InventorySpawn rather than creating any), which
-        // suggests none is — this is the measurement.
+        // A vanilla client can only build the prefabs in NetworkManager.spawnPrefabs.
         private static void DumpPrefabs()
         {
             var manager = NetworkManager.singleton;
@@ -256,9 +216,7 @@ namespace BigWalkArchipelago.Debug
 
         private static bool _prefabsDumped;
 
-        // Once per process, as soon as the NetworkManager exists: the list is
-        // serialized on the manager and needs no world, so it can be measured
-        // by launching the game and reading the log, with no key to press.
+        // The list lives on the manager and needs no world, so it is logged at startup.
         internal static void DumpPrefabsOnce()
         {
             if (_prefabsDumped || NetworkManager.singleton == null)
@@ -269,15 +227,14 @@ namespace BigWalkArchipelago.Debug
             Section("prefabs", DumpPrefabs);
         }
 
-        // The identifier the host received for this connection: what
-        // Corpse.FindMatch is keyed on when a player comes back.
+        // What Corpse.FindMatch is keyed on when a player comes back.
         private static string Identifier(NetworkConnection connection)
         {
             var data = connection.authenticationData;
             if (data == null)
                 return "<none>";
 
-            // Since the 2026-10-06 game patch, the host keeps what it checked, not the request.
+            // Since a game patch, the host keeps what it checked, not the request.
             var credentials = data.TryCast<HouseAuthenticator.AuthedCredentials>();
             if (credentials != null)
                 return $"{Mask(credentials.playerIdentifier)} ({credentials.platform}, platform id {Mask(credentials.platformUserId)})";
@@ -330,8 +287,7 @@ namespace BigWalkArchipelago.Debug
             }
         }
 
-        // Enough to tell two identifiers apart in a log that gets pasted
-        // around, not enough to be one.
+        // Enough to tell two identifiers apart in a pasted log, not enough to be one.
         private static string Mask(string identifier)
         {
             if (string.IsNullOrEmpty(identifier))

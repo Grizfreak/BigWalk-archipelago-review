@@ -4,12 +4,11 @@ using System.Text;
 
 namespace BigWalkArchipelago.Core
 {
-    // Tile sounds (TileSounds): RIFF WAVE, PCM 8 to 32 bits or 32-bit float, any channel count.
+    // Reads RIFF WAVE files for tile sounds: PCM 8 to 32 bits or 32-bit float, any channel count.
     internal static class WavReader
     {
         internal const long MaxDataBytes = 64L * 1024 * 1024;
 
-        // The sound as mono samples in [-1, 1], the channels averaged.
         internal static float[] ReadMono(Stream stream, out int frequency)
         {
             using var reader = new BinaryReader(stream);
@@ -37,7 +36,7 @@ namespace BigWalkArchipelago.Core
                     channels = BitConverter.ToUInt16(body, 2);
                     frequency = BitConverter.ToInt32(body, 4);
                     bits = BitConverter.ToUInt16(body, 14);
-                    // WAVE_FORMAT_EXTENSIBLE: the real format opens its sub-format.
+                    // WAVE_FORMAT_EXTENSIBLE: the real format is the start of the sub-format GUID.
                     if (format == 0xFFFE && body.Length >= 26)
                         format = BitConverter.ToUInt16(body, 24);
                 }

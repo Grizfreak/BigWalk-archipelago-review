@@ -6,16 +6,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The seed's colours (ROADMAP C1, `random_colours`, player 2026-10-06/07). The mod holds ten
-    // colours; the apworld draws between five and ten of them for the seed (`colour_palette`,
-    // indices into Colours, in a drawn order), and the buoys and the flare guns are painted from
-    // that draw (Core/ColourPainter). The host has it from the slot; a guest from the host, in
-    // the snapshot (ModChannel), so every screen paints the same.
-    //
-    // Each colour carries two tones, tuned by eye on 2026-10-06 (Debug: Ctrl+F6): the buoy's body
-    // multiplies its warm painted vertex colours by the tint (househouse/VertexColors,
-    // _TintColor), so a cool colour needs more blue than it shows; the halo, the light and a
-    // flare's shot take the colour as it is.
+    // The seed's colours; buoy tints multiply warm vertex colours, so cool ones need more blue.
     internal static class Palette
     {
         private const string Tag = "[" + nameof(Palette) + "]";
@@ -34,7 +25,7 @@ namespace BigWalkArchipelago.Core
             ("White",  new Color(1.00f, 1.15f, 1.40f), new Color(1.00f, 1.00f, 1.00f)),
         };
 
-        // The rainbow gun's body (white, a touch warm, so it reads as painted and not lit).
+        // White, a touch warm, so it reads as painted and not lit.
         internal static readonly Color RainbowBody = new(0.95f, 0.95f, 0.92f);
 
         private static int[] _seed = Array.Empty<int>();
@@ -66,7 +57,7 @@ namespace BigWalkArchipelago.Core
 
         private static bool IsGuest => NetworkClient.active && !NetworkServer.active;
 
-        // The colours in force on this machine: the seed's on the host, the host's on a guest.
+        // The seed's on the host, the host's on a guest.
         internal static int[] Current => IsGuest ? _mirrored ?? Array.Empty<int>() : _seed;
 
         internal static bool Active => Current.Length > 0;
@@ -105,14 +96,13 @@ namespace BigWalkArchipelago.Core
             return true;
         }
 
-        // The colour at a position of the seed's draw, wrapping round.
         internal static (string name, Color body, Color halo) At(int position)
         {
             var current = Current;
             return Colours[current[((position % current.Length) + current.Length) % current.Length]];
         }
 
-        // A colour for something known by a stable key (a buoy's guid): the same on every machine.
+        // Keyed by something stable (a buoy's guid), so every machine picks the same.
         internal static (string name, Color body, Color halo) For(string key)
         {
             unchecked
@@ -124,10 +114,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The rainbow gun's colour now: Mirror's network clock, which every machine shares, so a
-        // shot looks the same everywhere (but at the very turn of a step). Fast and out of order
-        // (player, 2026-10-07: "more chaotic"), never the same twice in a row. The whole palette,
-        // the seed's draw or not.
+        // Mirror's network clock is shared, so a shot looks the same on every machine.
         internal const double RainbowStep = 0.4;
 
         internal static Color RainbowNow()
@@ -149,7 +136,6 @@ namespace BigWalkArchipelago.Core
             return Colours[index].halo;
         }
 
-        // An item's name in the feed: the island's flare guns go by the colour they are painted.
         internal static string Display(string itemName)
         {
             if (!Active)
@@ -158,8 +144,7 @@ namespace BigWalkArchipelago.Core
             return slot < 0 ? itemName : $"{At(slot).name} Flare Gun";
         }
 
-        // The four flare guns' items in the apworld's order, which is also the order of their
-        // colours in the seed's draw (Core/ColourPainter: FlareGunSlot).
+        // In the apworld's order, which is also the order of their colours in the seed's draw.
         internal static readonly string[] FlareGunItemNames = { "Flare Gun", "Blue Flare Gun", "Green Flare Gun", "Yellow Flare Gun" };
     }
 }

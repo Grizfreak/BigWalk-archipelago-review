@@ -34,7 +34,7 @@ folder, no coding.
 
 Nothing here can be played solo: both bells and every monument deposit need
 two players. A whole co-op group shares one Archipelago slot, and only the
-host types the Archipelago details — but every player installs the mod
+host types the Archipelago details, but every player installs the mod
 ([why](SETUP.md#why-the-others-still-need-the-mod-installed)).
 
 ## What gets randomized
@@ -59,7 +59,7 @@ host types the Archipelago details — but every player installs the mod
   Triforce, Minecraft's creeper...).
 
 What each goal asks, what every item does and what the options change are on
-the **[game page](apworld/bigwalk/docs/en_Big%20Walk.md)** — the same one the
+the **[game page](apworld/bigwalk/docs/en_Big%20Walk.md)**, the same one the
 Archipelago website shows.
 
 ## Reporting a problem
@@ -91,7 +91,7 @@ Chalant, GameFraek and Kensufox, and licensed under
 ## AI disclosure
 
 Some of the code, data and documentation here was produced with an LLM. It
-was not vibe-coded: it was used to speed up the slow parts — reading the
+was not vibe-coded: it was used to speed up the slow parts, reading the
 decompiled game to find hooks and function implementations, and assisting
-with the mod and client code — and to keep the documentation in step with
+with the mod and client code, and to keep the documentation in step with
 what the code does. Everything it produced was reviewed and tested in game.

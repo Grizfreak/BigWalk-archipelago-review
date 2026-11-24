@@ -7,32 +7,22 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The seed's objectives, written on a board in the hub (ROADMAP G5, player 2026-10-09: "in the
-    // game, and no longer on the UI"), ticked as they are done. Only a seed that lists objectives
-    // has one. The host writes it from its own slot data and tells the guests (ModChannel), whose
-    // machines build the same board.
-    //
-    // Also the one place that knows which endings are shut with `lock_endings`: an ending waits
-    // until the other objectives are done. What is shut is local to each machine, like the puzzle
-    // hider, so the host sends the state along with the board's text.
+    // The seed's objectives on a hub board; also decides which endings `lock_endings` keeps shut.
     internal static class ObjectiveBoard
     {
         private const string Tag = "[" + nameof(ObjectiveBoard) + "]";
 
-        // The hub's resync sign (ResyncStations, marked 2026-10-05): the board goes above it, on the
-        // same wall. A first guess at the height, to see in game.
+        // The hub's resync sign: the board goes above it, on the same wall.
         private static readonly Vector3 SignPoint = new Vector3(-212.09f, 33.53f, -526.02f);
         private static readonly Vector3 Normal = new Vector3(0.66f, 0f, 0.75f).normalized;
-        // Wider, so the lines do not wrap, and moved along the wall to sit on the red pillar right of the door, centred (the player, 2026-10-12: too far
-        // right). The resync station's button and switch are below the sign; the board starts 0.6 m above it.
+        // Wide enough that lines do not wrap, shifted onto the red pillar right of the door.
         private const float BoardWidth = 3.0f;
         private const float ShiftAlongWall = 0.5f;
         private static readonly Vector3 AlongWall = new Vector3(-Normal.z, 0f, Normal.x);
         private const float BoardDepth = 0.1f;
         private static Vector3 _size;
         private static int _lines;
-        // The board's bottom edge, above the resync sign's top: it grows upward with its lines, so it never
-        // covers the sign nor the button (the player, 2026-10-12: ten objectives are tall).
+        // The board grows upward from above the sign, so it never covers the sign or its button.
         private const float BottomGap = 0.6f;
 
         private static GameObject _board;
@@ -55,7 +45,7 @@ namespace BigWalkArchipelago.Core
             var text = $"<b>OBJECTIVES  {ApObjectives.DoneCount}/{ApObjectives.Keys.Count}</b>";
             foreach (var key in ApObjectives.Keys)
             {
-                // Done: ticked, dark and struck through; an ending (the one the seed asks for) in bold (the player, 2026-10-12).
+                // Done: ticked, dark and struck through; the ending in bold.
                 var done = ApObjectives.IsDone(key);
                 var label = ApObjectives.Label(key);
                 if (done)
@@ -69,7 +59,7 @@ namespace BigWalkArchipelago.Core
             return monuments.Length > 0 ? text + "\n\n" + monuments : text;
         }
 
-        // Bit 0: Big Goodbye's door is shut. Bit 1: Big Game's dispenser is shut. Bit 2: Big Wall's bell is shut.
+        // Bit 0: Big Goodbye's door shut, bit 1: Big Game's dispenser, bit 2: Big Wall's bell.
         internal static byte HostLocks() =>
             (byte)((IsShut("big_goodbye") ? 1 : 0) | (IsShut("big_game") ? 2 : 0) | (IsShut("big_wall") ? 4 : 0));
 
@@ -77,9 +67,7 @@ namespace BigWalkArchipelago.Core
             ApObjectives.Active && (ApObjectives.DebugKeys != null || ApRuntime.SlotData != null && ApRuntime.SlotData.LockEndings)
             && Array.IndexOf(ApObjectives.Keys.ToArray(), key) >= 0 && !ApObjectives.OthersDone(key);
 
-        // The cheap question of the hold patch, asked on every state change of the game: a flag.
-        // A guest has no slot data (only the host talks to the server): what it holds is what the host told it is shut
-        // (the player, 2026-10-12: the printer's cards were still there on a guest).
+        // Asked on every game state change, so it stays cheap. A guest follows what the host said.
         internal static bool HoldsTheLastStairway =>
             IsGuest
                 ? _mirroredLocks != 0
@@ -101,7 +89,6 @@ namespace BigWalkArchipelago.Core
                 warning: true);
         }
 
-        // Whether an ending's entry point is shut on this machine now.
         internal static bool Locked(string key)
         {
             if (IsGuest)
@@ -125,13 +112,11 @@ namespace BigWalkArchipelago.Core
             _mirroredLocks = 0;
         }
 
-        // Every couple of seconds (TeleportButtons.Sync): the board is there when there is something to say.
         private static readonly System.Collections.Generic.HashSet<string> Announced = new();
         private static bool _announcedOnce;
         private static string _signature = string.Empty;
 
-        // An objective that has just been done: a confetti sound and a line, on the host. What was done before the
-        // first look (a save that is loaded, a connection) is not announced.
+        // Announces a newly done objective on the host; what was done before the first look is not.
         private static void Announce()
         {
             if (IsGuest || !ApObjectives.Active)
@@ -141,7 +126,7 @@ namespace BigWalkArchipelago.Core
                 return;
             }
 
-            // A new list (the debug key, a seed) is looked at in silence: what it already holds as done is not news.
+            // A new list is looked at in silence: what it already holds as done is not news.
             var signature = string.Join(",", ApObjectives.Keys);
             if (signature != _signature)
             {
@@ -152,7 +137,7 @@ namespace BigWalkArchipelago.Core
 
             foreach (var key in ApObjectives.Keys)
             {
-                // An objective forgotten (the debug key) can be announced again when it is done again.
+                // An objective forgotten (the debug key) is announced again when done again.
                 if (!ApObjectives.IsDone(key))
                 {
                     Announced.Remove(key);
@@ -184,7 +169,7 @@ namespace BigWalkArchipelago.Core
                 return;
             }
 
-            // Taller with more lines (the monuments' order is on it too), so the text stays readable.
+            // Taller with more lines, so the text stays readable.
             var lines = text.Split('\n').Length;
             if (_board != null && lines != _lines)
                 Take();
@@ -214,7 +199,7 @@ namespace BigWalkArchipelago.Core
             _board = WorldButtons.MakeSlab("AP objectives board", face - Normal * (_size.z / 2f),
                 Quaternion.LookRotation(Normal, Vector3.up), _size, new Color(0.62f, 0.58f, 0.5f));
 
-            // The text faces the reader (as ResyncStations' signs do): a TextMeshPro reads from its back.
+            // Faces the reader, as ResyncStations' signs do: a TextMeshPro reads from its back.
             var holder = new GameObject("AP objectives text");
             holder.transform.SetParent(_board.transform, false);
             holder.transform.position = face + Normal * 0.01f;

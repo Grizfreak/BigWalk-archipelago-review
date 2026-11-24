@@ -45,8 +45,7 @@ class TestIslandObjectLimits(BigWalkTestBase):
                "bonus_fill_percentage": 0}
 
     def test_limits_drawn_first(self) -> None:
-        # Past every limit the objects go on, fewest first (player, 2026-10-14): none goes past its limit while
-        # another is under its own, and those past it stay within one of each other.
+        # Past every limit the objects go on, fewest first, within one of each other.
         names = Counter(item.name for item in self.multiworld.itempool if item.player == self.player)
         limits = {name: limit for name, limit in self.world.options.island_object_limits.value.items()
                   if limit > 0 and name not in items.FLARE_GUN_NAMES}
@@ -80,7 +79,7 @@ class TestPastEveryLimitBonuses(BigWalkTestBase):
 
 
 class TestPastEveryLimitObjects(BigWalkTestBase):
-    """A big pool goes on with the objects, not with bonuses (player, 2026-10-14)."""
+    """A big pool goes on with the objects, not with bonuses."""
 
     options = {"object_sanity": "every", "light_sanity": "lamps_and_switches", "bonus_fill_percentage": 0}
     run_default_tests = False

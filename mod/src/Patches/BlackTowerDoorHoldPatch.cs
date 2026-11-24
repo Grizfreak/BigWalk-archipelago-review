@@ -3,9 +3,7 @@ using HarmonyLib;
 
 namespace BigWalkArchipelago.Patches
 {
-    // Keeps the Black Tower's door at its foot open while `open_black_tower` asks for it, or while
-    // the Black Tower takes gourds (Core/BlackTowerDoor): its combinator writes it shut again whenever one of the five
-    // monuments' indicators changes. Only a lowering of that one state is refused.
+    // The monuments' combinator shuts the Black Tower door on each change; refuse that when held.
     [HarmonyPatch(typeof(TrackedPeckState), nameof(TrackedPeckState.SetState), new[] { typeof(PeckContext) })]
     internal static class BlackTowerDoorHoldPatch
     {

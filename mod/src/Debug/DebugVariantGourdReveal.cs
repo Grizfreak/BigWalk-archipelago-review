@@ -2,8 +2,7 @@ using BigWalkArchipelago.Core;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Manual trigger for Core/VariantGourdRevealer, to test without waiting
-    // for the next Core/VariantGourdMapUnlocker poll.
+    // Runs the variant gourd reveal by hand, without waiting for the map unlocker's next poll.
     internal static class DebugVariantGourdReveal
     {
         internal static void RevealAll()

@@ -6,22 +6,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // New peg tiles, of any kind, made at run time and shared with every player (Tile Thief's
-    // button, TileThiefHelper; meant to serve again).
-    //
-    // A peg tile is one prefab, `PegTileProp`, whose kind is a PropGroup in its `propGroups` and
-    // in its PegTileRenderer (peg tile dump of 2026-10-05). So every tile is a copy of one tile of
-    // the island, kept switched off for the session (the template), given the kind wanted.
-    //
-    // The network, as for the gadgets (GadgetItemSpawner, GadgetSpawnHandler): the host spawns the
-    // copy under an asset id of its own, and a guest's handler for that id builds the same copy.
-    // The id says the kind and a slot, so the guest knows what to build without a word more:
-    // `AssetBase + kind's index * Slots + slot`, the kind's index being its rank among the
-    // PropGroups named PegTile..., the same list on every machine.
-    //
-    // Tickets, the lesson of the light switch: whatever a copy holds that is registered by ticket
-    // (a switch, a state) gets tickets of its own from a block fixed by the same index and slot,
-    // so host and guest agree; the host skips a slot whose block is taken in the game.
+    // Makes peg tiles of any kind at run time; the asset id says kind and slot to guests.
     internal static class PegTileCloner
     {
         private const uint AssetBase = 0xB16_D000;
@@ -32,7 +17,6 @@ namespace BigWalkArchipelago.Core
 
         private static List<PropGroup> _kinds;
 
-        // Every PropGroup that is a tile, in a fixed order.
         internal static List<PropGroup> Kinds
         {
             get
@@ -53,8 +37,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // A speaker (a tile that plays its kind's sound rather than drawing it) has its own range,
-        // the kinds' indices shifted by their count.
+        // Speaker tiles get their own id range, shifted by the kinds' count.
         private static int Index(PropGroup kind, bool speaker) => Kinds.IndexOf(kind) + (speaker ? Kinds.Count : 0);
 
         internal static uint AssetIdFor(PropGroup kind, bool speaker, int slot) =>
@@ -108,11 +91,7 @@ namespace BigWalkArchipelago.Core
             return true;
         }
 
-        // The tile a copy of a kind is made from: one of the island's of that very kind, copied
-        // switched off and kept for the session. The four sorts of tile are different props (a
-        // speaker tile plays its sound, the others draw a glyph, a pose or a drawing), so a copy of
-        // one sort given another kind keeps the first one's look: the first try made four speakers.
-        // A kind the island has none of is taken from a tile of the same family (PegTileD...).
+        // One template per kind and sort: a copy keeps its source's look (speaker, glyph, pose).
         private static readonly Dictionary<(PropGroup, bool), Prop> Templates = new();
 
         private static bool IsSpeaker(Prop prop) => prop.name.Contains("Speaker", StringComparison.Ordinal);
@@ -186,7 +165,7 @@ namespace BigWalkArchipelago.Core
         // "PegTileD2" -> "PegTileD", "PegTilePriestA6" -> "PegTilePriestA".
         internal static string Family(PropGroup kind) => kind.ToString().TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
 
-        // Builds a copy of the given kind, switched on, not spawned. Same on host and guest.
+        // Same on host and guest.
         internal static Prop Build(PropGroup kind, bool speaker, int slot, Vector3 position)
         {
             var template = Template(kind, speaker);
@@ -201,7 +180,6 @@ namespace BigWalkArchipelago.Core
             clone.name = $"PegTileProp {(speaker ? "Speaker " : string.Empty)}{kind} {NameSuffix}";
             ReceivedItemSpawner.ApplyPropertyBlocks(clone, blocks);
 
-            // Saved nowhere, and registered under tickets of its own.
             foreach (var saved in clone.GetComponentsInChildren<SaveIdentity>(true))
                 UnityEngine.Object.DestroyImmediate(saved);
 
@@ -238,7 +216,6 @@ namespace BigWalkArchipelago.Core
                 return null;
             }
 
-            // Its kind: the PegTile... group swapped for the one wanted.
             for (var i = prop.propGroups.Count - 1; i >= 0; i--)
             {
                 var group = prop.propGroups[i];
@@ -257,7 +234,6 @@ namespace BigWalkArchipelago.Core
             foreach (var renderer in clone.GetComponentsInChildren<PegTileRenderer>(true))
                 renderer.SetAndRefresh(kind);
 
-            // A speaker plays the sound of its kind.
             foreach (var connector in clone.GetComponentsInChildren<PegTileMusicConnector>(true))
                 connector.SetPegTile(kind);
 
@@ -269,9 +245,7 @@ namespace BigWalkArchipelago.Core
             return prop;
         }
 
-        // Each new tile drawn again a frame later and a second later: with dozens made at once,
-        // some came out blank or magenta (G2, 2026-10-05), their glyph's material instance not yet
-        // ready when it was first drawn. Run on every machine (PegTileSpawnHandler.Update).
+        // Redrawn a frame and a second later: some came out blank or magenta when made in bulk.
         private static readonly List<(Prop prop, PropGroup kind, float first, float last)> Redraws = new();
 
         internal static void RedrawPending()
@@ -303,11 +277,9 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // What each part of a new tile is drawn with: a magenta part (Unity's colour for a missing
-        // or broken material) shows here as no material or an error shader (G2, 2026-10-05).
+        // A magenta part shows here as no material or an error shader.
         private static void LogLook(GameObject clone, PropGroup kind, bool speaker)
         {
-            // Diagnostic: one line per tile, dozens per press, only with the debug tools on.
             if (!ModConfig.DebugModeEnabled.Value)
                 return;
 
@@ -343,7 +315,7 @@ namespace BigWalkArchipelago.Core
         }
     }
 
-    // On every client (guests, and the host's own client): builds the peg tiles the host spawns.
+    // On every client, the host's own included: builds the peg tiles the host spawns.
     internal class PegTileSpawnHandler : MonoBehaviour
     {
         public PegTileSpawnHandler(IntPtr ptr) : base(ptr)

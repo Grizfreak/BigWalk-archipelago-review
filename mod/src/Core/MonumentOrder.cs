@@ -6,18 +6,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // `tower_mode` (ROADMAP G4 and H1, 0.5, player 2026-10-11): the monuments take gourds in an order the
-    // seed draws, one at a time. `in_order`: the next opens once the one before it is full. `by_item`:
-    // it also waits for a Progressive Monument, the first monument being open from the start and the
-    // k-th item opening the monument at position k + 1. Closed, a monument refuses a gourd
-    // (PropHome.blockPlacing and IsSafeToPlace, Patches/MonumentHoldPatch) and the button that opens
-    // its tower stays still (the same patch).
-    //
-    // Only one monument takes gourds at a time, which is what makes the apworld's logic exact: a gourd
-    // placed costs the towers before it and nothing is spent anywhere the logic did not count.
-    //
-    // The host decides (its slot data and its save); a guest is told which towers are open (ModChannel)
-    // and sets the same on its own machine, since a gourd is placed where the player stands.
+    // `tower_mode`: monuments take gourds one at a time, in the seed's order; the host decides.
     internal static class MonumentOrder
     {
         private const string Tag = "[" + nameof(MonumentOrder) + "]";
@@ -38,14 +27,13 @@ namespace BigWalkArchipelago.Core
 
         private static readonly int[] Slots = { 4, 5, 5, 5, 5, 6, 15 };
 
-        // Which `monoument0..3` is which tower was never established in the game: the guess is the
-        // table order (the apworld's), and each monument that loads corrects it by where it stands.
+        // Which `monoument0..3` is which tower is guessed, then corrected by where each one stands.
         private static readonly string[] GuessedPrefixes =
         {
             "monoumentIntro", "monoument0", "monoument1", "monoument2", "monoument3", "monoumentFinal", "monoumentOverflow",
         };
 
-        // Inside each of the four towers (Core/TeleportButtons' way back), for telling the four apart.
+        // Inside each of the four towers, for telling the four apart.
         private static readonly Vector3[] Centres =
         {
             Vector3.zero,
@@ -57,12 +45,10 @@ namespace BigWalkArchipelago.Core
             Vector3.zero,
         };
 
-        // U2 (Core/MapTracker): the towers in this order, each's big key prop and centre (zero where unknown).
         internal static int TowerCount => Props.Length;
         internal static string PropOfTower(int tower) => Props[tower];
         internal static Vector3 CentreOf(int tower) => tower < Centres.Length ? Centres[tower] : Vector3.zero;
 
-        // U2: the four coloured towers' big key props and their centres, for the map's markers (Core/MapTracker).
         internal static IEnumerable<(string prop, Vector3 centre)> TowerCentres()
         {
             for (var tower = 0; tower < Centres.Length; tower++)
@@ -99,9 +85,9 @@ namespace BigWalkArchipelago.Core
 
         private static bool IsGuest => NetworkClient.active && !NetworkServer.active;
 
-        // The debug key's (DebugApFeed): a mode and an order of its own, to see the monuments hold without a server.
+        // The debug key's own mode and order, to see the monuments hold without a server.
         internal static string DebugMode;
-        // Drawn again at each start of the debug key's cycle (DebugApFeed): a seed draws its own.
+        // Drawn again at each start of the debug key's cycle: a seed draws its own.
         internal static void ShuffleDebugOrder()
         {
             var random = new System.Random();
@@ -118,13 +104,12 @@ namespace BigWalkArchipelago.Core
         };
 
         private static string Mode => DebugMode ?? (ApRuntime.SlotData != null ? ApRuntime.SlotData.TowerMode : "all_open");
-        // `first_tower_open` off (the player, 2026-10-12): with by_item, the first monument waits for an item as well.
+        // `first_tower_open` off: with by_item, the first monument waits for an item as well.
         internal static bool DebugFirstClosed;
         private static bool FirstTowerOpen => DebugMode != null ? !DebugFirstClosed : ApRuntime.SlotData == null || ApRuntime.SlotData.FirstTowerOpen;
 
         private static string[] Order => DebugMode != null ? DebugOrder : ApRuntime.SlotData != null ? ApRuntime.SlotData.TowerOrder : Array.Empty<string>();
 
-        // Whether the monuments are held to an order on this machine at all.
         internal static bool Active => IsGuest ? _mirroredOpen >= 0 : Mode != "all_open" && Order.Length == Props.Length;
 
         internal static bool IsItem(long itemId) =>
@@ -150,11 +135,9 @@ namespace BigWalkArchipelago.Core
 
         private static int Granted => SaveManager.GetIntValue(GrantedKey, 0, false);
 
-        // ----- the towers and their monuments
-
         private static int IndexOfProp(string prop) => Array.IndexOf(Props, prop);
 
-        // What the loaded monuments (or an earlier session, in the save) have taught of `monoument0..3`.
+        // What loaded monuments (or the save) have taught of `monoument0..3`.
         private static bool TryKnownTower(string prefix, out int tower)
         {
             if (Learned.TryGetValue(prefix, out tower))
@@ -172,7 +155,7 @@ namespace BigWalkArchipelago.Core
             return false;
         }
 
-        // A tower's slots as the seed counts them: the Green Dome gives up what the gourds cannot fill (the player, 2026-10-12).
+        // The Green Dome gives up the slots the seed's gourds cannot fill.
         internal static int SlotsOf(int tower) =>
             tower == 6 && ApRuntime.SlotData != null ? Math.Min(Slots[6], ApRuntime.SlotData.GreenDomeSlots) : Slots[tower];
 
@@ -206,8 +189,7 @@ namespace BigWalkArchipelago.Core
             return slot > 0 ? name.Substring(0, slot) : name;
         }
 
-        // Called for each monument slot as it loads (CosmeticMonumentFillTracker.RegisterHome): the four
-        // `monoument0..3` are told apart by the tower they stand nearest, on the ground plan.
+        // The four `monoument0..3` are told apart by the tower they stand nearest.
         internal static void Learn(PropHome home)
         {
             if (home == null || !ReceivedItemSpawner.IsMonumentHome(home))
@@ -244,9 +226,7 @@ namespace BigWalkArchipelago.Core
         // A tower's position in the apworld's TOWERS (the order above), or -1.
         internal static int TowerIndexOf(string prop) => IndexOfProp(prop);
 
-        // L1 (0.6): once a second on the host, each monument whose fill is a check (`monument_full_keys`) and is now
-        // full sends it ("monument:<prop>"); remembered like every check, so each reports once. A tower without slots
-        // in this seed has no check (the apworld leaves it out).
+        // `monument_full_keys`: a monument sends its check once full, if it has slots.
         private static float _nextFullCheck;
 
         internal static void TickFullChecks()
@@ -271,7 +251,7 @@ namespace BigWalkArchipelago.Core
                 Plugin.Reporter.ReportCheck(location);
             }
 
-            // `linear_towers: one_deposit_box`: the monument key once the monument holds the gourds drawn for it.
+            // `linear_towers: one_deposit_box`: the key once the monument holds its drawn gourds.
             for (var i = 0; i < slot.MonumentKeyKeys.Length && i < slot.MonumentKeyGourds.Length; i++)
             {
                 var prop = slot.MonumentKeyKeys[i];
@@ -288,8 +268,6 @@ namespace BigWalkArchipelago.Core
 
         internal static bool IsFull(int tower) =>
             CosmeticMonumentFillTracker.FilledSlots(PrefixOf(tower)) >= SlotsOf(tower);
-
-        // ----- who is open
 
         // The host's own reckoning; a guest's is the mask it was told.
         internal static bool IsOpen(int tower)
@@ -314,14 +292,13 @@ namespace BigWalkArchipelago.Core
             return Mode != "by_item" || Granted >= position + (FirstTowerOpen ? 0 : 1);
         }
 
-        // A monument slot that must refuse a gourd on this machine: its tower is not open, and holds none
-        // already (what an earlier game left in the wrong place is left alone).
+        // A slot that already holds a gourd is never closed, so what a save restores goes through.
         internal static bool IsClosed(PropHome home)
         {
             if (!Active || home == null || !ReceivedItemSpawner.IsMonumentHome(home))
                 return false;
 
-            // Asked while a player holds a gourd near the monument, every frame: remembered for a moment.
+            // Asked every frame while a gourd is held near the monument: remembered for a moment.
             var prefix = PrefixOfHome(home);
             var now = Time.unscaledTime;
             if (ClosedAt.TryGetValue(prefix, out var seen) && now - seen.at < 0.5f)
@@ -335,7 +312,6 @@ namespace BigWalkArchipelago.Core
 
         private static readonly Dictionary<string, (float at, bool closed)> ClosedAt = new();
 
-        // The towers' opening buttons: a state raise on a closed tower's button is refused.
         internal static bool HoldsButton(TrackedPeckState state)
         {
             if (state == null || !Active)
@@ -370,8 +346,7 @@ namespace BigWalkArchipelago.Core
 
         internal static void ForgetMirror() => _mirroredOpen = -1;
 
-        // The monuments in the order the seed opens them, for what restores deposits in a new save
-        // (CosmeticMonumentFillTracker.PutDepositsBack); null when they are all open.
+        // Null when all the monuments are open.
         internal static (string Prefix, int Slots)[] OrderedMonuments()
         {
             if (IsGuest || !Active)
@@ -421,9 +396,7 @@ namespace BigWalkArchipelago.Core
             return count;
         }
 
-        // One line for the overlay: the tower that takes the gourds now and how many it still wants, or that no tower is open
-        // (by_item: a Progressive Monument is missing). Null when there is no order or every tower is full. Read each frame,
-        // and the fill walks the save: remembered for a second.
+        // Read each frame and the fill walks the save, so the line is remembered for a second.
         private static string _hudLine;
         private static float _hudAt = -10f;
 
@@ -446,8 +419,7 @@ namespace BigWalkArchipelago.Core
 
                 if (!IsOpen(tower))
                 {
-                    // Which one, by number (players, 2026-10-17: the Black Tower shut after the Green Dome, and nothing
-                    // said a fifth item was what it waited for). Not the tower's name: the order is a surprise.
+                    // By number, not by name: the order is a surprise.
                     var needed = Array.IndexOf(Order, prop) + (FirstTowerOpen ? 0 : 1);
                     _hudLine = Mode == "by_item" && Granted < needed
                         ? $"Towers: none open, waiting for Progressive Monument {needed} ({Granted} received)"
@@ -468,8 +440,7 @@ namespace BigWalkArchipelago.Core
             if (!Active || IsGuest)
                 return string.Empty;
 
-            // The order is a surprise (the player, 2026-10-12): the full towers and the open one are named, the rest is
-            // counted, unless ShowTowerOrder asks for the whole list.
+            // The order is a surprise: only full and open towers are named, unless ShowTowerOrder.
             var text = "<b>MONUMENTS</b>";
             var hidden = 0;
             foreach (var prop in Order)
@@ -496,9 +467,7 @@ namespace BigWalkArchipelago.Core
             return text;
         }
 
-        // Debug key (Alt + 3): the first monument of the order that is not full is filled, in the save: the deposits come
-        // back as monuments do on a new save (CosmeticMonumentFillTracker.PutDepositsBack), so "this one is full, the next
-        // opens" can be seen without placing five gourds.
+        // Debug key (Alt + 3): fills the first monument of the order that is not full, in the save.
         internal static void DebugFillNext()
         {
             if (!Active || IsGuest)
@@ -523,13 +492,7 @@ namespace BigWalkArchipelago.Core
             ApNotices.Post("Debug: every monument is full");
         }
 
-        // ----- the towers' buttons, hidden while their tower is closed (the player, 2026-10-12: a button that does nothing is
-        // a lie). Measured with F9 at the Yellow tower: the button is `Lookouts/Lookout_<Colour>.../lighting and door/
-        // BasicPokeButton`, its drawing and collider under `BasicPokeButtonModel`; its state (the network part) is left
-        // alone, so opening the tower later needs nothing put back but the drawing.
-
-        // The Black Tower's opening buttons (measured with F9 there, 2026-10-12): `BlackTower <n>Player/Positioner/NHoldFullSet/
-        // NHoldSet<k>/Pivot/ButtonNHold<k>/Button-nHold-Four`, one model each, which carries a LODGroup too.
+        // A closed tower's buttons are hidden by their model only; the network state is left alone.
 
         private static readonly string[] ButtonColours = { null, "Red", "Green", "Blue", "Yellow", null, null };
         private static readonly List<Transform>[] ButtonModels = { new(), new(), new(), new(), new(), new(), new() };
@@ -559,8 +522,7 @@ namespace BigWalkArchipelago.Core
                     continue;
                 }
 
-                // A tower that unloads and loads again brings new buttons (the Yellow one, 2026-10-12): the list is searched
-                // again when one of its models is gone, or when none was found.
+                // A tower that loads again brings new buttons, so the list is searched again.
                 var models = ButtonModels[tower];
                 if ((models.Count == 0 || models.Exists(model => model == null)) && Time.unscaledTime >= _nextButtonSearch)
                     FindButtons();
@@ -581,9 +543,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The scale first: the model carries a LODGroup, which turns its renderers back on every frame (2026-10-12, measured:
-        // `enabled = false` alone left the Green tower's button showing and pressable). A model at scale zero is neither seen
-        // nor hit. The renderers and colliders are switched too, for what scale cannot reach.
+        // Scale first: the model's LODGroup turns its renderers back on every frame.
         private static void SetButton(Transform model, Vector3 scale, bool hide)
         {
             model.localScale = scale;
@@ -637,16 +597,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // ----- the Green Dome's door (2026-10-16, a 1.0.0 seed stuck on it)
-        //
-        // In the game, the door to the Green Dome's monument (`OverflowMonument/Positioner/BasicDoor - to overflow`,
-        // a TrackedPeckState saved nowhere) opens once the Black Tower is complete, and the round panel beside it shows
-        // the Black Tower's state. The apworld never asked for that: a seed may open the Green Dome before the Black
-        // Tower, and then no monument takes gourds at all (player, 2026-10-16: "Tower open: Green Dome (0/15)" in front
-        // of a shut door). So the mod opens it itself when the Green Dome takes gourds: at its turn in the order, and
-        // from the start when the towers are all open, which is what the logic of every apworld so far assumes. Host
-        // only, the state reaching the guests over the network like an arch door's; asserted again on each pass, since
-        // nothing saves it.
+        // The game opens the Green Dome door after the Black Tower; the mod opens it at its turn.
         private static TrackedPeckState _greenDomeDoor;
         private static float _nextDoorSearch;
 
@@ -669,7 +620,7 @@ namespace BigWalkArchipelago.Core
             if (_greenDomeDoor.currentPeckContext.state == 1)
                 return;
 
-            // Logged each time: once per world loaded, and more often would mean something in the game shuts it again.
+            // Logged each time: more than once per world would mean the game shuts it again.
             _greenDomeDoor.SetState(1);
             Plugin.Log.LogInfo($"{Tag} The Green Dome takes gourds: its door opened.");
         }
@@ -686,8 +637,6 @@ namespace BigWalkArchipelago.Core
             return null;
         }
 
-        // ----- applying it, every couple of seconds (TeleportButtons.Sync), on every machine
-
         // The monuments' homes, cached: the scene holds hundreds of homes, more with every prop.
         private static readonly List<PropHome> Monuments = new();
         private static float _monumentsFoundAt = -100f;
@@ -701,7 +650,7 @@ namespace BigWalkArchipelago.Core
 
             Monuments.Clear();
             _monumentsFoundAt = Time.unscaledTime;
-            // Not `PropHome.allPropHomes`: no monument was ever found in that list (2026-10-12).
+            // Not `PropHome.allPropHomes`: the monuments are not in that list.
             foreach (var home in UnityEngine.Object.FindObjectsByType<PropHome>(FindObjectsSortMode.None))
             {
                 if (ReceivedItemSpawner.IsMonumentHome(home))

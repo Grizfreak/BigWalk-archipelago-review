@@ -8,9 +8,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Q6, the whole mod's cost (player, 2026-10-13: the map tracker once made the game stutter). With Debug.PerfProbe
-    // on, every Update, LateUpdate, FixedUpdate and OnGUI of the mod's own components is timed, and every
-    // PerfSeconds the slowest are logged: the time per frame on average and the worst single call.
+    // With Debug.PerfProbe on, times the mod's own Update/OnGUI calls and logs the slowest ones.
     internal static class PerfProbe
     {
         private const string Tag = "[" + nameof(PerfProbe) + "]";

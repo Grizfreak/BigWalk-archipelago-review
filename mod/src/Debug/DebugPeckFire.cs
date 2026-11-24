@@ -3,37 +3,21 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Action tool (not a plain diagnostic): triggers a PeckSwitch remotely,
-    // without having to physically stand in front of it. Useful for testing
-    // alone a mechanism designed for 2 players (e.g. the simultaneous
-    // "N-hold" buttons of the bells/Gauntlet, cf.
-    // big-walk-archipelago-notes.md): one player normally pecks the first
-    // button, then triggers this hotkey to peck the second one remotely by
-    // its name (identified beforehand via F9/Delete), without needing a
-    // second player physically present.
-    //
-    // PeckSwitch.Peck() is the same public method called by the game itself
-    // during a normal interaction (confirmed via il2cpp.cs) — this is not a
-    // workaround, just a remote call to the same action.
+    // Pecks a PeckSwitch by name from afar, to test two-player buttons alone.
     internal static class DebugPeckFire
     {
-        // Safety radius: many PeckSwitch names are generic and reused
-        // everywhere in the game (e.g. "UpSwitch", seen identically on the
-        // chapel bell, the Gauntlet entrance, AND the summit bell) — without
-        // a distance limit, FireByName would trigger ALL objects with that
-        // name across the entire loaded area, not just the one targeted next
-        // to the player.
+        // Many PeckSwitch names are reused across the map; only fire the nearby ones.
         private const float MaxFireRadius = 40f;
 
         internal static void FireByName(string nameSubstring)
         {
             if (string.IsNullOrWhiteSpace(nameSubstring))
             {
-                Plugin.Log.LogInfo($"[{nameof(DebugPeckFire)}] No name configured (ModConfig.RemotePeckSwitchName empty) — nothing to trigger.");
+                Plugin.Log.LogInfo($"[{nameof(DebugPeckFire)}] No name configured (ModConfig.RemotePeckSwitchName empty), nothing to trigger.");
                 return;
             }
 
-            var localPlayer = DebugPlayerLookup.FindLocalPlayer();
+            var localPlayer = Core.LocalPlayer.Find();
             if (localPlayer == null)
             {
                 Plugin.Log.LogInfo($"[{nameof(DebugPeckFire)}] Local player not found.");
@@ -72,13 +56,11 @@ namespace BigWalkArchipelago.Debug
                 if (goName.IndexOf(nameSubstring, StringComparison.OrdinalIgnoreCase) < 0)
                     continue;
 
-                // Filtered by distance last (not inside the name-matching
-                // loop) so the "no match" message distinguishes "unknown
-                // name" from "known name but too far" — see the log below.
+                // Filtered last so the log can tell "unknown name" from "too far".
                 if (sqrDistance > sqrRadius)
                 {
                     Plugin.Log.LogInfo(
-                        $"[{nameof(DebugPeckFire)}]   {goName} matches the name but is {Math.Sqrt(sqrDistance):F1}m away (> {MaxFireRadius}m) — skipped for safety.");
+                        $"[{nameof(DebugPeckFire)}]   {goName} matches the name but is {Math.Sqrt(sqrDistance):F1}m away (> {MaxFireRadius}m), skipped for safety.");
                     continue;
                 }
 
@@ -90,7 +72,7 @@ namespace BigWalkArchipelago.Debug
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Log.LogWarning($"[{nameof(DebugPeckFire)}] {goName} — exception during Peck(), ignored: {ex.Message}");
+                    Plugin.Log.LogWarning($"[{nameof(DebugPeckFire)}] {goName}, exception during Peck(), ignored: {ex.Message}");
                 }
             }
 

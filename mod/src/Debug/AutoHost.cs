@@ -4,12 +4,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Testing without the clicks (player, 2026-10-13: "it would save me a lot of time"): with Debug.AutoHostSave set
-    // to a save's name, the game goes from its title menu straight into hosting that save, the way a player would
-    // (the microphone check's Continue, TitleMenu.GoToHostMenu, the save's card, HostMenuConfirm.ActionStart, PlayerCountMenu.ActionProceed); the
-    // Archipelago slot is the save's own name and the server the .cfg's HostPort, as when a player hosts it. With
-    // Debug.AutoHostGuest, the loopback guest is started once the world is up (it joins on its own). Once per launch;
-    // the guest's own instance only continues past its microphone check.
+    // Debug: hosts Debug.AutoHostSave from the title menu as a player would.
     internal class AutoHost : MonoBehaviour
     {
         private const string Tag = "[" + nameof(AutoHost) + "]";
@@ -61,14 +56,14 @@ namespace BigWalkArchipelago.Debug
                 if (menus == null)
                     return;
 
-                // The guest's own instance only gets past the microphone check; it joins on its own (LoopbackGuest).
+                // The guest instance only passes the microphone check; it joins on its own.
                 if (LoopbackGuest.IsGuest && _micDone)
                 {
                     _done = true;
                     return;
                 }
 
-                // The microphone check at launch (player, 2026-10-13): continued as the player would.
+                // The microphone check at launch: continued as the player would.
                 if (!_micDone && menus.micCheckMenu != null && menus.micCheckMenu.gameObject.activeInHierarchy)
                 {
                     _micDone = true;
@@ -120,8 +115,7 @@ namespace BigWalkArchipelago.Debug
                 var count = menus.playerCountMenu;
                 if (count != null && count.gameObject.activeInHierarchy && Time.unscaledTime >= _proceedAt)
                 {
-                    // Two players chosen first, as a player clicks the first choice of the row (player, 2026-10-13:
-                    // Play waits for a count; the menu's own setters did not choose it), then Play a moment later.
+                    // Clicked as a player would: the menu's own setters did not pick a count.
                     if (!_countChosen && count.settingsRow != null)
                     {
                         _countChosen = true;

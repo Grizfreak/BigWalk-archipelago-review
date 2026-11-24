@@ -1,4 +1,4 @@
-"""gourd_name: renames the gourds outside the world (data package, spoiler, slot_data)."""
+"""Renames the gourds outside the world: data package, spoiler and slot_data."""
 
 from __future__ import annotations
 
@@ -14,14 +14,12 @@ from . import data
 MAX_LENGTH = 24  # Same as GourdNames.MaxLength in the mod.
 
 
-# What a name may hold: letters, marks and digits of any script, spaces, and these. Everything else is dropped:
-# control and invisible characters, emoji, and the characters that mean something to a text engine (the
-# board in the hub is TextMeshPro, where `<b>` is a tag) or to a key, a path or a format string.
+# Punctuation kept besides letters, marks, digits and spaces; no `<`, the hub board is TextMeshPro.
 ALLOWED_PUNCTUATION = frozenset("'-_.,!?&+:;()@")
 
 
 def carton_name(name: str) -> str:
-    """The carton follows the gourds (a player, 2026-10-14): "Plumbus" gives "Plumbus Carton"."""
+    """The carton follows the gourds: "Plumbus" gives "Plumbus Carton"."""
     return f"{name} Carton"
 
 
@@ -36,16 +34,13 @@ def keep(character: str) -> bool:
 
 
 def filtered(wanted: str) -> str:
-    """
-    The name without what it may not hold; every kind of white space is one space first. Decorated letters (𝕱𝖗𝖆𝖐𝖙𝖚𝖗,
-    Ⓐⓑⓒ, full-width) become plain ones first (NFKC), which the game's fonts can draw.
-    """
+    """NFKC first, so decorated letters (Ⓐⓑⓒ, full-width) become plain ones the fonts can draw."""
     wanted = unicodedata.normalize("NFKC", wanted)
     return "".join(character for character in " ".join(wanted.split()) if keep(character))
 
 
 def clean(wanted: str, taken: Iterable[str], player_name: str) -> str:
-    """Trims and cuts the name; falls back to "Gourd" if empty or already used by an item or group."""
+    """Trims and cuts the name; "Gourd" if it is empty or already an item or group name."""
     name = filtered(wanted)
     if name != " ".join(wanted.split()):
         logging.warning(f"Big Walk ({player_name}): gourd_name lost the characters it may not hold.")
@@ -54,14 +49,13 @@ def clean(wanted: str, taken: Iterable[str], player_name: str) -> str:
         logging.warning(f"Big Walk ({player_name}): gourd_name cut to {MAX_LENGTH} characters.")
         name = name[:MAX_LENGTH].rstrip()
     if not any(unicodedata.category(character)[0] in ("L", "M") for character in name):
-        # No letter (empty, or only digits and signs, like `{0}` once the braces are gone): the plain word.
+        # No letter: empty, or only digits and signs, like `{0}` once the braces are gone.
         if name:
             logging.warning(f"Big Walk ({player_name}): gourd_name has no letter, keeping Gourd.")
         return data.GOURD_ITEM_NAME
     if name.casefold() == data.GOURD_ITEM_NAME.casefold():
         return data.GOURD_ITEM_NAME
-    # "Victory" is the goal's event: an item of that name would read as the goal in a spoiler or a client.
-    # The carton's name and its alias group come with it, and must be free as well.
+    # "Victory" is the goal's event; the carton's name and alias group must be free as well.
     wanted_names = {name.casefold(), carton_name(name).casefold(), carrier_group(name).casefold()}
     if wanted_names & ({other.casefold() for other in taken if other != data.GOURD_ITEM_NAME} | {"victory"}):
         logging.warning(f"Big Walk ({player_name}): gourd_name '{name}' is already taken, keeping Gourd.")
@@ -81,10 +75,7 @@ def shared(wanted: Mapping[str, str]) -> str:
 
 
 def renamed_package(package: Mapping[str, Any], name: str) -> dict[str, Any]:
-    """
-    Copy of the data package with the gourd and the carton renamed, and alias groups: "Gourd", "Gourd Carton" and
-    "<name> Carrier" (the static "Gourd Carrier" group follows the carton by itself).
-    """
+    """The data package with the gourd and carton renamed, plus alias groups for the old names."""
     renames = {data.GOURD_ITEM_NAME: name, data.GOURD_CARTON_ITEM_NAME: carton_name(name)}
 
     def rename(item: str) -> str:

@@ -4,11 +4,7 @@ using HarmonyLib;
 
 namespace BigWalkArchipelago.Patches
 {
-    // The arm gestures of `lock_abilities` (Core/AbilityLocks). The game decides each arm's pose every
-    // frame from the input: `isWaving` is an arm raised (Q / E, already blocked in Rewired when its
-    // raising is locked), `isPointing` a click held. Both together is the arm extended sideways. The
-    // click also picks up and drops, so it cannot be switched off: the pointing is refused here instead,
-    // on the local player only (the others' arms are their own machines' business).
+    // The click also picks up and drops, so pointing is refused here instead of in Rewired.
     [HarmonyPatch(typeof(PlayerGestures), nameof(PlayerGestures.UpdateSingleArm))]
     internal static class ArmGestureLockPatch
     {
@@ -24,8 +20,7 @@ namespace BigWalkArchipelago.Patches
         {
             try
             {
-                // Every player this machine draws, not only its own: the locks are the slot's, the same for everyone,
-                // and a remote player's pointing reached the others whatever was blocked on the network (2026-10-13).
+                // Every player drawn here: a remote player's pointing gets through otherwise.
                 if (!isPointing || !AbilityLocks.Active || __instance?.playerCharacter == null)
                     return;
 
@@ -46,11 +41,7 @@ namespace BigWalkArchipelago.Patches
         }
     }
 
-    // The same refusal at the source, for the local player (player, 2026-10-16: an arm raised, then a click,
-    // looked and sounded like a T-pose on the player's own screen, while the others saw nothing). The patch
-    // above only reaches the animator: PlayerGestures.Update copies PlayerDecisions.leftHandIsPointing into
-    // leftArmPointing, sends it to the server and plays the arm's sounds from it (decompiled 2026-10-16).
-    // Refused in PlayerDecisions before that copy, every part of the gesture goes with it.
+    // PlayerGestures.Update copies the pointing flag to the network and sounds; refuse it before.
     [HarmonyPatch(typeof(PlayerGestures), nameof(PlayerGestures.Update))]
     internal static class LocalPointingLockPatch
     {
@@ -92,9 +83,7 @@ namespace BigWalkArchipelago.Patches
         }
     }
 
-    // Chair sitting: a seat is entered through PlayerPoser.EnterPose (measured 2026-10-12, a stump of the
-    // spawn courtyard). Refused for furniture only, while the ability is locked; the chairlift and the train too with
-    // `rides_require_seat`.
+    // Refused for furniture only; the chairlift and train too with `rides_require_seat`.
     [HarmonyPatch(typeof(PlayerPoser), nameof(PlayerPoser.EnterPose))]
     internal static class ChairSittingLockPatch
     {
@@ -107,7 +96,7 @@ namespace BigWalkArchipelago.Patches
 
                 var refused = AbilityLocks.IsFurniture(pose)
                               || (AbilityLocks.IsLocked(AbilityLocks.RideSitting) && AbilityLocks.IsRide(pose));
-                // Both ways, so a seat the lock gets wrong can be named from the log.
+                // Logged both ways, so a seat the lock gets wrong can be named.
                 Plugin.Log.LogInfo(
                     $"[{nameof(ChairSittingLockPatch)}] '{AbilityLocks.Describe(pose)}' "
                     + (refused ? "refused: Chair Sitting is locked." : "let through: not furniture."));
@@ -121,8 +110,7 @@ namespace BigWalkArchipelago.Patches
         }
     }
 
-    // Throwing: a throw is a drop carrying the wind-up (PlayerHeldInformation.ThrowInfo); with no wind-up it is
-    // a plain drop, so the object still leaves the hand. Local, like the arms.
+    // With no wind-up a throw is a plain drop, so the object still leaves the hand.
     [HarmonyPatch(typeof(PlayerHeldInformation), nameof(PlayerHeldInformation.ThrowInfo))]
     internal static class ThrowLockPatch
     {
@@ -133,16 +121,13 @@ namespace BigWalkArchipelago.Patches
         }
     }
 
-    // And no wind-up at all while throwing is locked: no arm drawn back, no wind-up sound.
     [HarmonyPatch(typeof(PlayerDecisions), nameof(PlayerDecisions.SetWindUpStartTime))]
     internal static class WindUpLockPatch
     {
         private static bool Prefix() => !AbilityLocks.IsLocked(AbilityLocks.Throwing) || TrapEffects.TrapIsThrowing;
     }
 
-    // Carrying another player. Refused on the host, in the server half of the game's command: the local
-    // PlayerActions.ActionPickUpPlayer is not the way the game takes this (measured 2026-10-12, a carry went
-    // through without it), and every player's carry passes here, guests included.
+    // The local ActionPickUpPlayer is not the path the game uses; every carry passes here.
     [HarmonyPatch(typeof(PlayerNetworking), "UserCode_CmdPickUpPlayer__PlayerCharacter")]
     internal static class CarryLockPatch
     {
@@ -156,9 +141,7 @@ namespace BigWalkArchipelago.Patches
         }
     }
 
-    // And no outline on a player to pick up while Carrying is locked (player, 2026-10-12: it still showed while
-    // the carry was refused; PlayerHighlighter.SetWorldCrosshair was not it). The local aim forgets the player
-    // it found (PlayerCaster.castCharacter), so nothing is outlined and no carry is even asked for.
+    // Clearing the aimed player hides the pick-up outline, so no carry is asked for.
     [HarmonyPatch(typeof(PlayerCaster), nameof(PlayerCaster.LocalUpdate))]
     internal static class CarryAimLockPatch
     {

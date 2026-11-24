@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Big Landing's three settings, written each second instead of patched in: its DLL crashes the loopback guest.
+    // Emulates Big Landing's settings each second: loading its DLL crashes the loopback guest.
     internal static class DebugBigLanding
     {
         private static float _next;

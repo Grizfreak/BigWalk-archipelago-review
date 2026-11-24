@@ -3,18 +3,11 @@ using HarmonyLib;
 
 namespace BigWalkArchipelago.Patches
 {
-    // `lock_endings` (ROADMAP G5, player 2026-10-09): the secret room's printer, the entry of Big
-    // Game, does not print while the other objectives are not done. The game's own queue calls
-    // OnQueuePeck for each print; refusing it leaves nothing printed and the room as it was, and
-    // the print is asked for again once the lock is lifted.
-    //
-    // Checked on whichever machine runs the method: the host says what is shut (ModChannel), and
-    // a guest follows. A flag first, since this runs on the game's own call and nothing else.
+    // `lock_endings`: the secret room's printer prints nothing while the other objectives are open.
     [HarmonyPatch(typeof(GoodbyePrinter), "OnQueuePeck")]
     internal static class GoodbyePrinterHoldPatch
     {
-        // What was refused, kept to be asked again once the lock is lifted (the player, 2026-10-12: the print was lost, the
-        // request cancelled by the first one).
+        // Refused print, asked again once the lock is lifted; otherwise the request would be lost.
         private static GoodbyePrinter _refusedPrinter;
         private static PeckContext _refusedContext;
 
@@ -30,7 +23,7 @@ namespace BigWalkArchipelago.Patches
             return false;
         }
 
-        // Every couple of seconds (ObjectiveBoard.Sync), on the host: once the lock is off, the request that was refused is made again.
+        // On the host: once the lock is off, the refused request is made again.
         internal static void ReplayIfUnlocked()
         {
             if (_refusedPrinter == null || !Mirror.NetworkServer.active)

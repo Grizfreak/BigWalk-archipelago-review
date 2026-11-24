@@ -6,15 +6,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Where things are, for the logic of `lock_arch_doors` (2026-09-25).
-    //
-    // Two questions only the running game can answer: which four puzzles sit
-    // in the starting zone (the player remembers them by what they do, not by
-    // name), and which of the three arch doors is the left one, towards the
-    // Green Dome, and which the right one, towards the Red Tower. Every
-    // puzzle gourd is listed by its distance to the tutorial's monument, and
-    // each door by its distance to the tutorial monument and both towers'
-    // plinths. Once per loaded world, when Debug is enabled.
+    // Logs each puzzle gourd and arch door by distance to the tutorial monument and tower plinths.
     internal class DebugWorldLayoutDump : MonoBehaviour
     {
         // Constructor required by Il2CppInterop for any type injected into IL2CPP.

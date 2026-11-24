@@ -5,11 +5,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // fast_golf (ROADMAP R6; player, 2026-10-13): the golf ball, the cannonball of the two golf puzzles,
-    // is "too heavy" through its PropGroup.TooHeavy (20), which PlayerHands.isCarryingTooHeavy reads (decompiled
-    // 2026-10-13). Each machine takes that group off its own cannonballs, once per world and again a while later
-    // (a prop that streams in late), so every player carries it like any object. A guest learns the option from
-    // its host's snapshot.
+    // fast_golf: removes PropGroup.TooHeavy from the cannonballs, again later for late props.
     internal static class FastGolf
     {
         private const string Tag = "[" + nameof(FastGolf) + "]";

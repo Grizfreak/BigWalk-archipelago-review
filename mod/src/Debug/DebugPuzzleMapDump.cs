@@ -6,17 +6,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Full world-space coordinates for every puzzle and every big-key
-    // plinth, for building an accurate map — mapgenie.io's names are
-    // suspected wrong (player, 2026-09-28) and this is the only source that
-    // cannot be.
-    //
-    // Safe to run in one press wherever the player is standing: confirmed
-    // by DebugGourdLookup.LogAllLoaded (2026-09-21) that every RewardGourd
-    // is loaded everywhere, not streamed by zone — two dumps taken in two
-    // different places came back byte-identical. Auto-run rather than a
-    // hotkey for the same reason DebugWorldLayoutDump is: nothing here
-    // depends on where the player walks.
+    // Logs world coordinates of every puzzle and big-key plinth; all gourds load everywhere.
     internal class DebugPuzzleMapDump : MonoBehaviour
     {
         // Constructor required by Il2CppInterop for any type injected into IL2CPP.

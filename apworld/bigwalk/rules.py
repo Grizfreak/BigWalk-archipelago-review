@@ -1,12 +1,4 @@
-"""Access rules for the Big Walk world.
-
-Only one resource gates anything here: the number of `Gourd` items received.
-That is a deliberate consequence of how the mod works — a received gourd is a
-cosmetic prop the players carry to a monument, entirely decoupled from puzzle
-solving, and the Archipelago server is the only thing that decides how many of
-them exist. Nothing in the logic depends on *where* a gourd ends up, which is
-what makes the whole model softlock-proof (Option A in ../design-decisions.md).
-"""
+"""Access rules for the Big Walk world."""
 
 from __future__ import annotations
 
@@ -27,20 +19,6 @@ if TYPE_CHECKING:
     from .world import BigWalkWorld
 
 
-# WHAT USED TO BE HERE, and why it is gone (2026-09-21).
-#
-# `gourd_requirements` charged each tower's key deposit a running total of
-# gourds, because a tower's key only appeared once its monument was full and
-# a deposited gourd cannot be taken back out. That was a faithful model of
-# the vanilla game, and this world no longer plays it: the keys are
-# Archipelago items that spawn like gourds, and a full monument buys nothing
-# but its own deposit check. Cutting and placing a key needs the key, and
-# the key alone.
-#
-# Nothing else in the world used the cumulative count, so it is removed
-# rather than left computed and unread.
-
-
 def set_all_rules(world: BigWalkWorld) -> None:
     set_key_deposit_rules(world)
     set_tower_reached_rules(world)
@@ -59,10 +37,7 @@ def set_all_rules(world: BigWalkWorld) -> None:
 
 
 def past_far_door(world: BigWalkWorld, door: data.ArchDoor | None, rule):
-    """
-    `rule`, and the far door it lies past as well when `require_arch_doors` is on and
-    the door starts closed. A door that starts open, or none, adds nothing.
-    """
+    """`rule`, plus the far door it lies past when `require_arch_doors` locks that door."""
     if door is None or not world.options.require_arch_doors or door not in world.locked_arch_doors:
         return rule
 
@@ -79,10 +54,7 @@ def set_key_deposit_rules(world: BigWalkWorld) -> None:
 
 
 def set_tower_reached_rules(world: BigWalkWorld) -> None:
-    """
-    Reaching a tower is pressing its opening button: the far door it lies past, when that door is an item,
-    and with the monuments in order the tower's turn.
-    """
+    """Reaching a tower means pressing its button: past its far door, and in its turn if ordered."""
     if not world.options.tower_sanity:
         return
 
@@ -103,16 +75,7 @@ def set_tower_reached_rules(world: BigWalkWorld) -> None:
 
 
 def black_tower_door(world: BigWalkWorld) -> Rule | None:
-    """
-    What opens the door at the Black Tower's foot, behind which its button and its monument are; None when
-    `open_black_tower` holds it open from the start.
-
-    Without the option the game opens it once the five monuments of the drawbridge and the four coloured towers are
-    full; the logic never asked for it (players, 2026-10-17: a `tower_mode` seed stuck at the Black Tower, its
-    monument behind a shut door). With the monuments in order the mod also opens it at the Black Tower's turn
-    (mod/src/Core/BlackTowerDoor.cs), so it asks for that turn: every monument before it full, and what opens them.
-    The game may open it sooner, when the five come first; the logic only waits longer.
-    """
+    """What opens the door at the Black Tower's foot; None when `open_black_tower` opens it."""
     if world.options.open_black_tower:
         return None
 
@@ -124,11 +87,7 @@ def black_tower_door(world: BigWalkWorld) -> Rule | None:
 
 
 def tower_open(world: BigWalkWorld, prop: str) -> list[Rule]:
-    """
-    With the monuments in order, the mod holds a tower's opening button until the tower's turn
-    (mod/src/Patches/MonumentHoldPatch.cs): every monument before it full, and what opens them.
-    Nothing without an order.
-    """
+    """In order, the mod holds a tower's button until every monument before it is full."""
     if not world.tower_order or prop not in world.tower_order:
         return []
     position = world.tower_index(prop) + 1
@@ -140,10 +99,7 @@ def tower_open(world: BigWalkWorld, prop: str) -> list[Rule]:
 
 
 def five_monuments_full(world: BigWalkWorld, more: int) -> Rule:
-    """
-    Every monument open: the five the game waits for full (their slots in gourds, and their far doors), and `more`
-    gourds on top, for the Black Tower's own monument. Gourds placed are gone, so the counts add up.
-    """
+    """The five monuments the game waits for full, plus `more` gourds for the Black Tower's."""
     five = [tower for tower in data.TOWERS if tower is not data.BLACK_MONOLITH and tower is not data.GREEN_DOME]
     rule: Rule = Has(data.GOURD_ITEM_NAME, count=sum(world.tower_slots(tower) for tower in five) + more)
     doors = []
@@ -157,14 +113,7 @@ def five_monuments_full(world: BigWalkWorld, more: int) -> Rule:
 
 
 def set_key_cut_rules(world: BigWalkWorld) -> None:
-    """
-    Each cut segment costs what its tower's deposit costs.
-
-    Cutting a key physically requires holding it, and a key is now an
-    Archipelago item rather than something a full monument hands over. So
-    all six of a tower's locations — its five cuts and its placement — rest
-    on the same single requirement, and no gourd is involved anywhere.
-    """
+    """Each cut needs its tower's key, as its deposit does."""
     if world.options.cut_key_sanity == bigwalk_options.CutKeySanity.option_off:
         return
     cuts = []
@@ -179,14 +128,14 @@ def set_key_cut_rules(world: BigWalkWorld) -> None:
 
 
 def set_pickup_junk(world: BigWalkWorld) -> None:
-    """`pack_sanity: junk` and `flare_gun_sanity: junk` (the community document's `filler`): their checks hold junk."""
+    """`pack_sanity: junk` and `flare_gun_sanity: junk`: their checks hold junk."""
     for option, pickups in (("pack_sanity", data.PICKUPS), ("flare_gun_sanity", data.FLARE_GUN_PICKUPS)):
         if getattr(world.options, option).current_key == "junk":
             exclude_as_junk(world, [world.get_location(pickup.location_name) for pickup in pickups], f"{option} junk")
 
 
 def doors_up_to(world: BigWalkWorld, count: int) -> list[Rule]:
-    """The far doors the first `count` towers of the seed's order lie past, each once, when they are items."""
+    """Far doors of the first `count` towers in the order, each once, when they are items."""
     doors = []
     for prop in world.tower_order[:count]:
         door = data.TOWER_FAR_DOOR.get(prop)
@@ -197,10 +146,9 @@ def doors_up_to(world: BigWalkWorld, count: int) -> list[Rule]:
 
 
 def monuments_up_to(world: BigWalkWorld, count: int) -> list[Rule]:
-    """What the first `count` monuments of the order cost: their far doors, and with by_item one item for each after the first."""
+    """What the first `count` monuments of the order cost: far doors, and `by_item` items."""
     rules = doors_up_to(world, count)
     if world.options.tower_mode == bigwalk_options.TowerMode.option_by_item:
-        # The k-th monument needs k - 1 items when the first is open from the start, k when it is not.
         needed = count - (1 if world.options.first_tower_open else 0)
         if needed > 0:
             rules.append(Has(data.PROGRESSIVE_MONUMENT_ITEM_NAME, count=needed))
@@ -208,7 +156,7 @@ def monuments_up_to(world: BigWalkWorld, count: int) -> list[Rule]:
 
 
 def tower_count_needing(world: BigWalkWorld, amount: int) -> int:
-    """How many towers of the order the `amount`-th gourd placed reaches into (1 for the first tower's slots)."""
+    """How many towers of the order the `amount`-th gourd placed reaches into."""
     total = 0
     for index, prop in enumerate(world.tower_order, start=1):
         total += world.tower_slots(data.tower_by_prop(prop))
@@ -220,31 +168,14 @@ def tower_count_needing(world: BigWalkWorld, amount: int) -> int:
 def set_gourd_deposit_rules(world: BigWalkWorld) -> None:
     for amount in world.deposit_amounts:
         rule: Rule = Has(data.GOURD_ITEM_NAME, count=amount)
-        # With the monuments opening in order, the amount-th gourd goes into a tower the first gourds
-        # have filled the ones before: it costs those towers' doors, and with by_item their items.
-        # Exact, since only one monument takes gourds at a time: nothing is spent in a way the
-        # logic did not count.
+        # In order, the amount-th gourd also needs what opens the monuments filled before it.
         for more in monuments_up_to(world, tower_count_needing(world, amount)) if world.tower_order else []:
             rule = rule & more
         world.set_rule(world.get_location(data.deposit_location_name(amount)), rule)
 
 
 def set_puzzle_rules(world: BigWalkWorld) -> None:
-    """
-    With `lock_puzzle_needs`, a puzzle is in logic once every item it is built
-    from has been received (`data.PUZZLE_TAGS`). It is a rule the mod never
-    enforces on the puzzle itself: the mod only hides the parts until their
-    item arrives (mod/src/Core/PuzzleNeedHider.cs). Solving one early sends its
-    check early; it only stops generation relying on it. No puzzle sits behind
-    an item of its own.
-
-    The tutorial's four (`data.START_ZONE_PUZZLES`) are gated like the others:
-    they are built from things too. They sit in the one region nothing else in
-    this world locks (arch doors and the drawbridge only gate the way OUT of
-    it), so a seed that left one of them with nothing to do would have no
-    location reachable at empty state: `start_with_random_puzzle_need` is what
-    keeps one of them doable.
-    """
+    """With `lock_puzzle_needs`, a puzzle is in logic once every item it is built from arrived."""
     for puzzle in world.puzzles():
         rules: list[Rule] = []
         if world.options.lock_puzzle_needs:
@@ -257,7 +188,7 @@ def set_puzzle_rules(world: BigWalkWorld) -> None:
         # The purple hole (SouthPeakTunnel) splits the chairlift zone; the Tunnels open it.
         if puzzle.prop_name in data.CHAIRLIFT_PUZZLES:
             rules.append(purple_hole(world))
-        # The purple puzzles as in the game: once an ending has been reached (L4 `when_unlocked`).
+        # `when_unlocked`: the purple puzzles open once an ending is reached, as in the game.
         if (puzzle.prop_name in data.CHAIRLIFT_PUZZLES
                 and world.options.include_big_game_puzzles == bigwalk_options.IncludeBigGamePuzzles.option_when_unlocked):
             rules.append(CanReachRegion(regions.ENDING_ZONE))
@@ -272,7 +203,7 @@ def purple_hole(world: BigWalkWorld) -> Rule:
 
 
 def into_the_tunnels(world: BigWalkWorld) -> Rule:
-    """The Tunnels, or with `tunnel_sanity` any outlet's door and the way to the tower it sits by."""
+    """The Tunnels, or with `tunnel_sanity` any outlet's door and the way to its tower."""
     if not world.options.tunnel_sanity:
         return past_far_door(world, data.ZONE_FAR_DOOR["tunnels"], Has(data.YELLOW_TWIST.item_name))
     ways = [past_far_door(world, data.TOWER_FAR_DOOR.get(door.tower), Has(door.item_name))
@@ -295,7 +226,7 @@ def abilities_locked(world: BigWalkWorld) -> bool:
 
 
 def body_rule(world: BigWalkWorld, body: data.Body) -> Rule | None:
-    """What a place asks of the body with `lock_abilities` (data.Body): each arm counts for both arms."""
+    """What a place asks of the body with `lock_abilities`; `arms` counts for each arm."""
     if not abilities_locked(world):
         return None
     rules: list[Rule] = []
@@ -315,7 +246,7 @@ def body_rule(world: BigWalkWorld, body: data.Body) -> Rule | None:
 
 
 def gauntlet_body_through(world: BigWalkWorld, count: int) -> Rule | None:
-    """The body the first `count` Gauntlet stages ask for, each one passed on the way: the most of each."""
+    """The body the first `count` Gauntlet stages ask for: the most of each need."""
     stages = data.GAUNTLET_STAGE_ABILITIES[:count]
     if not stages:
         return None
@@ -325,12 +256,7 @@ def gauntlet_body_through(world: BigWalkWorld, count: int) -> Rule | None:
 
 
 def object_rule(world: BigWalkWorld, obj: data.IslandObject) -> Rule | None:
-    """
-    What an island object asks for beyond its region (locations.OBJECT_ZONE_REGIONS): the Map Room's
-    item for the Map Room's bench, a tower's far door for its roof and stairs (as reaching the tower),
-    the body its kind asks for with `lock_abilities` (data.OBJECT_ABILITIES); with `zone_locks`, its
-    zone's item too.
-    """
+    """What an island object asks for beyond its region (locations.OBJECT_ZONE_REGIONS)."""
     lamp = obj.kind in data.LAMP_KINDS
     rule = place_rule(world, obj.zone)
     # A tower's lamps stand at its foot; its other objects are on the roof, past the opening button.
@@ -350,7 +276,7 @@ def with_all(rule: Rule | None, more: list[Rule]) -> Rule | None:
 
 
 def set_firework_rules(world: BigWalkWorld) -> None:
-    """A tower's fireworks are on its roof, behind its opening button; the others ask for nothing more."""
+    """A tower's fireworks are on its roof, past its opening button."""
     if not world.options.firework_sanity:
         return
     for firework in data.FIREWORKS:
@@ -375,7 +301,7 @@ def place_rule(world: BigWalkWorld, zone: str) -> Rule | None:
 
 
 def with_zone(world: BigWalkWorld, rule: Rule | None, key: str, zone: str, lamps: bool) -> Rule | None:
-    """`zone_locks` (R12): the rule, and the item of the zone this lamp or gadget lies in, when the seed has it."""
+    """The rule, plus the `zone_locks` item of the zone this lamp or gadget is in, if any."""
     lock = data.zone_lock_for(key, zone, lamps)
     if lock is None or lock not in world.zone_locks():
         return rule
@@ -383,11 +309,7 @@ def with_zone(world: BigWalkWorld, rule: Rule | None, key: str, zone: str, lamps
 
 
 def light_rule(world: BigWalkWorld, light: data.Light) -> Rule | None:
-    """
-    What a light asks for beyond its region: a lamp as its object does, the train's headlights the Train (and Seat with
-    `rides_require_seat`); with
-    `zone_locks`, its zone's lamps item too.
-    """
+    """What a light asks for beyond its region; the train's lights need the Train."""
     if light.zone == "train":
         train: Rule = Has(data.tower_by_prop("bigKeyBlueZone").item_name)
         # With `rides_require_seat` the train's seats are locked: no ride to its cars before Seat.
@@ -409,10 +331,7 @@ def set_light_rules(world: BigWalkWorld) -> None:
 
 
 def set_monument_full_rules(world: BigWalkWorld) -> None:
-    """
-    A monument full (L1): its slots in gourds and the far door its tower lies past; with the monuments opening in
-    order, every monument before it full too (the capacity up to it) and what opens them (doors, by_item items).
-    """
+    """A monument full: its slots in gourds, its far door, and in order every monument before."""
     for tower in world.monuments_full():
         world.set_rule(world.get_location(data.monument_full_location_name(tower)),
                        monument_holding(world, tower, world.tower_slots(tower)))
@@ -423,7 +342,7 @@ def set_monument_full_rules(world: BigWalkWorld) -> None:
 
 
 def monument_holding(world: BigWalkWorld, tower: data.Tower, gourds: int) -> Rule:
-    """This tower's monument holding `gourds`: with the monuments in order, every one before it full as well."""
+    """This tower's monument holding `gourds`; in order, every one before it full as well."""
     if world.tower_order:
         position = world.tower_index(tower.prop_name) + 1
         capacity = sum(world.tower_slots(data.tower_by_prop(prop)) for prop in world.tower_order[:position - 1])
@@ -431,14 +350,14 @@ def monument_holding(world: BigWalkWorld, tower: data.Tower, gourds: int) -> Rul
         for more in monuments_up_to(world, position):
             rule = rule & more
         return rule
-    # Every monument open: the Black Tower's is past the door the other five open (black_tower_door).
+    # Every monument open: the Black Tower's is past the door the other five open.
     if tower is data.BLACK_MONOLITH and not world.options.open_black_tower:
         return past_far_door(world, data.TOWER_FAR_DOOR.get(tower.prop_name), five_monuments_full(world, gourds))
     return past_far_door(world, data.TOWER_FAR_DOOR.get(tower.prop_name), Has(data.GOURD_ITEM_NAME, count=gourds))
 
 
 def set_object_event_rules(world: BigWalkWorld) -> None:
-    """big_objects' events: each asks what its object asks (set just before)."""
+    """big_objects' events: each asks what its object asks."""
     if "big_objects" not in world.objectives:
         return
     for name in world.object_location_names():
@@ -446,11 +365,7 @@ def set_object_event_rules(world: BigWalkWorld) -> None:
 
 
 def restrict_object_items(world: BigWalkWorld) -> None:
-    """
-    `object_sanity_items` and `light_sanity_items` (player, 2026-10-13): those checks hold only junk, or only this
-    world's items (placed before the fill, world.pre_fill). With `any`, `*_junk_percentage` of them, drawn at
-    random, hold only junk (player, 2026-10-14: not nine useful items in ten).
-    """
+    """`object_sanity_items` and `light_sanity_items`: those checks hold junk or local items."""
     for group, contents, percentage, option in (
             ("Objects", world.options.object_sanity_items.value, world.options.object_sanity_junk_percentage.value,
              "object_sanity_items"),
@@ -466,17 +381,12 @@ def restrict_object_items(world: BigWalkWorld) -> None:
 
 
 def exclude_as_junk(world: BigWalkWorld, chosen: list, what: str) -> None:
-    """
-    Excludes these locations (only filler or a trap goes there). The bonuses are useful, so a seed may hold fewer
-    junk items than locations asked for (a solo seed fails to fill otherwise): every option asking for junk draws
-    on one budget, this world's junk items, and the locations past it may hold anything.
-    """
+    """Excludes these locations, within one junk budget shared by every junk option."""
     budget = world.__dict__.get("junk_budget")
     if budget is None:
         budget = sum(1 for item in world.multiworld.itempool
                      if item.player == world.player and not item.advancement and not item.useful)
-        # The checks of a `local` option take this world's non-progression items before the fill (world.pre_fill),
-        # junk among them: as many fewer for the junk ones.
+        # Checks of a `local` option take this world's non-progression items, junk included.
         for group, contents in (("Objects", world.options.object_sanity_items.value),
                                 ("Lights", world.options.light_sanity_items.value)):
             if contents == bigwalk_options.ObjectSanityItems.option_local:
@@ -498,21 +408,11 @@ def exclude_as_junk(world: BigWalkWorld, chosen: list, what: str) -> None:
 
 
 PROGRESSION_MARGIN = 5
-"""
-Locations kept free beyond this world's progression items when junk is asked for: half as many again as there are
-progression items, 5 at least. Counting alone was not enough: what the junk options exclude (objects, lights) is
-mostly reached early, and the fill still ran short in the first spheres (the fuzzer's seed, 4 FillError in 20 with a
-margin of 5, none with half the progression).
-"""
+"""Locations kept free beyond progression: half the progression count, at least this many."""
 
 
 def room_for_progression(world: BigWalkWorld) -> int:
-    """
-    How many more of this world's locations the junk options may exclude and still leave room for its progression
-    items, counted as in a solo seed (the fuzzer, 2026-10-15: `pack_sanity: vanilla` and the objects' and lights' checks
-    as junk left 10 progression items more than locations). Not counted as room: the locations already filled (packs,
-    locked items), excluded, or kept for this world's own items by a `local` option (world.pre_fill).
-    """
+    """How many more locations the junk options may exclude and still fit the progression."""
     local_groups = [group for group, contents in (("Objects", world.options.object_sanity_items.value),
                                                   ("Lights", world.options.light_sanity_items.value))
                     if contents == bigwalk_options.ObjectSanityItems.option_local]
@@ -526,10 +426,7 @@ def room_for_progression(world: BigWalkWorld) -> int:
 
 
 def set_object_rules(world: BigWalkWorld) -> None:
-    """
-    `object_sanity` (ROADMAP S7): each object by its own rule, or for `first_pickup` the easiest of its
-    kind. A kind with one free in its region asks for nothing; otherwise any one of them will do.
-    """
+    """`object_sanity`: each object by its own rule, or its kind's easiest for `first_pickup`."""
     mode = world.options.object_sanity
     restrict_object_items(world)
     if mode == bigwalk_options.ObjectSanity.option_every:
@@ -574,14 +471,7 @@ def stairways_up_to(world: BigWalkWorld, count: int) -> list[Rule]:
 
 
 def set_gauntlet_rules(world: BigWalkWorld) -> None:
-    """
-    With `locked_stages`, stage k's puzzle is only reachable through the
-    stairways of the k-1 stages before it, each an item. With
-    `gauntlet_puzzles_required` it is also reachable only through the puzzles
-    of those stages, which `lock_puzzle_needs` makes items too
-    (`data.gauntlet_needs_through`); without it each item opens its stage whole,
-    and a puzzle needs only what it is built from (`data.gauntlet_needs_of`).
-    """
+    """With `locked_stages`, a stage's puzzle needs the stairways (and parts) before it."""
     if world.options.gauntlet_mode != GauntletMode.option_locked_stages:
         return
 
@@ -603,20 +493,15 @@ def set_gauntlet_rules(world: BigWalkWorld) -> None:
 
 
 def set_entrance_rules(world: BigWalkWorld) -> None:
-    # Confirmed in-game: placing `bigKeyBoss` in `bigKeyPlinthEnding` is what
-    # opens the way to the chapel, and everything past it — the field, the
-    # Gauntlet and its final bell — is behind that one door.
+    # Placing `bigKeyBoss` in `bigKeyPlinthEnding` opens the chapel and everything past it.
     world.set_rule(
         world.get_entrance(regions.ENDING_ENTRANCE),
         past_far_door(world, data.ZONE_FAR_DOOR["ending"], Has(data.BLACK_MONOLITH.item_name)),
     )
 
-    # Found in play on 2026-09-21, and the reason this world had a
-    # seed-breaking bug: the chairlift and the tunnels are not scenery, they
-    # are doors. Without these two rules nothing stopped generation putting
-    # the Green Cup Key past the chairlift it opens.
+    # The chairlift and the tunnels are doors: their keys must not land behind them.
     chairlift: Rule = Has(data.GREEN_CUP.item_name)
-    # `rides_require_seat` (Tyrope, 2026-10-27): the chairlift is a seat like any other, locked by the mod.
+    # `rides_require_seat`: the mod locks the chairlift seat like any other.
     if world.options.rides_require_seat and abilities_locked(world):
         chairlift = chairlift & Has(data.SEAT_ITEM_NAME)
     world.set_rule(
@@ -628,16 +513,14 @@ def set_entrance_rules(world: BigWalkWorld) -> None:
         into_the_tunnels(world),
     )
 
-    # The way out of the starting zone, gated only while the first arch door
-    # is held closed: then it is the drawbridge or that door. Otherwise the
-    # mod opens the door on the first session and the exit is free.
+    # Gated only while the first arch door stays closed; otherwise the mod opens it.
     exit_rule: Rule | None = None
     if world.options.linear_arch_doors:
-        # L6: the First Arch Door's button is outside, so the way out is the drawbridge.
+        # The First Arch Door's button is outside, so the way out is the drawbridge.
         exit_rule = Has(data.DRAWBRIDGE_ITEM_NAME)
     elif data.FIRST_ARCH_DOOR in world.locked_arch_doors:
         exit_rule = Has(data.DRAWBRIDGE_ITEM_NAME) | Has(data.FIRST_ARCH_DOOR.item_name)
-    # With `lock_abilities`, the legs as well: the island past the tutorial needs jumping and crouching.
+    # With `lock_abilities`, Legs too: past the tutorial the island needs jumping and crouching.
     if abilities_locked(world):
         body = Has(data.LEGS_ITEM_NAME)
         exit_rule = body if exit_rule is None else exit_rule & body
@@ -652,11 +535,7 @@ def set_entrance_rules(world: BigWalkWorld) -> None:
 
 
 def gauntlet_goal_rule(world: BigWalkWorld) -> Rule | None:
-    """
-    What leaving the Gauntlet asks for: every stairway when they are items, and every part its
-    puzzles are built from when those are items. In `vanilla` the stages are solved in the game's
-    own way, so all of them are; with locked stages only when the puzzles are required.
-    """
+    """What leaving the Gauntlet asks for: its stairways and puzzle parts, when they are items."""
     locked = world.options.gauntlet_mode == GauntletMode.option_locked_stages
     rules = stairways_up_to(world, len(data.GAUNTLET_STAGES)) if locked else []
     if gauntlet_parts_are_items(world) and (not locked or world.options.gauntlet_puzzles_required):
@@ -675,19 +554,14 @@ def gauntlet_goal_rule(world: BigWalkWorld) -> Rule | None:
 
 
 def reach_at_least(names: list[str], count: int) -> Rule:
-    """
-    At least `count` of these locations reachable. Written as an Or over every choice of
-    `count` of them (never more than 35 for the seven keys or stations), since the rule builder
-    has no counting rule and a lambda would not survive its caching.
-    """
+    """At least `count` reachable, as an Or of combinations: the rule builder cannot count."""
     if count >= len(names):
         return And(*[CanReachLocation(name) for name in names])
     return Or(*[And(*[CanReachLocation(name) for name in choice]) for choice in combinations(names, count)])
 
 
 def set_completion_rule(world: BigWalkWorld) -> None:
-    # Objectives listed (ROADMAP G5): every one of them, in any order. Each asks for what its
-    # single goal asked for; the places are regions, since the event does not sit in any of them.
+    # Every listed objective; places are regions, since the event sits in none of them.
     if world.objectives:
         rule: Rule | None = None
         for key in world.objective_keys():
@@ -697,13 +571,12 @@ def set_completion_rule(world: BigWalkWorld) -> None:
                 # A place the host sees a player at; nothing but the island itself to reach.
                 this = CanReachRegion(regions.OVERWORLD)
             elif key == "big_party":
-                # The party on the beach: a radio plugged into the big speakers, with a music playing (any
-                # station). With `shuffle_radio_music` the stations are items: one of them is needed.
+                # A radio plugged into the beach speakers, plus a station when they are items.
                 this = CanReachRegion(regions.OVERWORLD) & Has(items.RADIO_ITEM_NAME)
                 if world.options.shuffle_radio_music:
                     this = this & HasAny(*items.RADIO_ITEM_NAMES)
             elif key in ("big_doof", "big_makeover"):
-                # The Doof Chamber and the Secret Salon, both in the tunnels (the player, 2026-10-20).
+                # The Doof Chamber and the Secret Salon are both in the tunnels.
                 this = CanReachRegion(regions.TUNNEL_ZONE)
             elif key == "big_towers":
                 count = world.options.towers_required.value
@@ -741,21 +614,7 @@ def set_completion_rule(world: BigWalkWorld) -> None:
             Has(data.GOURD_ITEM_NAME, count=world.deposit_goal),
         )
 
-    # Every other goal is a place, not a count, and the region the Victory
-    # event was put in already carries the requirement: the two bell goals
-    # sit past the Black Monolith Key, and `big_game` sits past the
-    # Spawn Secret Door.
-    #
-    # The Gauntlet's seven chambers have no items or checks of their own:
-    # nothing in the game persists them individually (`GauntletChamber0..6`
-    # were never found written anywhere), so the logic cannot and does not
-    # model them. `big_game` asks for nothing beyond the door for the
-    # same kind of reason — see locations.create_victory_event.
-    # Only the goal that is the Gauntlet asks for anything of it. Leaving it takes
-    # every stairway when they are items, and every part its puzzles are built
-    # from when those are items: in `vanilla` the stages are solved in the game's
-    # own way, so all of them are, and with locked stages only when the puzzles
-    # are required.
+    # Other goals are places, carried by the Victory event's region; the Gauntlet adds its own.
     if world.options.goal == Goal.option_big_goodbye:
         rule = gauntlet_goal_rule(world)
         if rule is not None:

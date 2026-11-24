@@ -1,7 +1,4 @@
-"""
-`light_sanity` and the `big_lights` objective (player, 2026-10-13, from a player's idea): a check the first time each
-light is switched on, and a share of them as an objective.
-"""
+"""`light_sanity` and `big_lights`: a check per light switched on, and a share as an objective."""
 
 from BaseClasses import LocationProgressType
 from Options import OptionError
@@ -52,7 +49,7 @@ class TestBigLights(BigWalkTestBase):
 
 
 class TestBigLightsWithoutLightSanity(BigWalkTestBase):
-    """Without light_sanity, the lamps count for big_lights only: no check, the events alone (player, 2026-10-13)."""
+    """Without light_sanity the lamps count for big_lights only: no check, the events alone."""
 
     options = {"objectives": ["big_lights"], "lights_required": 50, "lock_puzzle_needs": False}
 
@@ -70,7 +67,7 @@ class TestLightItemsJunkAndLocal(BigWalkTestBase):
 
 
 class TestJunkPercentage(BigWalkTestBase):
-    """`*_sanity_items: any` keeps `*_junk_percentage` of the checks for junk (player, 2026-10-14)."""
+    """`*_sanity_items: any` keeps `*_junk_percentage` of the checks for junk."""
 
     options = {"light_sanity": "lamps_and_switches", "light_sanity_junk_percentage": 75, "object_sanity": "every",
                "object_sanity_junk_percentage": 40}
@@ -102,7 +99,7 @@ class TestLightData(BigWalkTestBase):
 
 
 class TestLampsAreLightsNotObjects(BigWalkTestBase):
-    """With light_sanity, picking a lamp up is no check: switching it on is (player, 2026-10-13)."""
+    """With light_sanity, picking a lamp up is no check: switching it on is."""
 
     options = {"light_sanity": "lamps", "object_sanity": "every", "lock_puzzle_needs": False}
 

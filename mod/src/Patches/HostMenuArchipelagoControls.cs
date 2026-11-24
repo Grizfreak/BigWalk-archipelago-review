@@ -8,125 +8,32 @@ using UnityEngine.UI;
 
 namespace BigWalkArchipelago.Patches
 {
-    // The two buttons the hosting screen grew on 2026-09-22, at the player's
-    // request: a switch for whether this session talks to Archipelago at
-    // all, and a way to find out whether the details are right BEFORE
-    // committing to a save.
-    //
-    // Both existed already, invisibly. The switch was `Archipelago/Enabled`
-    // in the BepInEx .cfg — a file nobody opens mid-session — and the test
-    // was run by HostMenuConfirmStartPatch on the first press of Continue,
-    // reporting a failure by flashing a field and writing the reason to a
-    // log. Neither was discoverable, which is the whole problem being fixed
-    // here.
-    //
-    // THE RULE, unchanged and deliberately so: a failed test must never stop
-    // anyone hosting (player decision, 2026-09-22). The button informs; it
-    // does not gate. An Archipelago server being down is not a reason to be
-    // unable to launch the game, and a bug in this file must not become one
-    // either — hence the try/catch around every injection, each of which
-    // degrades to "that button is not there" rather than to a dead menu.
-    //
-    // Cloned from ContinueButton rather than built from scratch, the same
-    // reasoning as the host:port field being cloned from GameName: the
-    // button on this screen already carries the game's styling, its hover
-    // handling and its ManagedButton wiring. Positions are relative to that
-    // button, never absolute — the one measurement this file does not have
-    // is where anything is, and an offset from a widget we can see survives
-    // a layout it cannot.
+    // Archipelago toggle and connection test on the hosting screen; a failed test never blocks.
     internal static class HostMenuArchipelagoControls
     {
         private const string ToggleName = "ApArchipelagoToggle";
         private const string TestName = "ApTestButton";
         private const string ResultName = "ApTestResult";
 
-        // MEASURED on screen 2026-09-22, with the M dump (DebugMenuLookup) on
-        // the live hosting screen, after a first attempt stacked the buttons
-        // straight up from Continue and put them on top of the two fields.
-        //
-        // GameSlotCard_Editable is 1139.59 x 468.76 and lays its children out
-        // by hand in two columns: GameName (154.30, -68.50) and Password
-        // (154.30, -215.05) on the left, ApHostPortRow (643.70, -68.50) and
-        // LastPlayed (643.70, -215.05) on the right. So the columns are
-        // 489.40 apart and the rows 146.55 — and those are the numbers, not
-        // an estimate.
-        //
-        // Continue (PlayButton, 300 x 103.57) does NOT share their anchor,
-        // which is why its anchoredPosition of (154.30, -124.30) reads as
-        // sitting between two rows while it renders below both. Its clones
-        // inherit its anchor, so they are placed by offset FROM it and never
-        // in the card's coordinates. One step up from Continue lands on the
-        // Password/LastPlayed line: measured, not derived.
+        // Card columns are 489.40 apart; Continue has its own anchor, so clones are offset from it.
         private const float ColumnOffsetX = 489.40f;
         private const float SpacingFactor = 1.25f;
 
-        // The toggle does not get the column, because the game already put
-        // DeleteButton ("SUPPRIMER") on that line. Where exactly took three
-        // attempts and an instrumented dump to establish, and the reason is
-        // worth keeping: **DeleteButton's pivot is (1, 0.5)**. Its
-        // anchoredPosition.x of 473 is its RIGHT edge, not its centre, so it
-        // lives at the far right of the card and not in the middle, which is
-        // where every calculation from anchoredPosition alone put it. Moving
-        // the toggle rightwards to dodge it moved the toggle into it.
-        //
-        // MEASURED in world units on 2026-09-22 (DebugMenuLookup now prints
-        // a world span per element precisely so this stops being guesswork):
-        //
-        //     Continuer      1076 .. 1476
-        //     free           1476 .. 1861      <- 385 world units
-        //     SUPPRIMER      1861 .. 2261
-        //
-        // The canvas runs at 4/3, so 385 world units are 288 anchored ones:
-        // a 300-wide button genuinely does not fit, which is the other half
-        // of why the first attempt overlapped. 270 leaves about 12 world
-        // units of air either side, and sits centred in the gap.
-        // Centred in that gap it still read as crowding Continue (player,
-        // 2026-09-22: "better, too close to Continuer, but better"), and
-        // there are only 25 world units of slack to redistribute. So the
-        // button narrows again to buy room and is pushed right, leaving
-        // about 45 world units of air on the Continue side and 20 on the
-        // SUPPRIMER side.
-        //
-        // The font comes down with it, and that matters more than the
-        // rectangle: the label is cloned from Continue's, which is large and
-        // serif, and TMP draws it past the edges of its box. Narrowing the
-        // box alone would have moved nothing the eye can see.
-        // Nudged right once more on sight (player, 2026-09-22), which is
-        // about as far as it goes: this leaves ~53 world units of air on the
-        // Continue side and ~11 on the SUPPRIMER side, and the label draws
-        // past its own box, so the remaining gap is smaller than the numbers
-        // suggest.
+        // DeleteButton's pivot is (1, 0.5): its x is its right edge, so the toggle sits left of it.
         private const float ToggleOffsetX = 340.00f;
         private const float ToggleWidth = 240f;
         private const float ToggleFontScale = 0.62f;
 
-        // Below TEST CONNECTION and above SUPPRIMER, in the 88 world units
-        // between them — it is the test button's answer, so it belongs under
-        // it rather than under the toggle.
+        // Below TEST CONNECTION and above SUPPRIMER: it is the test button's answer.
         private const float ResultOffsetFactor = 0.34f;
 
-        // THE RESULT LINE WRAPS AND SHRINKS (player report, 2026-09-25: "some
-        // messages do not fit in the window"). It was a copy of Continue —
-        // 300 wide, Continue's large serif, one line, no wrapping — so any
-        // explanation longer than a few words ran out of the card.
-        //
-        // Wider than Continue, because it sits alone in the right-hand column:
-        // centred where TEST CONNECTION is, 460 anchored units still keep
-        // clear of Continue on the left and inside the card on the right
-        // (Continue ends near 304, this starts near 413; the card is 1139.59
-        // wide). As tall as the 88 world units free between TEST CONNECTION
-        // and SUPPRIMER — 66 anchored at the canvas's 4/3 — so a message that
-        // needs two or three lines shrinks its font to stay in that gap
-        // rather than spilling over either button. These follow from the
-        // measurements above; they have not been measured on screen
-        // themselves, so they are the first thing to look at if it crowds.
+        // Wraps and shrinks to fit between TEST CONNECTION and SUPPRIMER; not measured on screen.
         private const float ResultWidth = 460f;
         private const float ResultHeight = 66f;
         private const float ResultFontScale = 0.62f;
         private const float ResultMinFontScale = 0.5f;
 
-        // What the line says while a probe is out, before the moving dots.
-        // Null when nothing is being tested.
+        // What the line says while a probe is out, before the moving dots; null when not testing.
         private static string _testingText;
         private static int _lastDots = -1;
 
@@ -137,21 +44,7 @@ namespace BigWalkArchipelago.Patches
             TestButton,
         }
 
-        // Who asked for the probe currently in flight. There is one probe and
-        // two callers, and they want opposite things from the same
-        // TestStatus.Ok: Continue wants the session started, the test button
-        // wants a line of text and nothing else.
-        //
-        // This was a bool, and the bool was wrong. Tick() runs at the top of
-        // the same Update postfix that acts on the result, so by the time the
-        // switch below it was reached the flag had already been cleared for
-        // this frame and the Continue path treated a test-button probe as its
-        // own. Caught in the log on 2026-09-22 — a failed test flashed the
-        // fields and set the host-anyway bypass without anyone pressing
-        // Continue, and a successful one was one `_autoContinuePending` away
-        // from launching the game from the test button. Ownership has to
-        // outlive the frame that consumes the result, which a tri-state does
-        // and a bool cannot.
+        // Continue and the test button want opposite things from TestStatus.Ok: not a bool.
         internal static ProbeOwner Owner { get; set; } = ProbeOwner.None;
 
         private static string _testedSlotName = string.Empty;
@@ -173,13 +66,10 @@ namespace BigWalkArchipelago.Patches
             if (parent == null || templateRect == null)
                 return;
 
-            // OnEnable can be called back several times on the same instance
-            // (the player leaves and reopens the screen): do not clone again.
+            // OnEnable runs again when the screen is reopened: do not clone again.
             if (parent.Find(ToggleName) != null)
             {
-                // Reopened, not rebuilt. The controls survived, but the
-                // state they display is read from the config at draw time
-                // and has to be put back on them.
+                // Reopened, not rebuilt: the state shown is read from the config and put back.
                 RefreshToggleLabel(menu);
                 ApplyEnabledState(menu);
                 SetResult(menu, string.Empty);
@@ -189,24 +79,15 @@ namespace BigWalkArchipelago.Patches
             var step = templateRect.sizeDelta.y * SpacingFactor;
             var origin = templateRect.anchoredPosition;
 
-            // Facing Continue, in the right-hand column — player decision,
-            // 2026-09-22 ("Archipelago: on should be opposite Continue at
-            // the bottom of the menu"). Same y, one column across.
+            // Facing Continue, one column across.
             TryBuild(() => BuildButton(template, parent, ToggleName, origin + new Vector2(ToggleOffsetX, 0f),
                                        null, () => OnToggle(menu), ToggleWidth, ToggleFontScale), ToggleName);
 
-            // One row up, in the same column: the slot LastPlayed occupies,
-            // which HideLastPlayed empties just below. The label is set here,
-            // at build time — leaving it to a later refresh is what shipped a
-            // button reading "Continuer" over the slot name field, seen on
-            // screen 2026-09-22: only the toggle had a refresh of its own, so
-            // only the toggle was ever relabelled.
+            // One row up, where LastPlayed was; labelled now, as only the toggle is refreshed.
             TryBuild(() => BuildButton(template, parent, TestName, origin + new Vector2(ColumnOffsetX, step),
                                        "TEST CONNECTION", () => OnTest(menu)), TestName);
 
-            // Under the toggle, in the band between the last row and the
-            // card's bottom divider — the only space on this card that
-            // nothing else uses.
+            // Under the toggle, in the band above the card's bottom divider that nothing else uses.
             TryBuild(() => BuildResultLabel(template, parent,
                                             origin + new Vector2(ColumnOffsetX, step * ResultOffsetFactor)),
                      ResultName);
@@ -221,9 +102,7 @@ namespace BigWalkArchipelago.Patches
                 + $"'{menu.gameObject.name}' (step {step:0.#}, column {ColumnOffsetX:0.#} from Continue at {origin}).");
         }
 
-        // Each control is built on its own so that one failing leaves the
-        // others standing. The toggle is worth more than the test button,
-        // and the test button is worth more than the label it writes into.
+        // Each control built on its own, so one failing leaves the others standing.
         private static void TryBuild(Action build, string what)
         {
             try
@@ -258,17 +137,13 @@ namespace BigWalkArchipelago.Patches
                 var text = clone.GetComponentInChildren<TextMeshProUGUI>(true);
                 if (text != null)
                 {
-                    // Auto-sizing would undo this on the next layout pass and
-                    // put the label straight back where it was.
+                    // Auto-sizing would undo this on the next layout pass.
                     text.enableAutoSizing = false;
                     text.fontSize *= fontScale;
                 }
             }
 
-            // The circled arrow is the template's own Image, and it reads as
-            // "go" — wrong on a switch, wrong on a test. Made transparent
-            // rather than disabled: a disabled Graphic stops being a raycast
-            // target, and the button would no longer be clickable at all.
+            // Transparent, not disabled: a disabled Graphic stops being a raycast target.
             var arrow = clone.GetComponent<Image>();
             if (arrow != null)
             {
@@ -279,11 +154,7 @@ namespace BigWalkArchipelago.Patches
             var button = clone.GetComponent<Button>();
             if (button != null)
             {
-                // Instantiate carries the template's PERSISTENT listeners
-                // across, and ContinueButton's persistent listener is
-                // ActionStart — so a clone of it would start the session on
-                // click. RemoveAllListeners does not touch persistent calls;
-                // replacing the whole event does.
+                // Instantiate copies the persistent ActionStart listener; a new event drops it.
                 button.onClick = new Button.ButtonClickedEvent();
                 button.onClick.AddListener((UnityAction)(() => onClick()));
             }
@@ -291,11 +162,7 @@ namespace BigWalkArchipelago.Patches
             return clone;
         }
 
-        // Same shape as HostMenuConfirmPatch.ScaleRowWidth, and for the same
-        // reason: this panel has no LayoutGroup, every child carries a fixed
-        // sizeDelta, so resizing the parent alone moves nothing inside it. A
-        // child left at zero stays at zero — that is a stretched anchor, not
-        // a size, and scaling it would break it.
+        // No LayoutGroup here: children have a fixed sizeDelta; a zero one is a stretched anchor.
         private static void Narrow(RectTransform rect, float width)
         {
             var scale = width / rect.sizeDelta.x;
@@ -311,11 +178,7 @@ namespace BigWalkArchipelago.Patches
             }
         }
 
-        // "Last played" is the one field on this card with nothing to say
-        // here: you have already chosen the save, and the row it occupies is
-        // the only place in the right column the test button can go without
-        // landing on the host field. Deactivated rather than moved, so
-        // putting it back is one line.
+        // Deactivated, not moved: its row is the only free place in the right column.
         private static void HideLastPlayed(Transform card)
         {
             var lastPlayed = card.Find("LastPlayed");
@@ -333,9 +196,7 @@ namespace BigWalkArchipelago.Patches
             clone.name = ResultName;
             clone.GetComponent<RectTransform>().anchoredPosition = anchoredPosition;
 
-            // A button stripped down to its text: it is only ever read, so
-            // anything that would let it be clicked, hovered or selected is
-            // removed rather than left inert.
+            // Only ever read: everything that lets it be clicked, hovered or selected is removed.
             var button = clone.GetComponent<Button>();
             if (button != null)
                 UnityEngine.Object.Destroy(button);
@@ -352,8 +213,7 @@ namespace BigWalkArchipelago.Patches
             return clone;
         }
 
-        // See ResultWidth. Best effort: a layout that cannot be applied leaves
-        // the one-line label it replaced, which is ugly but readable.
+        // Best effort: if it fails, the one-line label stays, ugly but readable.
         private static void FitResultText(GameObject clone)
         {
             try
@@ -366,8 +226,7 @@ namespace BigWalkArchipelago.Patches
                 if (label == null)
                     return;
 
-                // The text fills its parent exactly, whatever the button it
-                // was cloned from did with its own child.
+                // The text fills its parent exactly, whatever the source button did with its child.
                 var textRect = label.GetComponent<RectTransform>();
                 if (textRect != null)
                 {
@@ -390,9 +249,6 @@ namespace BigWalkArchipelago.Patches
         }
 
         // While a probe is out the line says so, with dots that keep moving.
-        // Continue's own probe used to say nothing at all: the screen simply
-        // stopped for a second or two with no sign that anything was
-        // happening (player report, 2026-09-25).
         internal static void ShowTesting(HostMenuConfirm menu, string text)
         {
             _testingText = text;
@@ -446,12 +302,10 @@ namespace BigWalkArchipelago.Patches
                 + $"{endpoint.Host}:{endpoint.Port} as '{endpoint.SlotName}' (test button).");
         }
 
-        // Driven from the Update postfix in HostMenuConfirmStartPatch, since
-        // the probe answers on its own thread and there is nothing to hook.
+        // Polled from the Update postfix: the probe answers on its own thread.
         internal static void Tick(HostMenuConfirm menu)
         {
-            // Whoever asked, a probe in flight gets its moving dots: three
-            // steps a second, and the label only rewritten when they change.
+            // Three steps a second, and the label only rewritten when they change.
             if (_testingText != null)
             {
                 if (ApConnectionTest.Status == ApConnectionTest.TestStatus.Testing)
@@ -490,46 +344,17 @@ namespace BigWalkArchipelago.Patches
             }
         }
 
-        // The server's own wording is accurate and unhelpful: "InvalidSlot"
-        // and a socket exception look equally like "it did not work". These
-        // are the three mistakes actually worth telling apart on this
-        // screen, and anything unrecognized is passed through rather than
-        // flattened into a fourth, vaguer sentence.
+        // Turns the server's codes into the three mistakes worth telling apart; others pass.
         private static string Explain(string error)
         {
             if (string.IsNullOrEmpty(error))
                 return "no reason given";
 
-            // WHAT IS ACTUALLY MATCHED HERE, measured on 2026-09-22, and the
-            // two layers are not the same string.
-            //
-            // On the wire the server answers with codes — ['InvalidSlot'],
-            // ['InvalidPassword'], and ['InvalidPassword', 'InvalidSlot']
-            // when both are wrong (confirmed by probing a real server
-            // directly). But Archipelago.MultiClient.Net 6.7.1 does not hand
-            // those through: LoginFailure.Errors carries its own sentences,
-            // seen in game as
-            //
-            //     "The password is invalid. / The slot name did not match
-            //      any slot on the server."
-            //
-            // The substring tests below work on both, which is luck rather
-            // than design: the library's wording happens to contain "slot"
-            // and "password". If a future version writes "the name did not
-            // match", this stops recognising anything and silently falls
-            // through to printing the raw string. That is the failure to
-            // expect, and it is why this comment names both layers.
-            //
-            // Reporting them together matters because the first version
-            // flattened the both-wrong case to the slot alone: fix the name,
-            // test again, and only then hear about the password.
+            // Matches the library's sentences as well as the server's codes.
             var badSlot = error.IndexOf("Slot", StringComparison.OrdinalIgnoreCase) >= 0;
             var badPassword = error.IndexOf("Password", StringComparison.OrdinalIgnoreCase) >= 0;
 
-            // Before blaming the name, ask whether this is even a Big Walk
-            // room (see ApConnectionTest.LastRoomGames). One that is not
-            // means the address reached the wrong room — the port, almost
-            // always — and the name may well be fine.
+            // Not a Big Walk room means the wrong address, usually the port, not a wrong name.
             if ((badSlot || badPassword) && !RoomPlaysBigWalk())
                 return "not a Big Walk room - check the port" + PortNote();
 
@@ -542,13 +367,7 @@ namespace BigWalkArchipelago.Patches
             if (badPassword)
                 return "wrong Archipelago password";
 
-            // "no answer" is this mod's own 15s giveup; "timed out" and
-            // "refused" come from the socket. All three mean the same thing
-            // to the player and none of them mean the slot name is wrong,
-            // which is what makes them worth separating. Observed on screen
-            // 2026-09-22: a mistyped port reported "Connection timed out."
-            // verbatim, which reads like a server problem rather than a typo
-            // in the field right above the message.
+            // Our 15s giveup and the socket's timeouts all mean the server was not reached.
             if (error.IndexOf("no answer", StringComparison.OrdinalIgnoreCase) >= 0
                 || error.IndexOf("timed out", StringComparison.OrdinalIgnoreCase) >= 0
                 || error.IndexOf("timeout", StringComparison.OrdinalIgnoreCase) >= 0
@@ -559,9 +378,7 @@ namespace BigWalkArchipelago.Patches
             return error + PortNote();
         }
 
-        // True when the room that answered is running Big Walk, or when there
-        // is no way to know (no room answered, or it named no games) — the
-        // benefit of the doubt goes to the name the player typed.
+        // True when the room runs Big Walk or there is no way to know.
         private static bool RoomPlaysBigWalk()
         {
             var games = ApConnectionTest.LastRoomGames;
@@ -577,11 +394,7 @@ namespace BigWalkArchipelago.Patches
             return false;
         }
 
-        // Said only when the field named no port. It is optional — a server
-        // you run yourself listens on 38281 by default — but on archipelago.gg
-        // every room has its own, and the field is prefilled with a bare
-        // "archipelago.gg:", so a missing port there is the likeliest mistake
-        // on the whole screen (player report, 2026-09-25).
+        // Only when no port was given: archipelago.gg rooms each have their own.
         private static string PortNote()
         {
             var raw = ApEndpoint.CurrentHostAndPort();
@@ -593,17 +406,13 @@ namespace BigWalkArchipelago.Patches
                 : $" (no port given, tried {ApEndpoint.DefaultPortForDisplay})";
         }
 
-        // For HostMenuConfirmStartPatch, which has things to say on this same
-        // line when it refuses to start a new game.
+        // For HostMenuConfirmStartPatch, which has things to say on this same line.
         internal static void ShowResult(HostMenuConfirm menu, string text)
         {
             SetResult(menu, text);
         }
 
-        // Continue runs its own probe and used to leave this line alone,
-        // saying why only in the log — fine while a second press hosted
-        // anyway, not once a new save waits on the answer: the player has to
-        // read the reason where they are looking.
+        // Continue's own probe result goes here too, where the player is looking.
         internal static void NoteTested(string slotName)
         {
             _testedSlotName = slotName ?? string.Empty;
@@ -618,18 +427,11 @@ namespace BigWalkArchipelago.Patches
         {
             var toggle = Find(menu, ToggleName);
             if (toggle != null)
-                // Short because the button is: 210 units between SUPPRIMER
-                // and the edge of the card is not enough for the word
-                // "ARCHIPELAGO", and a clipped label says less than an
-                // abbreviated one.
+                // Short: "ARCHIPELAGO" does not fit the button.
                 SetLabel(toggle, ModConfig.ArchipelagoEnabled.Value ? "AP : ON" : "AP : OFF");
         }
 
-        // With Archipelago off, the host:port field and the test button have
-        // nothing to act on, so they are greyed rather than left looking
-        // live. The two repurposed fields stay usable: they are the game's
-        // own save name and password again, and ApplyFieldLabels has already
-        // said so.
+        // With Archipelago off, the host:port field and test button are greyed out.
         private static void ApplyEnabledState(HostMenuConfirm menu)
         {
             var on = ModConfig.ArchipelagoEnabled.Value;
@@ -642,10 +444,7 @@ namespace BigWalkArchipelago.Patches
                 if (field != null)
                     field.interactable = on;
 
-                // Faded rather than hidden, and through TMP's own alpha
-                // rather than a CanvasGroup: CanvasGroup is not in the
-                // interop assemblies this project references, and the row is
-                // nothing but text anyway.
+                // TMP alpha, not CanvasGroup: CanvasGroup is not in the interop assemblies.
                 foreach (var label in hostRow.GetComponentsInChildren<TextMeshProUGUI>(true))
                     label.alpha = on ? 1f : 0.4f;
             }
@@ -658,21 +457,7 @@ namespace BigWalkArchipelago.Patches
             ApplySlotNameLock(menu, on);
         }
 
-        // The slot name field is the game's own save-name field, relabelled
-        // (2026-09-15, to avoid a third field on this screen). The two being
-        // one thing has a cost the player found on 2026-09-22: re-hosting an
-        // existing save lets you edit the name, and editing the name changes
-        // which Archipelago slot this save connects to.
-        //
-        // That is not a cosmetic mistake. At best the server answers "no
-        // slot called that"; at worst it connects to a REAL other slot, and
-        // `ap_reported_*` is not scoped per seed, so the save then resends
-        // checks earned somewhere else entirely.
-        //
-        // So once a save exists, its name is its slot and the field is
-        // locked. Switching Archipelago off unlocks it again, which is both
-        // the escape hatch for a genuine rename and the truth: with nothing
-        // connecting, the field really is just a save name.
+        // The slot name is the save name: locked once a save exists, so it cannot switch slots.
         private static void ApplySlotNameLock(HostMenuConfirm menu, bool archipelagoOn)
         {
             var field = menu.gameNameField;
@@ -687,17 +472,7 @@ namespace BigWalkArchipelago.Patches
             if (field.interactable == !locked)
                 return;
 
-            // Switching Archipelago off, editing the name and switching it
-            // back on would otherwise walk straight around the lock, and the
-            // field would re-lock on the NEW name looking authoritative —
-            // player's own question, 2026-09-22, minutes after the lock was
-            // added.
-            //
-            // What saves it is that the field is only a draft until Continue
-            // writes it: SaveData.slotName still holds what this save is
-            // really called. So re-locking puts that back, and an edit made
-            // while disconnected is discarded rather than silently promoted
-            // to a slot name.
+            // Re-locking restores SaveData.slotName, so an edit made while off is discarded.
             if (locked && save != null && !string.IsNullOrEmpty(save.slotName) && field.text != save.slotName)
             {
                 Plugin.Log.LogInfo(
@@ -708,11 +483,6 @@ namespace BigWalkArchipelago.Patches
 
             field.interactable = !locked;
 
-            // Both signals logged, not just the one acted on: "this save has
-            // a filenameUid" is the reading being trusted here, and the
-            // delete button is the one that was actually observed to appear
-            // only for a save that already exists. If they ever disagree,
-            // this line is where it shows.
             WarnIfSlotRenamed(menu, save, locked);
 
             var deleteShown = menu.deleteButton != null && menu.deleteButton.gameObject.activeInHierarchy;
@@ -722,27 +492,7 @@ namespace BigWalkArchipelago.Patches
                 + $"deleteButton={(deleteShown ? "shown" : "hidden")}).");
         }
 
-        // The one case the lock cannot prevent, only report. Renaming a save
-        // with Archipelago off and pressing Continue genuinely renames it,
-        // and the slot follows the name — confirmed in play on 2026-09-22,
-        // 'GadgetWalk' became 'ZZTest' and nothing said so afterwards.
-        //
-        // Nothing new is written for this. ApItemCursor has bound every save
-        // to a (seed, slot) pair since it existed, precisely so a save
-        // reconnected elsewhere replays from zero instead of skipping items
-        // — so the slot each save last connected under was already in the
-        // file, and this only reads it.
-        //
-        // Worth recording, because the first version of this did add a
-        // second writer for the same key: writing the slot without the seed
-        // would have split a pair ApItemCursor compares as a unit, and the
-        // next mismatch would have been judged on half the evidence.
-        //
-        // It warns and nothing more: the rename may well be deliberate, and
-        // a player who meant it should not be stopped. What they should not
-        // be is uninformed, because connecting under a name that belongs to
-        // someone else's slot sends this save's checks into their
-        // multiworld.
+        // The lock cannot stop a rename made with Archipelago off: warns from ApItemCursor's slot.
         private static void WarnIfSlotRenamed(HostMenuConfirm menu, SaveData save, bool locked)
         {
             if (!locked || save == null)

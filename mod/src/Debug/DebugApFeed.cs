@@ -3,8 +3,7 @@ using BigWalkArchipelago.Core.Net;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Seeing what the overlay and the sounds do without a server (ROADMAP U12, U18 to U21): one
-    // press, one line or sound of the set, in turn, the burst window forgotten each time.
+    // Plays the overlay lines and sounds one at a time, without a server.
     internal static class DebugApFeed
     {
         private static int _next;
@@ -12,8 +11,6 @@ namespace BigWalkArchipelago.Debug
         private static int _fake;
         private static int _mode;
 
-        // Ctrl + 9: the monuments held to an order (the Red tower first, then the drawbridge...), in turn:
-        // in_order, by_item, off. The board in the hub lists them; a gourd is refused in a closed one.
         internal static void NextMonumentMode()
         {
             MonumentOrder.DebugFirstClosed = false;
@@ -38,11 +35,8 @@ namespace BigWalkArchipelago.Debug
             ApNotices.Post(MonumentOrder.DebugMode == null ? "Debug: the monuments are all open" : "Debug monuments: " + MonumentOrder.DebugMode + " (order: " + string.Join(", ", System.Array.ConvertAll(MonumentOrder.DebugOrder, prop => prop.Replace("bigKey", string.Empty).Replace("Zone", string.Empty))) + ")" + (MonumentOrder.DebugFirstClosed ? " (none open at the start)" : string.Empty));
         }
 
-        // Ctrl + 0: one Progressive Monument received.
         internal static void GrantMonument() => MonumentOrder.Grant();
 
-        // Ctrl + 7: fake objectives in turn (none, the Gauntlet and the gourds, two endings, back to none),
-        // for the board in the hub, the overlay line and the locked endings, without a server.
         internal static void NextObjectives()
         {
             switch (_fake++ % 4)
@@ -68,14 +62,11 @@ namespace BigWalkArchipelago.Debug
             ApNotices.Post(ApObjectives.DebugKeys == null ? "Debug: no objectives" : "Debug objectives: " + string.Join(", ", ApObjectives.DebugKeys));
         }
 
-        // After the first batch (doors, keys, wins: not it).
         private static readonly string[] Candidates =
         {
-            // 1-7: a gourd put into a holder (the player's pick, 2026-10-11: "a gourd in a monument").
             "sfx_prop_gourd_place_picker", "sfx_prop_gourd_purple_place_picker", "sfx_prop_gourd_cradle_place_random",
             "sfx_prop_gourdholder_place_random", "sfx_prop_gourd_release_random", "sfx_prop_gourd_cradle_remove_random",
             "sfx_prop_gourdholder_remove_random",
-            // 8-24: messages, bells, signs.
             "sfx_prop_walkieTalkie_transmission_on_random", "sfx_prop_walkieTalkie_transmission_off_random",
             "sfx_radio_broadcast_on_random", "sfx_radio_broadcast_button_on_random",
             "sfx_prop_cowbell_small_clang_random", "sfx_prop_cowbell_med_clang_random", "sfx_prop_cowbell_large_clang_random",

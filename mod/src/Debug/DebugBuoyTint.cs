@@ -2,12 +2,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // C1 (player, 2026-10-06: the buoy's body matches its halo). Measured: the body's shader
-    // (househouse/VertexColors) multiplies its painted vertex colours by _TintColor; _TintMask0
-    // does the same, 1 to 3 nothing; the mesh is not readable from script, so no compensation by
-    // its paint. A plain tint already gives frank colours (deep blue, pink-red), the paint being
-    // light and warm, so each colour of the palette has a body tint tuned by eye beside its halo
-    // colour. Each Ctrl+F6 paints every buoy with the next one; the last step puts them back.
+    // Ctrl+F6 tints every buoy with the next palette colour; the last step puts them back.
     internal static class DebugBuoyTint
     {
         private const string Tag = "[" + nameof(DebugBuoyTint) + "]";

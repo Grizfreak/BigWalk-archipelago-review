@@ -3,8 +3,7 @@ using HarmonyLib;
 
 namespace BigWalkArchipelago.Patches
 {
-    // A fall that knocks a player down, as a DeathLink trigger (`big_fall`, Core/Traps.OnFall).
-    // The host sees its own falls through TriggerFall and its guests' through ShowFall.
+    // Falls for DeathLink: the host sees its own in TriggerFall and its guests' in ShowFall.
     [HarmonyPatch(typeof(PlayerFaller), nameof(PlayerFaller.TriggerFall))]
     internal static class PlayerFallPatch
     {
@@ -15,7 +14,7 @@ namespace BigWalkArchipelago.Patches
         }
     }
 
-    // Not ProcessRemoteFall: the host never runs it for a guest, only ShowFall (2026-10-27).
+    // Not ProcessRemoteFall: the host never runs it for a guest.
     [HarmonyPatch(typeof(PlayerFaller), nameof(PlayerFaller.ShowFall))]
     internal static class RemoteFallPatch
     {
@@ -25,17 +24,13 @@ namespace BigWalkArchipelago.Patches
             if (!Mirror.NetworkServer.active || player == null)
                 return;
 
-            // The host's own fall is TriggerFall's.
             var identity = player.GetComponent<Mirror.NetworkIdentity>();
             if (identity == null || !identity.isLocalPlayer)
                 Traps.OnFall(player);
         }
     }
 
-    // A failed puzzle, for DeathLink (Core/PuzzleFailures): the failure switches of PressInOrder and
-    // CountingController, and the success switch of a synchronised-button puzzle, go through
-    // PeckSwitch.Peck. Both overloads; the cooldown there keeps one failure one. The context says who
-    // pecked: nobody, for PressInOrder's own reset (PuzzleFailures.OnPeck).
+    // Puzzle failures for DeathLink go through PeckSwitch.Peck; patch both overloads.
     [HarmonyPatch(typeof(PeckSwitch), nameof(PeckSwitch.Peck), new System.Type[] { typeof(PeckContext) })]
     internal static class PuzzleFailurePatch
     {
@@ -56,8 +51,7 @@ namespace BigWalkArchipelago.Patches
         }
     }
 
-    // Asleep under Big Sleep, the walker does not crouch either (player, 2026-10-05): the local
-    // crouch input is not read, so the posture stays as it was when sleep came.
+    // Big Sleep: skip the local crouch input so the posture stays as it was.
     [HarmonyPatch(typeof(PlayerCroucher), nameof(PlayerCroucher.UpdateLocal))]
     internal static class SleepCrouchPatch
     {
@@ -67,8 +61,7 @@ namespace BigWalkArchipelago.Patches
         }
     }
 
-    // The screen masks some puzzles put on (binoculars, telescope, blindfold): Big Trip and Big
-    // Meeting leave a masked player where they are (Core/TrapEffects.LocalMasked).
+    // Puzzle screen masks: Big Trip and Big Meeting leave a masked player where they are.
     [HarmonyPatch(typeof(PeckEffectMask), nameof(PeckEffectMask.SetMask))]
     internal static class ScreenMaskPatch
     {

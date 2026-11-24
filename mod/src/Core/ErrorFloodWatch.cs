@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // Unity's stackless NullReferenceException many times a second (184k in one host log): once, a report.
+    // Reports a flood of Unity's stackless NullReferenceException once.
     internal sealed class ErrorFloodWatch : ILogListener
     {
         private const string Tag = "[" + nameof(ErrorFloodWatch) + "]";
@@ -46,7 +46,7 @@ namespace BigWalkArchipelago.Core
         {
         }
 
-        // Every couple of seconds (TeleportButtonRunner): the report is written from the main thread.
+        // The report is written from the main thread.
         internal static void Tick()
         {
             if (!_pending || _reported)

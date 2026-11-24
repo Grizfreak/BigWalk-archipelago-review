@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Patches
 {
-    // Big Run puts back the speeds it saved on its key: saved during a trap, they stayed for good.
+    // Big Run restores speeds it saved on its key; saved during a trap, they stayed for good.
     internal static class BigRunCompat
     {
         private const string RunnerType = "bigrun.bigrunner";

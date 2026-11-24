@@ -4,16 +4,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Pure diagnostic (no writes): lists every loaded TrackedPeckState whose
-    // savableSystem == SavableSystem.SpawnHubGate (the 3 "Arch doors"/
-    // HubGate — Tutorial/Left/Right, cf. big-walk-archipelago-notes.md,
-    // session from 2026-09-09) with their SaveIdentity.saveGuid and the
-    // currently associated SaveManager value. Goal: empirically confirm that
-    // saveGuid is the real persistence key before using it to write directly
-    // (like ItemApplier does for gourds/big keys), rather than continuing to
-    // go through PeckDevHelper.Trigger, which broadcasts to the whole
-    // "unlocks" category and visually opens out-of-scope doors (confirmed to
-    // have no permanent effect, but visually distracting).
+    // Lists the hub arch doors' TrackedPeckStates with their saveGuid and saved value (read-only).
     internal static class DebugTrackedPeckStateLookup
     {
         internal static void DumpSpawnHubGate()
@@ -41,9 +32,9 @@ namespace BigWalkArchipelago.Debug
                     ? SaveManager.GetIntValue(saveGuid, -12345, false).ToString()
                     : "n/a";
                 Plugin.Log.LogInfo(
-                    $"[{nameof(DebugTrackedPeckStateLookup)}]   {state.gameObject.name} — label='{state.label}' — " +
-                    $"hasInitialState={state.hasInitialState} — initialState={state.initialState} — " +
-                    $"saveGuid={saveGuid} — SaveManager[{saveGuid}]={currentValue}");
+                    $"[{nameof(DebugTrackedPeckStateLookup)}]   {state.gameObject.name}, label='{state.label}', " +
+                    $"hasInitialState={state.hasInitialState}, initialState={state.initialState}, " +
+                    $"saveGuid={saveGuid}, SaveManager[{saveGuid}]={currentValue}");
             }
         }
     }

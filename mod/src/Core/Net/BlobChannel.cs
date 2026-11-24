@@ -6,7 +6,7 @@ using Mirror;
 
 namespace BigWalkArchipelago.Core.Net
 {
-    // A named blob the host shares with its guests (a tile sound, a drawing), compressed and hashed once.
+    // A named blob the host shares with guests (tile sound, drawing), compressed and hashed once.
     internal sealed class Blob
     {
         internal ulong Hash;
@@ -29,8 +29,7 @@ namespace BigWalkArchipelago.Core.Net
         }
     }
 
-    // Host to guests only, in chunks over ModChannel. A guest gets data, never a file: bounded, inflated with a
-    // cap, hash-checked, and anything wrong is dropped quietly (it runs inside Mirror's handler).
+    // Host to guests only. Guest input is bounded, capped and hash-checked; bad data is dropped.
     internal sealed class BlobChannel
     {
         internal const int ChunkBytes = 16 * 1024;
@@ -46,7 +45,6 @@ namespace BigWalkArchipelago.Core.Net
         private readonly Dictionary<int, Dictionary<string, ulong>> _sent = new();
         private readonly Dictionary<int, Queue<(string Key, ulong Hash, int Offset)>> _outbox = new();
 
-        // Guest: the transfers under way.
         private readonly Dictionary<string, Transfer> _transfers = new();
 
         private sealed class Transfer
@@ -64,7 +62,6 @@ namespace BigWalkArchipelago.Core.Net
             _maxRaw = maxRaw;
         }
 
-        // Every host frame: what changed is queued, then a few chunks per guest go out.
         internal void Pump(IEnumerable<NetworkConnection> guests, IReadOnlyDictionary<string, Blob> blobs)
         {
             var live = new HashSet<int>();

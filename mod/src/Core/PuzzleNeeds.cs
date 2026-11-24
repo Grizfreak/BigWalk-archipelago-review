@@ -5,22 +5,7 @@ using Mirror;
 
 namespace BigWalkArchipelago.Core
 {
-    // Which puzzle needs are locked on this machine — the mod's side of the
-    // apworld's `lock_puzzle_needs` (apworld/bigwalk/data.py, PUZZLE_NEEDS).
-    // The keys are the apworld's own. A need is global to the map, not per
-    // player (2026-10-02): locked means every object of that need is hidden,
-    // and receiving the item shows them again (PuzzleNeedHider).
-    //
-    // Who knows what. Only the host runs the Archipelago client, so only the
-    // host learns slot_data and receives the items; it keeps the ledger in the
-    // save (`ap_need_<key>`, because items already applied are not replayed
-    // on the next connection — ApItemCursor) and tells the guests which needs
-    // are locked in its snapshot (ModChannel). Every machine then hides its
-    // own copies of the objects. Items the player starts with arrive in the
-    // server's list like any other, so nothing here treats them specially.
-    //
-    // Nothing is locked by default, so nothing changes until slot_data says
-    // `lock_puzzle_needs` — or the debug keys lock something by hand.
+    // The `lock_puzzle_needs` side: a need is map-wide, its objects hidden until received.
     internal static class PuzzleNeeds
     {
         internal const string Buttons = "buttons";
@@ -52,8 +37,7 @@ namespace BigWalkArchipelago.Core
 
         private static readonly HashSet<string> Locked = new HashSet<string>();
 
-        // From slot_data. The keys are in the order of their item ids: an
-        // item's id is the base plus the offset plus its position here.
+        // In item id order: an item's id is the base plus the offset plus its position here.
         private static string[] _keys = Array.Empty<string>();
         private static long _itemIdBase;
         private static bool _mirrored;
@@ -63,8 +47,7 @@ namespace BigWalkArchipelago.Core
 
         internal static bool Enabled { get; private set; }
 
-        // True wherever the option is on: the host reads it from slot_data, a
-        // guest is told by its host. What the overlay shows the line for.
+        // The host reads it from slot_data, a guest is told by its host.
         internal static bool Active => Enabled || _mirrored;
 
         internal static bool IsLocked(string need) => Locked.Contains(need);
@@ -78,8 +61,7 @@ namespace BigWalkArchipelago.Core
                 Version++;
         }
 
-        // Host: slot_data has arrived. Every need the ledger has not granted
-        // is locked, which is all of them for a save with no items yet.
+        // Host: every need the ledger has not granted is locked.
         internal static void Configure(bool enabled, string[] keysInIdOrder, long itemIdBase)
         {
             Enabled = enabled;
@@ -104,9 +86,7 @@ namespace BigWalkArchipelago.Core
                 + (Locked.Count == 0 ? "nothing locked." : $"locked until their item arrives: {string.Join(", ", Locked)}."));
         }
 
-        // A world came up on a connection that was already there (the host
-        // went to the menu and loaded the save again): what is locked is what
-        // the ledger says, not whatever was toggled by hand in the last one.
+        // A world reloaded on the same connection: the ledger decides, not the last hand toggles.
         internal static void Rearm()
         {
             if (!Enabled)
@@ -151,12 +131,10 @@ namespace BigWalkArchipelago.Core
 
         private static bool IsGranted(string need) => SaveManager.GetIntValue(KeyPrefix + need, 0, false) != 0;
 
-        // A save rebound to another seed replays every item from scratch, so
-        // needs granted under the old binding go with it.
+        // A save rebound to another seed replays every item, so the old grants go.
         internal static void ClearLedger()
         {
-            // Only what was granted: writing a zero for every need would fill
-            // a save that never used the option with seventeen keys.
+            // Only what was granted, so a save that never used the option gets no keys.
             foreach (var key in All)
             {
                 if (IsGranted(key))
@@ -164,8 +142,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The world went away: its slot's list goes with it, and so does
-        // whatever was locked by hand.
+        // The world went away: its slot's list and any hand locks go with it.
         internal static void Forget()
         {
             Enabled = false;

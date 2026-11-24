@@ -5,20 +5,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // What a belt is made of, vanilla against clone (2026-09-25).
-    //
-    // The first alpha reported received belts "attached to an unseen object"
-    // on the ground, a second, bugged copy floating in front of whoever wears
-    // one, and that copy in their shadow for everyone else — while the
-    // backpacks, cloned the same way from 2026-09-23, behave. The suspicion is
-    // a SkinnedMeshRenderer whose bones live outside the prop: Instantiate
-    // only remaps references inside the copied hierarchy, so a clone would go
-    // on following the bones of the vanilla belt it was copied from, which
-    // this mod hides. This prints, for each HolsterProp (and one backpack to
-    // compare), every renderer and where its bones really are.
-    //
-    // Runs once per loaded world, a few seconds in, when Debug is enabled.
-    // The watch every second that followed was dropped: it rescanned every prop (2026-10-27).
+    // Logs belt and backpack renderers and their bones, vanilla against clone, once per world.
     internal class DebugGadgetRigDump : MonoBehaviour
     {
         // Constructor required by Il2CppInterop for any type injected into IL2CPP.
@@ -106,8 +93,7 @@ namespace BigWalkArchipelago.Debug
             }
             Plugin.Log.LogInfo($"[{nameof(DebugGadgetRigDump)}]   components: {string.Join(", ", components)}");
 
-            // Which state drives which mesh: on a guest the hung mesh came back
-            // after the clone was built, so something networked switches it.
+            // On a guest the hung mesh came back after cloning, so something networked switches it.
             foreach (var state in prop.GetComponentsInChildren<TrackedPeckState>(true))
             {
                 if (state == null)

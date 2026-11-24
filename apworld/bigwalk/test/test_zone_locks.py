@@ -1,7 +1,4 @@
-"""
-`zone_locks` (ROADMAP R12, player 2026-10-14): the island's lamps and gadgets by the zone of the nearest coloured
-tower, each zone's lamps and gadgets an item.
-"""
+"""`zone_locks`: lamps and gadgets grouped by the nearest coloured tower, each zone an item."""
 
 from .. import data
 from .bases import BigWalkTestBase

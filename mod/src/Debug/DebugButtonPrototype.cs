@@ -4,29 +4,20 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // A throwaway experiment for ROADMAP U4/U10, now on the mod's own buttons
-    // (Core/WorldButtons): one press of the key puts a button two metres in front of the
-    // player, and clicking it teleports the player to the hub's spawn point.
-    //
-    // The first version copied one of the game's buttons and was dropped: the copy kept the
-    // original's network reference and every press went to the original.
+    // Puts one of the mod's buttons in front of the player; pressing it teleports to the hub.
     internal static class DebugButtonPrototype
     {
-        // Where a player stands when a world has just loaded at the hub, measured on
-        // 2026-10-03 (SystemWrites logged it at every start).
+        // Where a player stands when a world has just loaded at the hub.
         private static readonly Vector3 HubSpawn = new Vector3(-242.3f, 37.0f, -484.7f);
 
-        // Each press of the key tries the next icon, so one session shows them all.
         private static int _iconTest;
         private static readonly string[] Icons = { "red", "green", "blue", "yellow", "black", "hub", "gauntlet" };
 
         private static string IconForNextTest() => Icons[_iconTest++ % Icons.Length];
 
-        // Puts the button on the wall the player is looking at, facing out of it, as a mounted one
-        // is. With no wall in reach it hangs at hand height in front of the player.
         internal static void SpawnInFrontOfPlayer()
         {
-            var player = DebugPlayerLookup.FindLocalPlayer();
+            var player = Core.LocalPlayer.Find();
             if (player == null)
             {
                 Plugin.Log.LogInfo($"[{nameof(DebugButtonPrototype)}] Local player not found.");
@@ -47,13 +38,12 @@ namespace BigWalkArchipelago.Debug
                 presser => WorldButtons.TeleportTo(presser, HubSpawn, Quaternion.identity));
         }
 
-        // Writes the spot the player is looking at, a point on a surface and the way the surface
-        // faces, to a file: how the real buttons get their places, without guessing coordinates.
+        // Logs the aimed point and surface normal, used to place the real buttons.
         private const int DebugSlot = 31;
 
         internal static void MarkAimedSpot()
         {
-            var player = DebugPlayerLookup.FindLocalPlayer();
+            var player = Core.LocalPlayer.Find();
             if (player == null || !TryAimedSurface(player, out var point, out var normal))
             {
                 Plugin.Log.LogInfo($"[{nameof(DebugButtonPrototype)}] Nothing to mark: no surface within reach of the crosshair.");
@@ -73,10 +63,7 @@ namespace BigWalkArchipelago.Debug
             }
         }
 
-        // What the Black Tower's panel of tower icons is made of, to copy them as decoration
-        // for the teleport buttons: every renderer under an `EndingGateIndicator`, with its mesh,
-        // material, size and place, so the icon of each tower can be told from the others. Pure
-        // diagnostic, written to the log and to BepInEx/indicator-dump.txt.
+        // Dumps the renderers of the Black Tower's tower-icon panel to BepInEx/indicator-dump.txt.
         internal static void DumpIndicators()
         {
             var text = new System.Text.StringBuilder();

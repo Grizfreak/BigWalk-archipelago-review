@@ -5,12 +5,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Measuring pass for U12 (ROADMAP, player 2026-10-09): which clip a gourd dropped into a monument,
-    // a puzzle's end or a click really plays. Every sound the game asks its audio system for goes
-    // through AudioPlayHelper (or a peck effect's PlayAudioAsset, which ends there), so a prefix on
-    // each writes the asset's name, the object that asked and where, to BepInEx/audio-played.tsv,
-    // while Debug.Enabled is active. The same asset within half a second is written once (a
-    // footstep or an ambience would flood the file). Do the action in game, read the last lines.
+    // Logs every sound the game plays to BepInEx/audio-played.tsv, each asset once per half second.
     internal static class DebugAudioLog
     {
         // Set while the cycling keys play a clip, so the test is not logged as a game sound.

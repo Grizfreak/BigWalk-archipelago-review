@@ -3,16 +3,16 @@ using HarmonyLib;
 
 namespace BigWalkArchipelago.Patches
 {
-    // Tells Core/WorldButtons when one of its native buttons is pressed. A postfix on SetState,
-    // the one place every press ends, and the first test is a flag so the game's many other
-    // state changes cost nothing while the mod has put no button into the world.
+    // Tells WorldButtons when one of its buttons is pressed; a flag keeps other presses cheap.
     [HarmonyPatch(typeof(TrackedPeckState), nameof(TrackedPeckState.SetState), new[] { typeof(PeckContext) })]
     internal static class WorldButtonPatch
     {
         private static void Postfix(TrackedPeckState __instance, PeckContext __0)
         {
+#if DEBUG
             if (Debug.DebugStateLog.On)
                 Debug.DebugStateLog.ObserveState(__instance, __0.state);
+#endif
 
             PackChecks.OnState(__instance, __0.state);
             PuzzleFailures.OnState(__instance, __0.state);

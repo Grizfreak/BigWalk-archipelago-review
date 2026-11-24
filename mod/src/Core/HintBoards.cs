@@ -7,27 +7,12 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // R7 (player, 2026-10-13): two of the hub notice board's signs carry the mod's text, from the start, and stay
-    // on their hooks. The left one keeps the game's own line ("If you set off alone, leave a note"):
-    //   the centre sign  (`hint_board`) "HINTS points / cost", then the hints this slot asked for that are still open (an item for
-    //                    this slot, not found); nothing else: "nothing if the player did not ask". Written on, it
-    //                    asks the server for a hint (`!hint <what was written>`, which costs points), and goes back
-    //                    to its list; the server's answer is a line on the overlay. While a player writes,
-    //                    the overlay suggests this slot's item names that match, Tab takes the first, and what is
-    //                    sent is the name matched (player, 2026-10-13; on the host's screen, where the names are);
-    //   the right sign   (`tracker_board`) a few of the checks in logic now and not done, the seed's logic
-    //                    evaluated with the items received (Net/ApLogic). First those a hint points to, then
-    //                    those that hold a progression item for anyone, then the rest, each in the apworld's
-    //                    order, with no mark (player, 2026-10-13: the sign is small). No one writes on it (Patches/HintSignPatches).
-    // A sign's text is the game's own SyncVar (`PeckEffectTextInput.networkedText`), so the host writes it and the
-    // guests see it as they see a player's note; a guest's note reaches the host the game's way. The tracker board
-    // cannot be taken off its hook (refused on the host, Patches/PickUpVanishedPropPatch); the hint sign can, since a
-    // sign is written on in hand.
+    // Two hub notice board signs: hints this slot asked for (`hint_board`) and checks in logic.
     internal static class HintBoards
     {
         private const string Tag = "[" + nameof(HintBoards) + "]";
 
-        // Recon 2026-10-13 (`NoticeBoardWhiteboards`): the three signs on their hooks.
+        // The three signs on their hooks.
         private const string HintSignPath = "Hub/NoticeBoardWhiteboards/WallHook (1)/WallHookHome/SignProp center";
         private const string CheckSignPath = "Hub/NoticeBoardWhiteboards/WallHook (2)/WallHookHome/SignProp right";
 
@@ -37,17 +22,16 @@ namespace BigWalkArchipelago.Core
 
         private static PeckEffectTextInput _hintSign;
 
-        // `hint_board` (on by default) and `tracker_board` (off): which sign is the mod's, on the host.
+        // `hint_board` (on by default) and `tracker_board` (off), on the host.
         private static bool _hintOn;
 
-        // Whether the guests may ask for hints (the host's GuestsCanAskHints, off by default, player 2026-10-13), and
-        // on a guest what the host said: that, and the item names for its suggestions.
+        // Whether guests may ask for hints; on a guest, what the host said and names to suggest.
         private static bool _mirroredMayAsk;
         private static List<string> _mirroredNames = new();
 
         private static bool GuestsMayAsk => _hintOn && ModConfig.GuestsCanAskHints.Value;
 
-        // For the snapshot: bit 0, the guests may ask; and the names they may ask for (none when they may not).
+        // For the snapshot: bit 0, the guests may ask.
         internal static byte HostFlags() => (byte)(GuestsMayAsk ? 1 : 0);
         internal static string HostNames() => GuestsMayAsk ? string.Join("\n", HintableNames()) : string.Empty;
 
@@ -68,8 +52,7 @@ namespace BigWalkArchipelago.Core
 
         private static bool IsGuest => NetworkClient.active && !NetworkServer.active;
 
-        // Whether this machine's player may not write on this sign: the tracker board's, and on a guest the hint
-        // board's unless the host lets guests ask. Both are carried as any sign (player, 2026-10-13).
+        // Locked here: the tracker board, and on a guest the hint board unless guests may ask.
         internal static bool IsLocked(PeckEffectTextInput input) =>
             input != null && (_checkLocked && input == _checkSign
                               || IsGuest && input == _hintSign && IsOurs(_hintSign) && !_mirroredMayAsk);
@@ -85,7 +68,6 @@ namespace BigWalkArchipelago.Core
         private static readonly BepInEx.Unity.IL2CPP.Configuration.KeyboardShortcut CompleteKey = new(KeyCode.Tab);
         private static bool _wasWriting;
 
-        // Every frame (TrapRunner): the suggestions while the hint sign is being written on, on this machine.
         internal static void Tick()
         {
             try
@@ -125,8 +107,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // This slot's item names with a copy not received yet (player, 2026-10-13: no use asking for what came).
-        // Worked out when the field opens and as items arrive, not every frame.
+        // Item names not received yet; worked out when the field opens and as items arrive.
         private static List<string> _hintable = new();
         private static int _hintableAt = -1;
 
@@ -174,7 +155,7 @@ namespace BigWalkArchipelago.Core
             return result;
         }
 
-        // What is sent for what was written: an item's name in its own case when it is one, else the text as it is.
+        // An item's name in its own case when it matches one, else the text as it is.
         private static string Resolve(string asked)
         {
             var names = HintableNames();
@@ -185,12 +166,11 @@ namespace BigWalkArchipelago.Core
                 if (string.Equals(name, asked, StringComparison.OrdinalIgnoreCase))
                     return name;
             }
-            // Never a guess (player, 2026-10-13: a guess spends points on what was not asked): Tab completes, not this.
+            // Never a guess, which would spend points on what was not asked: Tab completes.
             return asked;
         }
 
-        // Every couple of seconds (TeleportButtons.Sync), on every machine: finds the signs and says which are locked;
-        // the host writes their text.
+        // On every machine: finds the signs and says which are locked; the host writes their text.
         internal static void Sync()
         {
             if (!WorldManager.isReadyForEffects)
@@ -200,8 +180,7 @@ namespace BigWalkArchipelago.Core
                 return;
             }
 
-            // Unity's own null test, not `??=`: a sign of the save before is destroyed, not null (2026-10-13, the
-            // signs stayed empty on the next save, the text going to the old ones).
+            // Unity's null test, not `??=`: a sign from the previous save is destroyed, not null.
             if (_hintSign == null)
             {
                 _hintSign = Find(HintSignPath);
@@ -210,7 +189,7 @@ namespace BigWalkArchipelago.Core
             if (_checkSign == null)
                 _checkSign = Find(CheckSignPath);
 
-            // A guest has no slot: it locks what the host writes on, which it reads in the sign's text.
+            // A guest has no slot: it locks the signs whose text the host wrote.
             if (IsGuest)
             {
                 _checkLocked = IsOurs(_checkSign);
@@ -225,7 +204,6 @@ namespace BigWalkArchipelago.Core
             if (!connected)
                 return;
 
-            // A player wrote on the hint sign: what they wrote is the question, and the list comes back at once.
             var asked = _hintOn ? Asked(_hintSign) : null;
             if (asked != null)
             {
@@ -256,7 +234,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The mod's texts start with this title line, which is how a guest knows a sign is the mod's.
+        // The mod's texts start with this title, which is how a guest knows a sign is the mod's.
         private const string HintTitle = "HINTS";
         private const string CheckTitle = "LOGIC";
 
@@ -273,8 +251,7 @@ namespace BigWalkArchipelago.Core
             sign.NetworknetworkedText = text;
         }
 
-        // What a player wrote on the hint sign, if it is not the mod's own text: the last line not of the mod's (a
-        // player may write under the list, or over it).
+        // The last line not written by the mod: a player may write under the list or over it.
         private static string Asked(PeckEffectTextInput sign)
         {
             var text = sign != null ? sign.NetworknetworkedText : null;
@@ -303,9 +280,7 @@ namespace BigWalkArchipelago.Core
             if (lines.Count == 0)
                 return text.Append("\nnone asked for").ToString();
 
-            // The newest last: the last few the player asked for.
             var first = Math.Max(0, lines.Count - MaxHints);
-            // A dash before each entry, none before the title (player, 2026-10-13).
             for (var i = first; i < lines.Count; i++)
                 text.Append("\n- ").Append(lines[i]);
             if (first > 0)
@@ -335,7 +310,6 @@ namespace BigWalkArchipelago.Core
             open.AddRange(then);
             open.AddRange(rest);
 
-            // In logic / all the checks not done yet (player, 2026-10-13).
             var text = new StringBuilder($"{CheckTitle} {open.Count}/{connection.UncheckedCount(checkedIds)}");
             if (open.Count == 0)
                 return text.Append("\nnothing right now").ToString();

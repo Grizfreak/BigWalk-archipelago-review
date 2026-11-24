@@ -5,37 +5,14 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Pure diagnostic (no writes), for scene mechanisms with no dedicated C#
-    // class findable by name in il2cpp.cs — e.g. the "Arch doors"/shortcut
-    // buttons from the third-party document (cf.
-    // big-walk-archipelago-notes.md), unfindable statically (no "Arch"/
-    // "Shortcut" class in the dump, and `strings` on GameAssembly.dll doesn't
-    // surface any "Arch" identifier on the game side either). Probably, like
-    // the big-key plinths, generic scene wiring (Peck system) rather than a
-    // dedicated class — this tool lists, in-game, nearby GameObjects whose
-    // name or a component matches a keyword, along with their component
-    // list, in order to identify the real mechanism without blindly guessing
-    // via Ghidra.
-    //
-    // Extended on 2026-09-11 (hierarchy path + savableSystem) for the hub's
-    // black sphere: the F9 dump from 2026-09-10 revealed
-    // "Spawn_SecondEnding_Sphere_Whole" (mesh+collider, 3.5m from the player
-    // at the hub) and, further away (~21m), a cluster of "ModelOrb Colliders"/
-    // _Wall*/"SecondEndingDoorLogic" (PeckEffectAnimancer) — so NOT a
-    // mechanism entirely without a Peck as assumed on 2026-09-10 (cf.
-    // big-walk-archipelago-notes.md), just not carried by the Sphere/_Wall
-    // objects themselves. Key object still to confirm: "OpenSystem"
-    // (TrackedPeckState+PeckSystemBlock+PeckBusConnection+2xPeckEffectToggle
-    // +PeckEffectAudio, 4.8m away, right next to the sphere). Without the
-    // hierarchy path we can't tell whether these objects belong to the same
-    // scene assembly — hence the addition below.
+    // Lists nearby objects whose name or a component matches a keyword, with path and components.
     internal static class DebugComponentLookup
     {
         private static readonly string[] DefaultKeywords = { "arch", "door", "switch", "button", "gate", "peck", "shortcut", "bell", "chime", "gong", "cowbell", "sphere", "orb", "void", "block", "barrier", "wall", "unlock", "skip", "proven", "reward", "postgame", "complet", "second", "ending", "cosmetic", "paper", "dispens", "ticket", "goodbye", "print", "hold", "tray", "slot", "speaker", "plug", "radio", "party", "club", "antenna", "cable", "stereo", "boombox" };
 
         internal static void DumpNearbyByKeyword(float radius)
         {
-            var localPlayer = DebugPlayerLookup.FindLocalPlayer();
+            var localPlayer = Core.LocalPlayer.Find();
             if (localPlayer == null)
             {
                 Plugin.Log.LogInfo($"[{nameof(DebugComponentLookup)}] Local player not found.");
@@ -72,7 +49,7 @@ namespace BigWalkArchipelago.Debug
             {
                 var distance = Math.Sqrt(entry.sqrDistance).ToString("F1");
                 var path = DescribePath(entry.go.transform);
-                Plugin.Log.LogInfo($"[{nameof(DebugComponentLookup)}]   {entry.go.name} — distance={distance}m — path={path} — components: {entry.components}");
+                Plugin.Log.LogInfo($"[{nameof(DebugComponentLookup)}]   {entry.go.name}, distance={distance}m, path={path}, components: {entry.components}");
 
                 var trackedState = entry.go.GetComponent<TrackedPeckState>();
                 if (trackedState != null)
@@ -105,12 +82,12 @@ namespace BigWalkArchipelago.Debug
                 var currentValue = SaveManager.GetIntValue(key, -12345, false);
 
                 Plugin.Log.LogInfo(
-                    $"[{nameof(DebugComponentLookup)}]     TrackedPeckState — label='{state.label}' — savableSystem={savableSystem} — " +
-                    $"saveGuid={saveGuid} — actual key='{key}' — SaveManager[{key}]={currentValue}");
+                    $"[{nameof(DebugComponentLookup)}]     TrackedPeckState, label='{state.label}', savableSystem={savableSystem}, " +
+                    $"saveGuid={saveGuid}, actual key='{key}', SaveManager[{key}]={currentValue}");
             }
             catch (Exception ex)
             {
-                Plugin.Log.LogWarning($"[{nameof(DebugComponentLookup)}]     TrackedPeckState — exception while reading, ignored: {ex.Message}");
+                Plugin.Log.LogWarning($"[{nameof(DebugComponentLookup)}]     TrackedPeckState, exception while reading, ignored: {ex.Message}");
             }
         }
 

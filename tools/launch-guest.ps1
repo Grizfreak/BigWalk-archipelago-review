@@ -1,81 +1,6 @@
 <#
 .SYNOPSIS
-    Starts a second instance of the game on this PC, as the loopback guest,
-    and has it join the first.
-
-.DESCRIPTION
-    Testing co-op used to take two machines. The host (the ordinary
-    instance, launched through Steam) listens on UDP 7777 as well as EOS
-    whenever Steam is up: NetworkMinder.StartHost puts a MultiplexTransport
-    over [KcpTransport, EosTransport], measured with Ctrl+N and
-    Get-NetUDPEndpoint on 2026-09-25. So a second instance of the same
-    install can join it as a real Mirror client over 127.0.0.1, and every
-    replication bug a real guest meets is there to be met.
-
-    This script starts that second instance. It is launched straight from
-    the exe, because Steam refuses to launch a game twice, and three things
-    make that work:
-
-    - SteamAppId / SteamGameId in the guest's environment. Without them,
-      SteamManager.Awake calls SteamAPI_RestartAppIfNecessary, which quits
-      the process and asks Steam to start the game instead (decompiled
-      2026-09-25) - most likely what "a direct launch does not load BepInEx"
-      was on 2026-09-15. Steam sets these two variables itself when it
-      launches a game; they are set here for the guest only and adds no
-      file to the install.
-    - --bwap-guest on the command line, which is how the mod knows its role
-      (Debug/LoopbackGuest.cs). Never the .cfg: both instances read the same
-      one.
-    - The working directory set to the game folder, and no DOORSTOP_*
-      variables inherited, so Doorstop resolves its relative paths and loads
-      BepInEx.
-
-    If the host is already hosting (something on UDP 7777), the guest also
-    gets --bwap-join and joins on its own once its title menu is up;
-    otherwise Ctrl+L in the guest's window joins. Either way the mod goes
-    through the game's own NetworkMinder.SetTransportAndConnect.
-
-    The guest runs windowed. Unity keeps the window mode and resolution in
-    PlayerPrefs, which both instances share (HKCU\Software\House House\Big
-    Walk), so the host could come back windowed next time. The Screenmanager
-    values are saved before the launch and put back once the guest exits, by
-    a hidden copy of this script that waits for it; any Screenmanager value
-    the guest created is removed.
-
-    Logs stay apart: BepInEx gives the second instance LogOutput.1.log when
-    LogOutput.log is already open (it tries LogOutput.{0}.log), and Unity's
-    log goes to Player-guest.log beside the usual Player.log.
-
-.PARAMETER GameDir
-    The installation both instances run from. It must be the Steam copy: the
-    two sides of a Mirror session have to run exactly the same build.
-
-.PARAMETER Width
-    Width of the guest's window.
-
-.PARAMETER Height
-    Height of the guest's window.
-
-.PARAMETER NoJoin
-    Never joins on its own, even if the host is hosting: Ctrl+L does it.
-
-.PARAMETER Vanilla
-    The guest runs without the mod: it only joins (--bwap-vanilla), and meets
-    the host as a PlayStation or Xbox player would. Ctrl+Y on the host does
-    the same.
-
-.PARAMETER Force
-    Starts the guest even if no host is running. The host has to be the
-    first instance: Il2CppInterop regenerates BepInEx\interop\ on the first
-    launch after a game update, and two instances doing it at once would
-    write the same files.
-
-.PARAMETER WatchGuest
-    Internal: the process id the hidden watcher waits for before restoring
-    the screen settings.
-
-.PARAMETER Snapshot
-    Internal: where the screen settings were saved.
+    Starts a second instance of the game on this PC as the loopback guest, joining the first.
 #>
 [CmdletBinding()]
 param(
@@ -96,7 +21,7 @@ $kcpPort = 7777
 $prefsKey = 'HKCU:\Software\House House\Big Walk'
 $unityLogDir = Join-Path (Split-Path $env:LOCALAPPDATA) 'LocalLow\House House\Big Walk'
 
-# --- The hidden watcher: wait for the guest, then put the screen back. ---
+# The hidden watcher: wait for the guest, then put the screen back.
 if ($WatchGuest -ne 0) {
     $guest = Get-Process -Id $WatchGuest -ErrorAction SilentlyContinue
     if ($guest) { $guest.WaitForExit() }
@@ -109,9 +34,7 @@ if ($WatchGuest -ne 0) {
     } while ($guests.Count -gt 0)
     if (-not (Test-Path $Snapshot)) { exit 0 }
 
-    # Assigned before the loop, not wrapped in @(): Windows PowerShell's
-    # ConvertFrom-Json writes a JSON array to the pipeline as ONE object, and
-    # @() around it makes an array holding that array.
+    # Not wrapped in @(): Windows PowerShell's ConvertFrom-Json emits an array as one object.
     $entries = Get-Content $Snapshot -Raw | ConvertFrom-Json
     $names = @()
     foreach ($entry in $entries) {
@@ -121,8 +44,7 @@ if ($WatchGuest -ne 0) {
         $names += $entry.Name
     }
 
-    # A windowed guest also writes values the host never had (the window
-    # size, measured 2026-09-25); left behind, they would be the host's.
+    # A windowed guest also writes values the host never had; left, they would be the host's.
     foreach ($name in (Get-Item $prefsKey).Property | Where-Object { $_ -like 'Screenmanager *' -and $names -notcontains $_ }) {
         Remove-ItemProperty -Path $prefsKey -Name $name
     }
@@ -134,7 +56,7 @@ if ($WatchGuest -ne 0) {
 $exe = Join-Path $GameDir 'Big Walk.exe'
 if (-not (Test-Path $exe)) { throw "No game at $exe." }
 
-# --- The host must already be up, and past the interop generation. ---
+# The host must already be up, and past the interop generation.
 $running = @(Get-Process -Name 'Big Walk' -ErrorAction SilentlyContinue)
 if ($running.Count -eq 0 -and -not $Force) {
     throw 'No host is running. Launch the game through Steam first and wait for its main menu (-Force to start the guest alone).'
@@ -164,13 +86,10 @@ if ($hosting) {
     Write-Host "The host is not hosting yet (nothing on UDP $kcpPort): host a world, then press Ctrl+L in the guest's window." -ForegroundColor Yellow
 }
 
-# Which guest this is: 1 for the first, up to 3 (four players). Every guest after the first
-# sends the host an identifier of its own (--bwap-guest-index), or the host would see two
-# players with one.
+# Which guest this is, 1 to 3; each one after the first sends the host its own identifier.
 $index = [Math]::Max(1, $running.Count)
 
-# --- Save the screen settings the guest is about to overwrite (the first guest only: the
-# watcher it starts waits for every guest). ---
+# Save the screen settings the guest will overwrite (first guest only: its watcher waits).
 $snapshotFile = Join-Path $env:TEMP 'bwap-guest-screen-prefs.json'
 $saved = 0
 if ($index -eq 1 -and (Test-Path $prefsKey)) {
@@ -182,10 +101,7 @@ if ($index -eq 1 -and (Test-Path $prefsKey)) {
     $saved = $entries.Count
 }
 
-# --- Start the guest. ---
-# Through Start-Process (the shell), with the environment changed in this
-# process for the length of the call: a process started directly inherits
-# this console and prints Unity's boot output into it.
+# Start the guest through the shell, or it would print Unity's boot output in this console.
 $unityLog = Join-Path $unityLogDir $(if ($index -gt 1) { "Player-guest$index.log" } else { 'Player-guest.log' })
 $role = if ($Vanilla) { "--bwap-vanilla" } else { "--bwap-guest" }
 $arguments = $role + " --bwap-guest-index $index" + $(if ($join) { " --bwap-join" } else { "" }) +
@@ -216,13 +132,12 @@ if ($saved -gt 0) {
     Write-Host "  $saved screen setting(s) saved; they are put back when the guest exits."
 }
 
-# --- Say where its logs are, which also proves BepInEx loaded. ---
+# Say where its logs are, which also proves BepInEx loaded.
 Write-Host '  Waiting for the guest''s BepInEx log...'
 $bepLog = $null
 $deadline = $started.AddSeconds(90)
 while ((Get-Date) -lt $deadline -and -not $guest.HasExited) {
-    # Found by what it says rather than by its name: LogOutput.1.log when the
-    # host holds LogOutput.log, LogOutput.log itself with -Force.
+    # Found by content, not name: LogOutput.1.log when the host holds LogOutput.log.
     $bepLog = Get-ChildItem (Join-Path $GameDir 'BepInEx') -Filter 'LogOutput*.log' -ErrorAction SilentlyContinue |
         Where-Object { $_.LastWriteTime -ge $started } |
         Where-Object { Select-String -Path $_.FullName -Pattern 'Role: loopback guest' -Quiet } |
@@ -241,7 +156,7 @@ if ($bepLog) {
 }
 Write-Host "  Unity log: $unityLog"
 
-# --- When it joins on its own, say how far it got. ---
+# When it joins on its own, say how far it got.
 if ($bepLog -and $join) {
     Write-Host '  Waiting for the guest to join (it may be sitting on the microphone check: click through it)...'
     $deadline = (Get-Date).AddSeconds(180)

@@ -4,15 +4,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // What changes while the player presses things, for the buttons whose effect is saved nowhere
-    // the mod already looks (the chapel's, the top of the Black Tower's: ROADMAP U10). Switched on
-    // and off with one key; while on, it writes to the log
-    //
-    //  - every value the game saves, under any key, when it changes, and
-    //  - every state of a networked peck state (what buttons and doors are made of) set within
-    //    `Radius` metres of the player, with its place in the scene.
-    //
-    // Pure diagnostic, no writes to the game, and off until asked for: states change all the time.
+    // Logs saved values and nearby peck states as they change, for buttons the mod cannot see yet.
     internal static class DebugStateLog
     {
         private const float Radius = 25f;
@@ -48,7 +40,7 @@ namespace BigWalkArchipelago.Debug
 
             try
             {
-                var player = DebugPlayerLookup.FindLocalPlayer();
+                var player = Core.LocalPlayer.Find();
                 if (player == null)
                     return;
 
@@ -78,7 +70,7 @@ namespace BigWalkArchipelago.Debug
 
         private static string Where()
         {
-            var player = DebugPlayerLookup.FindLocalPlayer();
+            var player = Core.LocalPlayer.Find();
             return player != null ? "at " + player.transform.position.ToString("F1") : "no player";
         }
     }

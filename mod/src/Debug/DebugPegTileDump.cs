@@ -8,17 +8,13 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Tile Thief and its tiles, for `tile_thief` (0.3.0): every peg tile validator (where it is,
-    // the sequence of tile kinds it expects, the sets its generator draws from, its slots) and
-    // every prop that draws a peg tile (its kinds, place, whether it is switched on), with the
-    // player's distance. Written to BepInEx/peg-tile-dump-<n>.txt. Pure diagnostic.
+    // Dumps peg tile validators and tile props to BepInEx/peg-tile-dump-<n>.txt.
     internal static class DebugPegTileDump
     {
         private static int _count;
         private static float _nextRequestCheck;
 
-        // A dump without a key, for a launch driven from outside the game: a file
-        // BepInEx/peg-tile-dump.request, taken once the world is ready, and deleted.
+        // Triggered by a BepInEx/peg-tile-dump.request file, deleted once read.
         internal static void DumpOnRequest()
         {
             if (Time.unscaledTime < _nextRequestCheck)
@@ -33,7 +29,7 @@ namespace BigWalkArchipelago.Debug
 
         internal static void Dump()
         {
-            var player = DebugPlayerLookup.FindLocalPlayer();
+            var player = Core.LocalPlayer.Find();
             var origin = player != null ? player.transform.position : Vector3.zero;
             var text = new StringBuilder();
 
@@ -98,8 +94,7 @@ namespace BigWalkArchipelago.Debug
                 }
             }
 
-            // The prefabs Mirror can make by itself, by asset id: a peg tile among them could be made
-            // new from its own prefab instead of copied from one of the island's.
+            // Mirror's spawnable prefabs by asset id, in case a peg tile can be made from its own.
             try
             {
                 var prefabs = Mirror.NetworkClient.prefabs;
@@ -190,9 +185,7 @@ namespace BigWalkArchipelago.Debug
             return $"'{clip.name}' {clip.length:0.00}s {clip.frequency}Hz x{clip.channels} {clip.loadType} {clip.loadState}";
         }
 
-        // R8 (custom tiles): every PegTileDataSet in use (its atlas cells per tile kind, its materials), its
-        // textures written out as PNG in BepInEx/tile-atlas/, the split-flap glyphs, and every renderer that draws
-        // one of those atlases without a PegTileRenderer (a symbol the data set does not drive).
+        // Every PegTileDataSet in use, its atlases written as PNG to BepInEx/tile-atlas/.
         private static void DumpDataSets(StringBuilder text)
         {
             var sets = new List<PegTileDataSet>();
@@ -264,7 +257,7 @@ namespace BigWalkArchipelago.Debug
                     text.AppendLine($"  flap {Path(flap.transform)} type {flap.splitFlapType} set {flap.tileSet} at {flap.transform.position:F1}");
             }
 
-            // The atlases drawn by renderers no PegTileRenderer drives: symbols the data set would not change.
+            // Atlases drawn without a PegTileRenderer: symbols the data set would not change.
             var driven = new HashSet<IntPtr>();
             foreach (var renderer in UnityEngine.Object.FindObjectsByType<PegTileRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
@@ -292,8 +285,7 @@ namespace BigWalkArchipelago.Debug
             }
             text.AppendLine($"undriven renderers: {undriven}");
 
-            // R8: what a few basic tiles really draw with (the mod's atlas showed blank on 2026-10-15), and the mod's
-            // atlas read back from the GPU.
+            // What a few basic tiles really draw with, and the mod's atlas read back from the GPU.
             var seen = new Dictionary<PropGroup, int>();
             foreach (var renderer in UnityEngine.Object.FindObjectsByType<PegTileRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
@@ -359,8 +351,7 @@ namespace BigWalkArchipelago.Debug
                 copy.Apply();
                 RenderTexture.active = previous;
                 RenderTexture.ReleaseTemporary(target);
-                // Not ImageConversion.EncodeToPNG: through Il2CppInterop it crashed the game (access violation,
-                // 2026-10-15). The pixels are read back and written as a PNG here.
+                // Not ImageConversion.EncodeToPNG: through Il2CppInterop it crashed the game.
                 File.WriteAllBytes(file, Png(copy.width, copy.height, copy.GetPixels32()));
                 UnityEngine.Object.Destroy(copy);
             }

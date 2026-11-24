@@ -6,25 +6,10 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // Hides the objects of every locked puzzle need, and shows them again
-    // when the need is unlocked. Written 2026-10-02 for `lock_puzzle_needs`.
-    //
-    // The same shape as VanillaGadgetRemover, whose reasons apply here:
-    //   - purely local, on every machine, nothing travels (every player runs
-    //     the mod — guests without it are no longer supported);
-    //   - Mirror calls SetActive(true) on a scene object when it spawns it,
-    //     so what was hidden is checked again every second;
-    //   - polled on WorldManager.isReadyForEffects, and re-armed on every
-    //     world load, since the process outlives a world.
-    //
-    // What counts as an object of a need is decided by name, not by place:
-    // the puzzles are built from prefabs whose names say what they are
-    // (Ctrl+E dumps, 2026-10-02), and the same prefab appears in every
-    // puzzle that uses it. The root of the prefab is hidden whole, so the
-    // model and its trigger go together.
+    // Hides the objects of every locked puzzle need, found by prefab name; local on every machine.
     internal class PuzzleNeedHider : MonoBehaviour
     {
-        // Constructor required by Il2CppInterop for any type injected into IL2CPP.
+        // Required by Il2CppInterop for any injected type.
         public PuzzleNeedHider(IntPtr ptr) : base(ptr)
         {
         }
@@ -32,22 +17,7 @@ namespace BigWalkArchipelago.Core
         private const float SettleSeconds = 4f;
         private const float RecheckIntervalSeconds = 1f;
 
-        // Everything the game builds puzzles under. Hiding too little only
-        // lets a puzzle be solved earlier than the logic expects, which is
-        // harmless; hiding too much can leave a player unable to go on. So
-        // everything that is not a puzzle but shares its prefabs is left
-        // alone, found by listing the folders each rule matched in
-        // (puzzle-needs-dump.tsv, 2026-10-02):
-        //   - the Gauntlet and the credits, whose needs the logic does not
-        //     model: a goal behind an item the player has not received would
-        //     be a softlock;
-        //   - the ending and its bells (EndingGate, BlackTower,
-        //     SecondGoodbye, GoodbyeGate, OverflowMonument): hold-together
-        //     buttons that the goals need;
-        //   - the hub gates, the lookouts, the music garden and the peaks:
-        //     ways through the island and its radios, not puzzles;
-        //   - the spawn and the intro pavilion, where the player starts;
-        //   - the radio stations, wherever they stand.
+        // Hiding too much can softlock, so non-puzzle zones that share puzzle prefabs stay out.
         private const string PuzzleRoot = "Landmarks";
         private static readonly string[] Excluded =
         {
@@ -55,26 +25,14 @@ namespace BigWalkArchipelago.Core
             "EndingGate", "BlackTower", "SecondGoodbye", "GoodbyeGate", "OverflowMonument",
             "HubGate", "Lookouts", "MusicGarden", "PeakMarker", "SouthPeak", "FireworksPlatform",
             "IntroPavilion", "SpawnCourtyard",
-            // The game's own skip aids are not excluded: see SkipAidNeed.
-            // A radio station of the world, with its own button: the station
-            // is a check that the logic asks nothing for, and two of them
-            // stand inside puzzle folders (DoofChamber, MusicalHoliday).
+            // Radio stations are checks the logic asks nothing for; two stand in puzzle folders.
             "BroadcastStation",
         };
 
-        // The Silent Gauntlet is left alone, except for the parts of its seven
-        // stages when `lock_gauntlet_needs` says the logic counts on them
-        // (apworld `GAUNTLET_STAGE_TAGS`). Those are collected like any
-        // puzzle's, remembered in _inGauntlet, and hidden only while
-        // GauntletStairways.ButtonsHidden is true. What a stage's parts are NOT:
-        // the finale (`Level7`, whose buttons end the game and which the logic
-        // asks no part for), the entrance, the stairway buttons
-        // (they have their own rule) and the cliff walls.
+        // Only the seven stages' parts, and only while `lock_gauntlet_needs` counts on them.
         private const string GauntletRoot = "SilentGauntlet";
 
-        // The pseudo-need the skip-aid poles are filed under. Not one of
-        // PuzzleNeeds': whether a pole is hidden is decided per pole, by the needs
-        // of its own puzzle.
+        // Not one of PuzzleNeeds': each pole waits for the needs of its own puzzle.
         private const string SkipAidNeed = "skip_aid";
         private static readonly string[] GauntletSpared = { "Entrance", "NHoldFullSet", "CliffBlockingWalls" };
 
@@ -86,8 +44,6 @@ namespace BigWalkArchipelago.Core
             return Enumerable.Range(0, 7).Any(level => path.Contains($"/Level{level}/"));
         }
 
-        // Whether a path is out of this hider's reach. "Gauntlet" is the one
-        // entry that gives way, to the stages' own parts.
         private static bool IsExcluded(string path)
         {
             foreach (var excluded in Excluded)
@@ -104,8 +60,7 @@ namespace BigWalkArchipelago.Core
             return false;
         }
 
-        // One rule per need: the name a prefab root starts with, and where it
-        // may sit. The highest ancestor whose name matches is hidden.
+        // The highest ancestor whose name matches is hidden.
         private sealed class Rule
         {
             internal string Need;
@@ -117,52 +72,32 @@ namespace BigWalkArchipelago.Core
 
         private static readonly Rule[] Rules =
         {
-            // BasicKnob is a door handle, not a puzzle part: hiding it could
-            // shut players in. The train's own buttons are CustomPushButton.
+            // BasicKnob is a door handle: hiding it could shut players in.
             new Rule { Need = PuzzleNeeds.Buttons, Prefixes = new[] { "BasicPokeButton", "BasicPushButton", "ButtonNHold" } },
 
-            // The synchronized presses: a SimPressSwitch is the button, and
-            // the station it stands in goes with it where there is one.
             new Rule { Need = PuzzleNeeds.SyncButtons, Prefixes = new[] { "SimPressSwitch", "BreadcrumbStation", "MediumSimPressStation" } },
 
-            // The red bulbs that carry information (Ring Room, Observation
-            // Room, Centurion Seance), not the room switches.
+            // Only the red bulbs that carry information, not the room switches.
             new Rule { Need = PuzzleNeeds.Lights, Prefixes = new[] { "Light_Table_Red" }, InPuzzlesOnly = false },
 
-            // The sending half is a PeckSwitch, the listening half a bare
-            // wall speaker beside it: ListeningPartner finds the pair.
             new Rule { Need = PuzzleNeeds.Speakers, Prefixes = new[] { "FixedRadio", "Intercom" } },
             new Rule { Need = PuzzleNeeds.Teapots, Prefixes = new[] { "KettleProp" } },
             new Rule { Need = PuzzleNeeds.Counter, Prefixes = new[] { "counter" } },
             new Rule { Need = PuzzleNeeds.CoordinatesComputer, Prefixes = new[] { "CoordinateTrackerProp" } },
             new Rule { Need = PuzzleNeeds.Eggs, Prefixes = new[] { "PegTileRoundProp" } },
             new Rule { Need = PuzzleNeeds.InkViewer, Prefixes = new[] { "FixedTelescope" },
-                // The open-world puzzle, and the Gauntlet's own sixth stage.
                 PathMustContainOneOf = new[] { "InvisibleInk", "GauntletChamberInvisi" } },
             new Rule { Need = PuzzleNeeds.BigHead, Prefixes = new[] { "BlindfoldProp" } },
             new Rule { Need = PuzzleNeeds.GolfBall, Prefixes = new[] { "cannonballProp" } },
             new Rule { Need = PuzzleNeeds.TimedTomato, Prefixes = new[] { "Pomodoro" } },
 
-            // The game's skip aids, the two-button poles that offer "skip this
-            // challenge" when the host turned that accessibility setting on. Not a
-            // part of any puzzle, though their buttons are named like the buttons of
-            // some, so they are not hidden with a need of their own: each waits for
-            // the needs of ITS puzzle (_skipNeeds) and shows when all of them are
-            // in, which is when the logic counts on the puzzle. Skipping sends the
-            // puzzle's check like solving it. When the setting is off the game keeps
-            // them inactive and this never touches them. Exempt from Excluded, whose
-            // other zones have no parts and so no needs to wait for.
+            // Skip-aid poles: shown once all needs of their own puzzle are in.
             new Rule
             {
                 Need = SkipAidNeed, Prefixes = new[] { "SkipAid" }, InPuzzlesOnly = false, IgnoreExclusions = true,
             },
 
-            // The Silent Gauntlet's stairway buttons, hold-together buttons of
-            // every stage, which `gauntlet_mode: locked_stages` replaces with
-            // an item each (GauntletStairways). The only thing in the Gauntlet
-            // this hider touches, hence the exemption from Excluded. The root
-            // of the set goes whole: its buttons, its combinators and its
-            // success switch.
+            // Stairway buttons: `locked_stages` replaces them with items.
             new Rule
             {
                 Need = GauntletStairways.ButtonsNeed, Prefixes = new[] { "NHoldFullSet" }, InPuzzlesOnly = false,
@@ -173,23 +108,11 @@ namespace BigWalkArchipelago.Core
         private readonly Dictionary<string, List<GameObject>> _objects = new Dictionary<string, List<GameObject>>();
         private readonly HashSet<int> _hiddenByUs = new HashSet<int>();
 
-        // Instance ids of the objects that belong to a Gauntlet stage. They are
-        // collected with the others but only hidden while the slot locks the
-        // stages and counts on their parts (`lock_gauntlet_needs`), in either mode.
         private readonly HashSet<int> _inGauntlet = new HashSet<int>();
 
-        // For each skip-aid pole (by instance id), the needs of the puzzle it
-        // belongs to: those of the parts found in the same puzzle folder.
         private readonly Dictionary<int, string[]> _skipNeeds = new Dictionary<int, string[]>();
 
-        // Objects the game replicates (a NetworkIdentity on them or below).
-        // They are never switched off, only made invisible and untouchable
-        // (SoftHide): Mirror sends a joining client the objects that are
-        // ACTIVE on the server, so one hidden with SetActive(false) when the
-        // guest arrives is never sent to it, and showing it again later does
-        // not send it either (found 2026-10-02: the host unlocked the icon
-        // panels and the guest, who had joined while they were hidden, never
-        // saw one).
+        // Never SetActive(false): Mirror only sends a joining guest the active objects.
         private readonly HashSet<int> _networked = new HashSet<int>();
 
         private sealed class SoftState
@@ -200,13 +123,11 @@ namespace BigWalkArchipelago.Core
             internal bool[] ColliderWas;
             internal Rigidbody[] Bodies;
             internal bool[] BodyWasKinematic;
-            // A prop's home when it was hidden: one moved meanwhile (PegTileShuffler, from a rack to the floor or
-            // back) takes the physics of where it is now, not of where it was (tiles fell off the racks, 2026-10-15).
+            // Its home now, not when hidden: a moved prop takes the physics of where it is.
             internal Prop Prop;
             internal bool WasPinned;
         }
 
-        // Whether this object is hidden here without being switched off (SoftHide): no collider, held kinematic.
         internal static bool IsSoftHidden(GameObject go) =>
             go != null && _current != null && _current._soft.ContainsKey(go.GetInstanceID());
 
@@ -231,13 +152,7 @@ namespace BigWalkArchipelago.Core
         {
             if (!WorldManager.isReadyForEffects)
             {
-                // A world going away does NOT take the slot's needs with it:
-                // the Archipelago connection outlives a return to the menu,
-                // and hosting the same save again does not connect again, so
-                // nothing would say it a second time (this forgot them on
-                // 2026-10-02 and the next world came up with nothing locked).
-                // A different save or slot reconnects, and Configure runs
-                // afresh; a guest is told again by the next snapshot.
+                // Needs survive the world: the connection outlives a return to the menu.
                 if (_collected)
                 {
                     SessionJournal.Write("world", "gone", withPosition: false);
@@ -253,11 +168,7 @@ namespace BigWalkArchipelago.Core
                 _networked.Clear();
                 _soft.Clear();
 
-                // _hiddenByUs is NOT cleared: what this hider hid is still
-                // hidden if the world is the same one (the guest's saw the
-                // world flicker out of "ready" mid-session, 2026-10-02), and
-                // forgetting it left those objects hidden for good. Instance
-                // ids of a world that really went away are never met again.
+                // _hiddenByUs is kept: the world can blink out of ready and come back the same.
                 return;
             }
 
@@ -274,9 +185,7 @@ namespace BigWalkArchipelago.Core
                 SessionJournal.Write("world", "ready");
                 HandsJournal.WorldReady();
 
-                // A save hosted with the Archipelago switch off must be
-                // vanilla, whatever the previous world in this process left
-                // locked.
+                // A save hosted with Archipelago off must be vanilla.
                 if (NetworkServer.active)
                 {
                     if (ModConfig.ArchipelagoEnabled.Value)
@@ -309,12 +218,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Candidates are the components every part of a puzzle carries
-        // somewhere in its prefab: a PeckSwitch (buttons, the radios'
-        // sending half, the counter's keys), a TrackedPeckState (the
-        // telescope), a HouseLight (the lamps) or a Prop (everything that is
-        // carried). Walking every Transform of the world would be far
-        // slower for no more objects.
+        // Only components every puzzle part carries; walking every Transform would be far slower.
         private void Collect()
         {
             _objects.Clear();
@@ -393,13 +297,7 @@ namespace BigWalkArchipelago.Core
                 $"[{nameof(PuzzleNeedHider)}] Collected in {(Time.realtimeSinceStartup - started):F2}s from {candidates.Count} candidate(s).");
         }
 
-        // Which needs each skip-aid pole waits for. A pole stands in the folder of its
-        // puzzle, so the needs are those of the parts collected under that folder.
-        // The folder is the parent of the nearest `Positioner` above the pole, or the
-        // chamber for the Gauntlet, whose one `Positioner` holds all seven stages. A
-        // puzzle split into several folders (the breadcrumb loop's stations) may
-        // leave a pole with fewer needs than the puzzle has: it then shows a little
-        // early, never late.
+        // A pole's needs are those of the parts in its puzzle folder; a split puzzle shows early.
         private void BuildSkipNeeds(Dictionary<string, Dictionary<int, GameObject>> found)
         {
             if (!found.TryGetValue(SkipAidNeed, out var poles) || poles.Count == 0)
@@ -434,7 +332,6 @@ namespace BigWalkArchipelago.Core
         {
             for (var t = pole.parent; t != null; t = t.parent)
             {
-                // A Gauntlet chamber is the child of its `Level<N>`.
                 if (t.parent != null && t.parent.name.StartsWith("Level", StringComparison.Ordinal))
                     return PathOf(t) + "/";
 
@@ -445,10 +342,7 @@ namespace BigWalkArchipelago.Core
             return PathOf(pole.parent != null ? pole.parent : pole) + "/";
         }
 
-        // What each Gauntlet stage is made of according to the game, one line a
-        // stage, so that it can be set against the apworld's GAUNTLET_STAGE_TAGS:
-        // the logic and what is hidden must name the same parts, or a stage
-        // would need an item its checks never asked for.
+        // One line a stage, to set against the apworld's GAUNTLET_STAGE_TAGS.
         private void LogGauntletParts(Dictionary<string, Dictionary<int, GameObject>> found)
         {
             var perStage = new SortedDictionary<int, SortedDictionary<string, int>>();
@@ -483,12 +377,7 @@ namespace BigWalkArchipelago.Core
             PuzzleNeeds.PointPanels,
         };
 
-        // A panel is a tile: a carried Prop that shows a glyph, and what the
-        // glyph is decides the need. The family of its PropGroup says so
-        // (PegTileA icons, PegTileD poses, PegTileC and PegTilePriest
-        // drawings, PegTileB points), except the speaker tiles, which are
-        // set A like the icons and are told apart by the rack they sit in.
-        // The eggs (PegTileRound) and the blank tiles belong to no panel need.
+        // A tile's PropGroup family decides its need; speaker tiles are told apart by their rack.
         private static void CollectPanels(Dictionary<string, Dictionary<int, GameObject>> found, HashSet<int> gauntletIds)
         {
             var renderers = FindObjectsByType<PegTileRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -570,8 +459,7 @@ namespace BigWalkArchipelago.Core
             return rule.PathMustContainOneOf == null || rule.PathMustContainOneOf.Any(path.Contains);
         }
 
-        // A "(sending)" radio or intercom is paired with a "(listening)" one
-        // of the same number beside it, with no component of its own to find.
+        // A "(sending)" radio has a "(listening)" twin of the same number, with no component.
         private static IEnumerable<Transform> ListeningPartner(Transform sending)
         {
             var name = sending.name;
@@ -583,11 +471,6 @@ namespace BigWalkArchipelago.Core
                 yield return partner;
         }
 
-        // What this machine believes right now, for the session reports: the
-        // role, the locked needs, and how many objects of each are showing.
-        // One line a minute without anyone asking, the full table on demand
-        // (Ctrl+Z in debug), so a log sent back after a session says what
-        // each machine saw and when.
         internal static void LogStatus(bool detailed)
         {
             var self = _current;
@@ -617,24 +500,15 @@ namespace BigWalkArchipelago.Core
                     $"[{nameof(PuzzleNeedHider)}]   {need}: {(IsLocked(need) ? "locked" : "open  ")} {showing}/{total} showing");
         }
 
-        // Showing as the player sees it: a replicated object stays active and
-        // is told apart by what this hider has made invisible.
+        // A replicated object stays active, so ask what this hider made invisible.
         private bool IsShowing(GameObject go) =>
             go.activeSelf && !(_networked.Contains(go.GetInstanceID()) && _hiddenByUs.Contains(go.GetInstanceID()));
 
         internal static string Stamp() => DateTime.Now.ToString("HH:mm:ss");
 
-        // The stairway buttons are not one of PuzzleNeeds' needs: they are gone
-        // wherever the Gauntlet's stages are locked.
         private static bool IsLocked(string need) =>
             need == GauntletStairways.ButtonsNeed ? GauntletStairways.ButtonsHidden : PuzzleNeeds.IsLocked(need);
 
-        // Whether one object is hidden. A part follows its need, except in the
-        // Gauntlet, where it only does while the slot locks the stages' parts. A
-        // skip-aid pole follows the needs of its own puzzle: hidden while any is
-        // still locked, and under the same Gauntlet condition. The stairway buttons
-        // are the Gauntlet's own and follow the stages being locked, whatever is
-        // said of the parts.
         private bool IsObjectLocked(string key, bool needLocked, int id, bool gauntletPartsLocked)
         {
             if (key == GauntletStairways.ButtonsNeed)
@@ -666,9 +540,6 @@ namespace BigWalkArchipelago.Core
                     var id = go.GetInstanceID();
                     var networked = _networked.Contains(id);
 
-                    // A Gauntlet stage's part follows its need only while the
-                    // slot locks the stages; otherwise the Gauntlet is as the
-                    // game has it.
                     locked = IsObjectLocked(pair.Key, needLocked, id, gauntletPartsLocked);
                     if (locked)
                     {
@@ -695,8 +566,7 @@ namespace BigWalkArchipelago.Core
                     }
                 }
 
-                // What was actually done, not what the need says: a skip-aid pole is hidden or
-                // shown by its own puzzle's needs, so the group has no lock state of its own.
+                // What was done, not what the need says: poles follow their own puzzle's needs.
                 if (hid > 0)
                     Plugin.Log.LogInfo(
                         $"[{nameof(PuzzleNeedHider)}] {Stamp()} {pair.Key}: hid {hid} of {pair.Value.Count}.");
@@ -706,9 +576,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // True when something changed. Called every second for what is already
-        // hidden too: the game's culling and its own scripts switch renderers
-        // back on, and putting that right is cheaper than finding out who does.
+        // Run every second: the game's culling and scripts switch renderers back on.
         private bool SoftHide(GameObject go, int id)
         {
             var first = !_soft.TryGetValue(id, out var state);
@@ -730,9 +598,7 @@ namespace BigWalkArchipelago.Core
 
             _hiddenByUs.Add(id);
 
-            // A part switched on again by the game while hidden is one it means to show: what
-            // was off at the first hide was often only culled, the place being far away, and
-            // was put back off when its item came (a timed tomato's dispenser, 2026-10-05).
+            // A renderer the game switches on while hidden is one it means to show.
             for (var i = 0; i < state.Renderers.Length; i++)
             {
                 var renderer = state.Renderers[i];
@@ -782,7 +648,7 @@ namespace BigWalkArchipelago.Core
                     state.Colliders[i].enabled = state.ColliderWas[i];
             }
 
-            // A prop pinned or set loose while hidden: held if it hangs in a home now, free to fall if not.
+            // Held if it hangs in a home now, free to fall if not.
             var pinnedNow = state.Prop != null && state.Prop.currentHome != null;
             var moved = state.Prop != null && pinnedNow != state.WasPinned;
             for (var i = 0; i < state.Bodies.Length; i++)

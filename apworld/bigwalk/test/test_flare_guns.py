@@ -1,4 +1,4 @@
-"""The flare guns as checks and items (`flare_gun_sanity`) and the seed's colors (`random_colors`)."""
+"""The flare guns as checks and items (`flare_gun_sanity`) and `random_colors`."""
 
 from collections import Counter
 

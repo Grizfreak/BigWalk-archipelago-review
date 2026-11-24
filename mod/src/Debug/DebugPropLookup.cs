@@ -3,42 +3,13 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // An inventory of the objects lying around the island, for the question
-    // "which of these could become a real Archipelago item instead of the
-    // inert Postcard / Souvenir Pebble / Novelty Keychain?"
-    //
-    // It has to be an in-game dump, and that is not laziness: `il2cpp.cs` has
-    // no class for any of them. There is no FlareGun and no WalkieTalkie —
-    // they are plain `Prop` prefabs told apart by their prefab and by what
-    // their `useHeldSwitch` is wired to, none of which exists in the binary.
-    // Only the running game can list them.
-    //
-    // Three columns decide whether a prop is a candidate:
-    //
-    //   - **`savablePropGuid`** — the game's own per-prop identity, used with
-    //     `SaveManager.GetIsInInventory(guid)` and `SaveData.inventory`. A
-    //     prop that has one can be told apart from its siblings across
-    //     sessions, which is what a *location* would need. A prop without one
-    //     can still be an *item* (spawn a copy) but can never be a check.
-    //   - **`radioVoiceAssigner`** — a first-class field on Prop, so any prop
-    //     carrying one is a walkie-talkie. The one gadget the code names.
-    //   - **`useHeldSwitch`** — the prop does something when used while held,
-    //     which is the difference between a tool and a paperweight.
-    //
-    // Counts first, then detail, because `Prop.allProps` holds every prop in
-    // the loaded world and an undifferentiated list of it is unreadable.
+    // Lists the island's props (guid, walkie-talkie, useHeldSwitch) to find item candidates.
     internal static class DebugPropLookup
     {
-        // Props named the same are the same prefab; only a couple of each is
-        // worth printing in full.
+        // Props named the same are the same prefab; only a couple of each is printed in full.
         private const int DetailPerName = 2;
 
-        // A lamp is plausibly pure scenery — no guid, no useHeldSwitch, not a
-        // walkie-talkie — which the candidate filter below would otherwise
-        // treat as indistinguishable from the hundreds of PegTile/foldingChair
-        // entries that really are just scenery. Named substrings widen the
-        // filter for exactly this case (player request, 2026-09-22: find a
-        // lamp and a "ray-x gun" that two full-radius dumps never turned up).
+        // Lamps look like scenery to the filter below, so these names widen it.
         private static readonly string[] ExtraNameHints = { "lamp", "ray", "torch", "light" };
 
         internal static void Dump()
@@ -48,7 +19,7 @@ namespace BigWalkArchipelago.Debug
             var props = Prop.allProps;
             if (props == null)
             {
-                Plugin.Log.LogInfo($"[{nameof(DebugPropLookup)}] Prop.allProps is null — no world loaded.");
+                Plugin.Log.LogInfo($"[{nameof(DebugPropLookup)}] Prop.allProps is null, no world loaded.");
                 return;
             }
 
@@ -56,8 +27,7 @@ namespace BigWalkArchipelago.Debug
             var printed = new Dictionary<string, int>();
             var candidates = 0;
 
-            // Pass one: how many of each, so the summary is honest about what
-            // the detail below is a sample of.
+            // Pass one: how many of each, so the summary says what the detail is a sample of.
             for (var i = 0; i < props.Count; i++)
             {
                 var prop = props[i];
@@ -71,9 +41,7 @@ namespace BigWalkArchipelago.Debug
             Plugin.Log.LogInfo(
                 $"[{nameof(DebugPropLookup)}] {props.Count} prop(s) loaded, {counts.Count} distinct name(s).");
 
-            // Pass two: the detail, for the props that could plausibly become
-            // something. A gourd or a big key is neither — the world already
-            // has those, and printing them would bury the answer.
+            // Pass two: the detail; gourds and big keys are left out.
             for (var i = 0; i < props.Count; i++)
             {
                 var prop = props[i];
@@ -85,9 +53,7 @@ namespace BigWalkArchipelago.Debug
                 var isUsable = prop.useHeldSwitch != null;
                 var nameHints = ContainsAnyHint(prop.name);
 
-                // A prop that does nothing, has no identity, is not a
-                // walkie-talkie and doesn't even look the part by name is
-                // scenery. There are hundreds of those.
+                // No use, no identity, no radio and no telling name: scenery.
                 if (!isWalkieTalkie && !hasGuid && !isUsable && !nameHints)
                     continue;
 
@@ -122,10 +88,9 @@ namespace BigWalkArchipelago.Debug
                     + $" | saveType={prop.propSaveType} | groups [{groups}]");
             }
 
-            // Said even at zero, and said with the number: "no candidates" and
-            // "the tool did not run" must never look alike.
+            // Said even at zero: "no candidates" and "the tool did not run" must never look alike.
             Plugin.Log.LogInfo(
-                $"[{nameof(DebugPropLookup)}] {candidates} candidate prop(s) — carrying a guid, a walkie-talkie or a"
+                $"[{nameof(DebugPropLookup)}] {candidates} candidate prop(s), carrying a guid, a walkie-talkie or a"
                 + " use-while-held switch. Anything else loaded is scenery."
                 + (candidates == 0 ? " Stand somewhere with objects around and press again." : string.Empty));
 
@@ -143,38 +108,7 @@ namespace BigWalkArchipelago.Debug
             return false;
         }
 
-        // Added 2026-09-22: Ctrl+H's "what am I holding" dump came back with
-        // 0 renderers on BOTH a broken and a working gadget clone — while
-        // held, a prop's visible mesh apparently lives on a different
-        // transform than prop.gameObject entirely, so that test was pointed
-        // at the wrong object the whole time. This instead finds the actual
-        // ground clones (the ones the screenshot showed pink) directly, by
-        // the same name suffix ReceivedItemSpawner/GadgetItemSpawner tag
-        // every cosmetic spawn with, and dumps their renderers for real.
-        // WHY THIS EXISTS (2026-09-23). A cloned backpack accepts nothing
-        // stowed into it, while a vanilla one accepts everything — measured
-        // in co-op. The suspect was named by a warning the log had been
-        // repeating at every single gadget spawn without anyone reading it:
-        //
-        //     Failed to add ticket 41356 to ticketOffice. Duplicate ticket
-        //
-        // `PropHome` implements `ITicketed`, and `TicketOffice` is a
-        // `Dictionary<ushort, ITicketed>` — so a ticket is the stable,
-        // shared identity by which a home is referred to. A clone inherits
-        // its template's ticket, the office refuses the duplicate, and the
-        // clone's homes end up addressable by nobody.
-        //
-        // That is a hypothesis with a good motive, and it stays a hypothesis
-        // until this prints. It dumps each clone's homes beside the hidden
-        // VANILLA instance of the same prefab, which is still in the scene
-        // since the removal became a local hide — the two lists side by side
-        // should differ in exactly one column if the story above is right.
-        //
-        // It is deliberately not a fix. Handing out fresh tickets means
-        // inventing a shared identity that every machine must agree on, and
-        // getting that wrong does not fail quietly: a ticket that collides
-        // with a real one points the game at the wrong switch. Measure, then
-        // build the scheme.
+        // Each clone's homes and tickets beside its vanilla twin: a clone's ticket may clash.
         private static void DumpHomeTickets(Prop prop, string label)
         {
             var homes = prop.gameObject.GetComponentsInChildren<PropHome>(true);
@@ -215,9 +149,7 @@ namespace BigWalkArchipelago.Debug
             }
         }
 
-        // The hidden vanilla instance of the same prefab, for the comparison
-        // the dump above is for. Inactive since the hiding pass, hence the
-        // Include.
+        // Inactive since the hiding pass, hence the Include.
         private static void DumpVanillaCounterpart(string cosmeticName)
         {
             var prefabName = cosmeticName.Replace(
@@ -245,17 +177,7 @@ namespace BigWalkArchipelago.Debug
             Plugin.Log.LogInfo($"[{nameof(DebugPropLookup)}]     no vanilla '{prefabName}' left in the scene to compare against.");
         }
 
-        // WHY THIS EXISTS (2026-09-25). A received lamp is built from a
-        // buoy light of the island, and since the same day the buoy is drawn
-        // at random, on the premise that the island's buoys come in the
-        // game's two colours. A player sent five and got five red ones: the
-        // premise is wrong somewhere, and three explanations fit equally
-        // well — the green ones are a different prefab the capture never
-        // matches, they lie beyond the 32 it keeps, or the colour is not the
-        // buoy's own at all and is applied at run time. This tells them apart
-        // in one keypress instead of a fourth guess: every prop whose name
-        // mentions a buoy or a lamp, grouped by name, material and light
-        // colour, with the captured templates counted apart.
+        // Every buoy and lamp prop grouped by name, material and light colour.
         private static void DumpLampCensus()
         {
             Plugin.Log.LogInfo($"[{nameof(DebugPropLookup)}] === lamp census ===");
@@ -297,9 +219,7 @@ namespace BigWalkArchipelago.Debug
                 Plugin.Log.LogInfo($"[{nameof(DebugPropLookup)}]   {pair.Value.ToString().PadLeft(3)} x {pair.Key}");
         }
 
-        // What decides a lamp's colour, whichever it turns out to be: the
-        // emitted light, the first renderer's material, and any colour held in
-        // that renderer's property block or material under the usual names.
+        // The emitted light, the first renderer's material, and its property block colours.
         private static string DescribeLook(GameObject root)
         {
             var parts = new List<string>();

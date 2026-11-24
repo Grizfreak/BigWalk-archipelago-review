@@ -1,9 +1,4 @@
-"""
-The radio is the one thing in this world that used to reward itself: switching
-a station on both reported the check and started the music. With
-`shuffle_radio_music` the music becomes an item like everything else, which is
-a contract with the mod as much as a pool change — see ../../protocol.md.
-"""
+"""`shuffle_radio_music` makes a station's music an item instead of its own reward."""
 
 from .. import data, items
 from .bases import BigWalkTestBase
@@ -24,15 +19,12 @@ class TestRadioItemsOn(BigWalkTestBase):
             self.assertEqual(pool.count(station.item_name), 1, station.item_name)
 
     def test_a_music_item_gates_nothing(self) -> None:
-        # Nothing in this world or any other may ever require one: the music
-        # is the whole effect. Classified filler for exactly that reason.
+        # No world may ever require one: the music is the whole effect, so it is filler.
         for station in data.RADIO_STATIONS:
             self.assertTrue(self.world.create_item(station.item_name).filler)
 
     def test_ids_are_the_station_ids(self) -> None:
-        # Item and location ids are separate namespaces, so a station's two
-        # ids are deliberately the same number — the mod derives both from the
-        # same SavableSystem value with one rule.
+        # Item and location ids are separate namespaces: a station's two ids are one number.
         for station in data.RADIO_STATIONS:
             self.assertEqual(items.ITEM_NAME_TO_ID[station.item_name],
                              data.BASE_ID + data.RADIO_ID_OFFSET + station.system_value)
@@ -56,11 +48,7 @@ class TestRadioItemsOff(BigWalkTestBase):
 
 
 class TestRadioItemsWithoutChecks(BigWalkTestBase):
-    """
-    The two options are independent on purpose: a player may want the music
-    shuffled without seven extra checks, or the checks without losing their
-    radio. Seven fewer locations and seven more items still has to balance.
-    """
+    """Music shuffled without the station checks: seven fewer locations still balance."""
 
     options = {"radio_sanity": False, "shuffle_radio_music": True}
     run_default_tests = False

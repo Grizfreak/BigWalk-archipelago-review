@@ -1,10 +1,6 @@
 namespace BigWalkArchipelago.Debug
 {
-    // Toggles free camera by reusing as-is the "cheat camera" system already
-    // present in the game (PlayerCharacter.cheater.cameraCheatMover,
-    // investigated via Ghidra on 2026-09-03: Detach()/Attach() are public and
-    // sufficient, no need to know the game's text cheat code nor to
-    // reimplement movement from PlayerMover/Rigidbody).
+    // Free camera through the game's own cheat camera (cameraCheatMover Detach/Attach).
     internal static class DebugFlightTool
     {
         private static bool _active;
@@ -15,7 +11,7 @@ namespace BigWalkArchipelago.Debug
 
         internal static void Toggle()
         {
-            var localPlayer = DebugPlayerLookup.FindLocalPlayer();
+            var localPlayer = Core.LocalPlayer.Find();
             if (localPlayer == null)
             {
                 Plugin.Log.LogWarning($"[{nameof(DebugFlightTool)}] No local player found.");
@@ -41,9 +37,7 @@ namespace BigWalkArchipelago.Debug
             {
                 cameraCheatMover.Detach();
 
-                // movingSpeed is re-applied on every activation (not just
-                // once at the game's Awake) to track changes to the
-                // multiplier's config value without restarting the game.
+                // Set again on each activation so a config change applies without a restart.
                 if (!_hasOriginalMovingSpeed)
                 {
                     _originalMovingSpeed = cameraCheatMover.movingSpeed;

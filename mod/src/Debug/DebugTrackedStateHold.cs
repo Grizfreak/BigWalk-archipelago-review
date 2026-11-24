@@ -3,32 +3,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Holds a push button down, for as long as the key is held.
-    //
-    // Why this exists, and why the two tools next to it could not do it.
-    // The sealed-box puzzles are opened by a button somewhere else in the
-    // room, and their mechanism turned out to be neither of the ones already
-    // covered (established in-game on 2026-09-18):
-    //
-    //   PeckSwitchTrigger (PeckSwitch, specificState=1) -> BasicPushButton
-    //   UpSwitch          (PeckSwitch, specificState=0) -> BasicPushButton
-    //
-    // A momentary push button: one switch drives its TrackedPeckState to 1
-    // on press, another back to 0 on release. DebugPeckFire sends a single
-    // discrete peck, which the release immediately undoes;
-    // DebugPeckCombinatorForce only knows about PeckCombinator, and the
-    // nearest one to these puzzles sits 178m away — they are N-hold
-    // hardware, a different thing entirely.
-    //
-    // So this writes the state directly, every frame, while the key is down:
-    // TrackedPeckState.SetState(int) short-circuits the whole press/hold
-    // mechanism, and re-applying it each frame is what a sustained hold
-    // actually is. Releasing the key stops writing and lets the game put the
-    // button back up on its own, exactly as if a second player had let go.
-    //
-    // NEAREST match only, deliberately. "BasicPushButton" is a generic name
-    // shared by buttons all over the world; forcing every match in the zone
-    // would press buttons in puzzles nobody asked about.
+    // Holds the nearest push button down while the key is held, by setting its state every frame.
     internal static class DebugTrackedStateHold
     {
         private static TrackedPeckState _held;
@@ -61,9 +36,7 @@ namespace BigWalkArchipelago.Debug
                 return;
             }
 
-            // Resolved once per hold, not per frame: FindObjectsByType is not
-            // free, and re-picking the nearest every frame would hand the
-            // hold to a different button as the player drifts.
+            // Resolved once per hold, so it does not jump to another button as the player moves.
             if (!_wasHolding)
             {
                 _wasHolding = true;
@@ -77,7 +50,7 @@ namespace BigWalkArchipelago.Debug
                 }
 
                 Plugin.Log.LogInfo(
-                    $"[{nameof(DebugTrackedStateHold)}] Holding '{_held.gameObject.name}' at state {value} — let go of the key to release.");
+                    $"[{nameof(DebugTrackedStateHold)}] Holding '{_held.gameObject.name}' at state {value}, let go of the key to release.");
             }
 
             if (_held == null)
@@ -96,7 +69,7 @@ namespace BigWalkArchipelago.Debug
 
         private static TrackedPeckState FindNearest(string nameFragment, float radius)
         {
-            var localPlayer = DebugPlayerLookup.FindLocalPlayer();
+            var localPlayer = Core.LocalPlayer.Find();
             if (localPlayer == null)
             {
                 Plugin.Log.LogInfo($"[{nameof(DebugTrackedStateHold)}] Local player not found.");

@@ -5,19 +5,7 @@ using Archipelago.MultiClient.Net.Enums;
 
 namespace BigWalkArchipelago.Core.Net
 {
-    // A throwaway login used to tell the host, on the hosting screen, whether
-    // their Archipelago details actually work — before they commit to a
-    // session and discover the mistake from a log line nobody reads.
-    //
-    // It is a real login rather than a reachability check because the errors
-    // worth catching are a mistyped slot name and a wrong password, and only
-    // the server can judge those. The session is closed again immediately:
-    // ApRuntime opens its own once the game is hosting, and leaving this one
-    // alive would put two clients on the slot for no reason.
-    //
-    // Same threading rules as ApConnection: the probe runs on a Task, touches
-    // nothing but managed types, and the caller polls Status from the main
-    // thread.
+    // A throwaway login from the hosting screen, closed at once; runs on a Task, Status is polled.
     internal static class ApConnectionTest
     {
         internal enum TestStatus
@@ -28,9 +16,7 @@ namespace BigWalkArchipelago.Core.Net
             Failed,
         }
 
-        // A login that never answers must not leave the hosting screen stuck:
-        // past this, the probe is declared failed and the player can host
-        // anyway.
+        // Past this, the probe has failed and the player can host anyway.
         private const double TimeoutSeconds = 15;
 
         private static volatile TestStatus _status = TestStatus.Idle;
@@ -38,16 +24,7 @@ namespace BigWalkArchipelago.Core.Net
 
         internal static string LastError { get; private set; } = string.Empty;
 
-        // The games the room that answered is running, from its RoomInfo —
-        // which the server sends before any login, so a refused login still
-        // leaves it behind. Null when no room answered at all.
-        //
-        // It is what tells "wrong slot name" from "wrong room" (2026-09-25,
-        // player report): every archipelago.gg room shares one host and
-        // differs only by port, so a mistyped port very often reaches
-        // somebody else's live room, which answers — truthfully — that it has
-        // no slot by that name. Blaming the name there sends the player to
-        // fix the one field that was right.
+        // The games of the room that answered: a wrong port often reaches someone else's live room.
         internal static string[] LastRoomGames { get; private set; }
 
         internal static TestStatus Status
@@ -94,9 +71,7 @@ namespace BigWalkArchipelago.Core.Net
                         LastRoomGames = info.Games;
                 };
 
-                // NoItems, and no slot_data: this connection is about to be
-                // thrown away, so it must not consume the slot's item stream
-                // or make the server think a real client is playing.
+                // NoItems and no slot_data: this throwaway login must not consume the item stream.
                 var result = session.TryConnectAndLogin(
                     "Big Walk",
                     endpoint.SlotName,
@@ -113,8 +88,7 @@ namespace BigWalkArchipelago.Core.Net
                 }
                 catch (Exception ex)
                 {
-                    // Closing the probe is best effort; the server drops it
-                    // on its own soon enough either way.
+                    // Best effort; the server drops it on its own soon enough.
                     Plugin.Log.LogInfo($"[{nameof(ApConnectionTest)}] Probe cleanup: {ex.Message}");
                 }
 

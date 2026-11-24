@@ -5,24 +5,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The hub's three arch doors as Archipelago items (`lock_arch_doors`,
-    // 2026-09-25).
-    //
-    // Each door is a TrackedPeckState keyed on its own SavableSystem —
-    // SpawnHubGate (the first, the tutorial's way back to the hub),
-    // HubShortcutToSportsCreek (left) and HubTunnel (right) — and SetState(1)
-    // on the live object opens it on the spot (see ArchDoorUnlocker). So:
-    //
-    //   - a door the slot holds closed is kept closed by refusing its state
-    //     going up (Patches/ArchDoorHoldPatch), whatever asks: the game's own
-    //     switch, or the save re-asserting a door an older build opened;
-    //   - its item opens it, once, and is remembered in the save
-    //     (`ap_archdoor_<system>`), because items already applied are not
-    //     replayed on the next connection;
-    //   - every other door is opened as the mod always has.
-    //
-    // Host only, like everything that answers to slot_data. A guest's door
-    // is the server's door: its state reaches them over the network.
+    // The hub's three arch doors as items (`lock_arch_doors`); granted doors are kept in the save.
     internal static class ArchDoors
     {
         private const string KeyPrefix = "ap_archdoor_";
@@ -36,8 +19,7 @@ namespace BigWalkArchipelago.Core
 
         private static readonly HashSet<SavableSystem> Locked = new();
 
-        // False until slot_data has said which doors are locked, so nothing is
-        // opened on the strength of a list that has not arrived yet.
+        // False until slot_data has said which doors are locked.
         internal static bool Configured { get; private set; }
 
         internal static bool IsArchDoor(SavableSystem system)
@@ -45,7 +27,7 @@ namespace BigWalkArchipelago.Core
             return Array.IndexOf(All, system) >= 0;
         }
 
-        // L6 `linear_arch_doors`: the doors are the game's, opened by their buttons; the mod neither opens nor holds any.
+        // `linear_arch_doors`: the doors are the game's own; the mod neither opens nor holds any.
         internal static bool Vanilla { get; private set; }
 
         internal static void Configure(IEnumerable<string> lockedSystemNames, bool vanilla = false)
@@ -107,17 +89,14 @@ namespace BigWalkArchipelago.Core
             return true;
         }
 
-        // A save rebound to another seed replays every item from scratch, so
-        // doors granted under the old binding go with it.
+        // A save rebound to another seed replays every item, so doors granted before go with it.
         internal static void ClearLedger()
         {
             foreach (var system in All)
                 SaveManager.SetIntValue(KeyPrefix + system, 0);
         }
 
-        // Brings every door to what the slot says it should be: held closed,
-        // or open. Run when slot_data arrives and whenever a world becomes
-        // ready, since either can come first.
+        // Run when slot_data arrives and whenever a world becomes ready: either can come first.
         internal static void Enforce()
         {
             if (!Configured || Vanilla || !NetworkServer.active || !WorldManager.isReadyForEffects)
@@ -127,10 +106,7 @@ namespace BigWalkArchipelago.Core
                 SetDoor(system, open: !IsHeldClosed(system));
         }
 
-        // Live when the door's object is loaded, which is what makes it swing
-        // there and then; the save alone otherwise, which the door reads back
-        // on its next load. Closing goes through the same call: the hold patch
-        // only ever refuses a state going UP.
+        // Live when the door is loaded, else the save alone; the hold patch only refuses a raise.
         private static void SetDoor(SavableSystem system, bool open)
         {
             var target = FindState(system);

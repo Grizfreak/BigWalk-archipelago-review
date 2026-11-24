@@ -7,11 +7,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // A tour of the puzzles by teleport (the player, 2026-10-12), to say puzzle by puzzle what each one
-    // needs of the player's body (R3 `lock_abilities`) and of the map, per player count. Ctrl + Shift + 3
-    // goes to the next puzzle, Ctrl + Shift + 4 back to the previous one, in the apworld's order (the
-    // gourds' enum values). Lands two metres above the puzzle's gourd, which sits in or beside its
-    // puzzle; the overlay and the log say which puzzle it is and which map version is loaded.
+    // Teleports from puzzle to puzzle in apworld order (Ctrl+Shift+3 next, Ctrl+Shift+4 back).
     internal class DebugPuzzleTour : MonoBehaviour
     {
         private const string Tag = "[" + nameof(DebugPuzzleTour) + "]";
@@ -24,14 +20,13 @@ namespace BigWalkArchipelago.Debug
         private static readonly BepInEx.Unity.IL2CPP.Configuration.KeyboardShortcut ObjectCensusKey =
             new(KeyCode.Alpha5, KeyCode.LeftControl, KeyCode.LeftShift);
 
-        // S9 recon (player, 2026-10-13): every lamp pedestal of the island, in turn.
+        // Visits every lamp pedestal of the island in turn.
         private static readonly BepInEx.Unity.IL2CPP.Configuration.KeyboardShortcut NextPedestalKey =
             new(KeyCode.Alpha6, KeyCode.LeftControl, KeyCode.LeftShift);
         private static readonly BepInEx.Unity.IL2CPP.Configuration.KeyboardShortcut PreviousPedestalKey =
             new(KeyCode.Alpha7, KeyCode.LeftControl, KeyCode.LeftShift);
 
         private int _pedestal = -1;
-
 
         private int _index = -1;
 
@@ -119,7 +114,6 @@ namespace BigWalkArchipelago.Debug
             return path;
         }
 
-        // Every puzzle's gourd that is a location, in enum order.
         private static List<(string Name, Vector3 Position)> Stops()
         {
             var stops = new List<(int Value, string Name, Vector3 Position)>();

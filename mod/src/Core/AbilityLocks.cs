@@ -5,28 +5,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The player's body behind items — the mod's side of the apworld's `lock_abilities` (ROADMAP R3,
-    // 0.6; apworld/bigwalk/data.py, ABILITIES). Off by default; with it on, every ability below is
-    // locked until its item arrives, for every player at once (an item is the slot's, not a player's).
-    //
-    // Who knows what: the same shape as PuzzleNeeds. The host reads slot_data, receives the items and
-    // keeps the ledger in the save (`ap_ability_<key>`); its snapshot tells the guests which abilities
-    // are locked (a mask). Every machine then blocks its own player (AbilityLockEnforcer, the patches
-    // below), which is local input: every player runs the mod.
-    //
-    // How each one is blocked (recon 2026-10-12, docs/ROADMAP.md R3):
-    //   - jumping, crouching, floor sitting, raising an arm: their Rewired actions (jump 16, crouch 20,
-    //     sit 26, waveLeft 18, waveRight 19), whose element maps are switched off;
-    //   - pointing (a click held, hands empty) and extending (an arm raised and a click held): the
-    //     click is also pick up and drop, so the game's own decision is overridden instead
-    //     (PlayerGestures.UpdateSingleArm, `isPointing`);
-    //   - running: its Rewired action (sprint 15), only with `lock_running`;
-    //   - throwing: PlayerHeldInformation.ThrowInfo's wind-up forced to 0, which makes a throw a drop, and
-    //     the wind-up itself refused (PlayerDecisions.SetWindUpStartTime);
-    //   - carrying another player: refused on the host (UserCode_CmdPickUpPlayer);
-    //   - chair sitting: PlayerPoser.EnterPose refused for furniture only (IsFurniture), never for a
-    //     turnstile, a telescope, a listening chair or the ending's poses; the chairlift and the train only
-    //     with `rides_require_seat` (RideSitting, locked with chair sitting).
+    // Mod side of `lock_abilities`: the host keeps the ledger, every machine blocks its own player.
     internal static class AbilityLocks
     {
         internal const string Jumping = "jumping";
@@ -42,11 +21,10 @@ namespace BigWalkArchipelago.Core
         internal const string Throwing = "throwing";
         internal const string Carrying = "carrying";
         internal const string Running = "running";
-        // Not an ability of its own: chair sitting, for the chairlift and the train, with `rides_require_seat`. Kept as
-        // a bit of the snapshot so the guests, who have no slot_data, know it too.
+        // Not an ability: chair sitting for the chairlift and train, sent so guests know it too.
         internal const string RideSitting = "ride_sitting";
 
-        // What the player can be kept from doing, in the order of the snapshot's mask bits.
+        // Order matches the snapshot's mask bits.
         internal static readonly string[] All =
         {
             Jumping, Crouching, ChairSitting, FloorSitting,
@@ -54,9 +32,7 @@ namespace BigWalkArchipelago.Core
             Throwing, Carrying, Running, RideSitting,
         };
 
-        // The items (apworld data.ABILITIES): Legs and Seat grant two abilities at once; a progressive
-        // arm grants its next gesture, raising, then pointing, then extending; Progressive Arms does it for
-        // both arms.
+        // Legs and Seat grant two abilities; a progressive arm grants raise, point, then extend.
         private static readonly Dictionary<string, string[]> Grants = new Dictionary<string, string[]>
         {
             { "legs", new[] { Jumping, Crouching } },
@@ -75,15 +51,13 @@ namespace BigWalkArchipelago.Core
 
         private const string KeyPrefix = "ap_ability_";
 
-        // How many ability items this save has received (big_body counts them, a progressive arm once per copy;
-        // not Running, which stays useful and which the apworld leaves out of the count).
+        // Running is left out of the count, as in the apworld.
         private const string ItemsKey = "ap_ability_items";
 
         internal static int ItemsReceived => SaveManager.GetIntValue(ItemsKey, 0, false);
 
         private static readonly HashSet<string> Locked = new HashSet<string>();
 
-        // From slot_data: every ability item key, in the order of their ids (base + offset + position).
         private static string[] _keys = Array.Empty<string>();
         private static long _itemIdBase;
         private static bool _mirrored;
@@ -96,9 +70,7 @@ namespace BigWalkArchipelago.Core
 
         internal static bool IsLocked(string ability) => Locked.Contains(ability);
 
-        // Host: slot_data. `mode` is the option's key (disabled, handed, ambidextrous); every ability
-        // the ledger has not granted is locked.
-        // Running is only locked with `lock_running`: without it, the seed holds no Running item.
+        // Without `lock_running` the seed holds no Running item.
         private static bool _lockRunning;
         private static bool _ridesRequireSeat;
 
@@ -175,8 +147,7 @@ namespace BigWalkArchipelago.Core
             return true;
         }
 
-        // What this copy of the item grants: a progressive one, its first tier not granted yet (the ledger
-        // is in the save, so a reconnection that replays nothing still counts right).
+        // The ledger is in the save, so a reconnect that replays nothing still counts right.
         private static string[] AbilitiesOf(string key)
         {
             if (Grants.TryGetValue(key, out var abilities))
@@ -220,7 +191,6 @@ namespace BigWalkArchipelago.Core
             Version++;
         }
 
-        // The snapshot: bit i set when All[i] is locked.
         internal static ushort HostMask()
         {
             ushort mask = 0;
@@ -260,12 +230,7 @@ namespace BigWalkArchipelago.Core
                 Forget();
         }
 
-        // A chair, a couch, a bench, a stump: a pose that only seats the player. A pose that drives
-        // something (a turnstile's switch, a telescope, a listening chair's headset) or carries the
-        // player (chairlift, train) or ends the game (Goodbye) is never furniture: locking those would
-        // lock puzzles and ways through. Two exceptions (Tyrope, 2026-10-27): the Carousel's swings,
-        // which the logic asks Seat for (apworld data.ABILITY_PUZZLES), and the chairlift and the
-        // train with `rides_require_seat` (IsRide, RideSitting).
+        // Poses that drive or carry something are not furniture, or puzzles would lock.
         private static readonly string[] FurnitureWords = { "chair", "couch", "bench", "stump", "seat", "sofa", "stool" };
         private static readonly string[] NeverFurniture = { "chairlift", "trainsystem", "climbaboard", "goodbye", "turnstile", "telescope", "listening" };
         private static readonly string[] AlwaysFurniture = { "carousel" };
@@ -295,10 +260,10 @@ namespace BigWalkArchipelago.Core
             if (pose.onEnterSwitch != null || pose.onExitSwitch != null || pose.directSystemControl != null)
                 return false;
 
-            // A seat that can be picked up (deck chair, folding chair) is furniture whatever it is called.
+            // A seat that can be picked up is furniture whatever it is called.
             var prop = pose.GetComponentInParent<Prop>(true);
             var path = PathOf(pose.transform, prop != null ? prop.transform : null);
-            // Carried, the seat hangs from the holder's grasperhand, out of its chair (measured 2026-10-28).
+            // A carried seat hangs from the holder's hand, outside its chair.
             var holder = pose.GetComponentInParent<PlayerCharacter>(true);
             var held = holder != null ? HeldBy(holder) : null;
             if (held != null)
@@ -327,7 +292,7 @@ namespace BigWalkArchipelago.Core
 
         internal static string Describe(PlayerPose pose) => pose == null ? "(none)" : PathOf(pose.transform, null);
 
-        // What a player holds, from their hands or else the synced record (a remote holder has only that one).
+        // A remote holder only has the synced record.
         private static Prop HeldBy(PlayerCharacter pc)
         {
             if (pc.hands != null && pc.hands.heldProp != null)
@@ -344,7 +309,6 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // A transform's place in the hierarchy, lower case, up to `top` included (the whole of it when null).
         private static string PathOf(Transform transform, Transform top)
         {
             var path = transform.name;
@@ -358,17 +322,7 @@ namespace BigWalkArchipelago.Core
         }
     }
 
-    // Applies the Rewired half on the local player: the element maps of each locked action off, the
-    // others back on. Only once the option has locked something, so a vanilla game is never touched;
-    // re-applied every second, since the game rebuilds its maps when controls are rebound or a
-    // controller is plugged in. Jump stays on while the player sits in a pose: it is the way off a
-    // chair, and a player who could sit without jumping would be stuck there.
-    //
-    // The same goes for sitting on the ground, which a player does not always choose: a big fall, a
-    // knock-out or a trip seats them (PlayerSitter.isSittingLocal), and PlayerSitter.Update stands
-    // them up on jump or sit only (decompiled 2026-10-16). With Legs and Seat both locked, a player
-    // who fell had no way up (player, 2026-10-16). So jump and sit stay on while seated: from the
-    // ground they only stand the player up.
+    // Re-applied every second since the game rebuilds its maps; jump and sit stay on while seated.
     internal class AbilityLockEnforcer : MonoBehaviour
     {
         public AbilityLockEnforcer(IntPtr ptr) : base(ptr)

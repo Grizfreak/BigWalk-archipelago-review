@@ -5,40 +5,18 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // This process's part in a loopback co-op test: two instances of the game
-    // on one PC, the second joining the first as a real Mirror client over
-    // KcpTransport on 127.0.0.1, so that everything a guest sees and does can
-    // be tested without a second machine. tools/launch-guest.ps1 starts the
-    // guest; the host is the ordinary instance, launched through Steam, and
-    // runs none of this: a host started while Steam is up already listens on
-    // UDP 7777 besides EOS (NetworkMinder.StartHost puts a MultiplexTransport
-    // over [KcpTransport, EosTransport]; measured 2026-09-25).
-    //
-    // The role comes from the command line and never from the .cfg: both
-    // instances run from the same install and read the same config file, so
-    // a setting there could not tell them apart.
-    //
-    // Nothing here does anything unless Debug.Enabled is on: a player who
-    // happens to launch the game with these arguments gets the vanilla game.
+    // A second local instance that joins the first as a real Kcp guest on 127.0.0.1 (Debug only).
     internal static class LoopbackGuest
     {
         internal const string GuestArgument = "--bwap-guest";
 
-        // Passed by the launcher when the host was already listening on UDP
-        // 7777: join as soon as the title menu is up, instead of on Ctrl+L.
+        // Join as soon as the title menu is up, instead of on Ctrl+L.
         internal const string JoinArgument = "--bwap-join";
 
-        // A guest that plays as a console player would: without the mod
-        // (roadmap X2). It implies --bwap-guest. Plugin.Load then loads the
-        // join and nothing else — no patch of the mod's, no spawn handler, no
-        // ModChannel — so the host's received items, beacon and messages meet
-        // exactly what a game without the mod has. The two guest patches
-        // below stay: they stand in for what a console player's own join
-        // would provide (an identity of their own, an EOS lobby behind the
-        // connection), not for any feature of the mod.
+        // A guest without the mod: Plugin.Load then only sets up the join and guest patches.
         internal const string VanillaArgument = "--bwap-vanilla";
 
-        // Which guest this is, 1 to 3 (tools/launch-guest.ps1 and LoopbackLauncher pass it).
+        // Which guest this is, 1 to 3.
         internal const string IndexArgument = "--bwap-guest-index";
 
         internal const string HostAddress = "127.0.0.1";
@@ -56,10 +34,6 @@ namespace BigWalkArchipelago.Debug
         internal static string RoleName =>
             IsVanilla ? "loopback guest without the mod" : IsGuest ? "loopback guest" : "host or solo";
 
-        // Called once from Plugin.Load, before anything else is set up, and
-        // only with Debug.Enabled. Says what it decided either way: a role
-        // that is only logged when it is "guest" cannot tell a missing
-        // argument from a probe that never ran.
         internal static void DetectRole()
         {
             var arguments = Environment.GetCommandLineArgs();
@@ -85,15 +59,13 @@ namespace BigWalkArchipelago.Debug
                 : $"{Tag} Role: host or solo (no {GuestArgument} on the command line).");
         }
 
-        // The two patches below exist for the guest only and are applied only
-        // there. Each on its own try: a patch that fails to bind must not
-        // take the rest of the plugin with it (see PlayerCountProceedLog).
+        // Guest only, each in its own try so one failed bind does not take the plugin down.
         internal static void TryApply(Harmony harmony)
         {
             if (!IsGuest)
                 return;
 
-            // The first guest reports no identifier, as it always has; the others one of their own.
+            // The first guest reports no identifier; the others one of their own.
             TryPatch(harmony, "the player identifier",
                 () => harmony.Patch(
                     AccessTools.Method(typeof(HouseSteamManager), nameof(HouseSteamManager.TryGetLocalUserIdentifier)),
@@ -115,40 +87,20 @@ namespace BigWalkArchipelago.Debug
             }
         }
 
-        // Both instances run on the same Steam account, so both would send the
-        // host the same SteamID as their player identifier (measured with
-        // Ctrl+N, 2026-09-25). The host keys things on it: Corpse.FindMatch
-        // hands a returning player the pack and holster they left behind, and
-        // a player object is named "PlayerCharacter <identifier>-<n>". Two
-        // players with one identifier is not a situation a real session ever
-        // produces, so the guest reports none — and every caller then falls
-        // back on its own: HouseAuthenticator sends SystemInfo.deviceName
-        // instead, as the game does whenever Steam is not up. Returning false
-        // rather than writing another string keeps the out parameter out of
-        // Harmony's hands.
+        // Both instances share one SteamID, so the guest reports none and falls back on deviceName.
         private static void IdentifierPostfix(ref bool __result)
         {
             __result = false;
         }
 
-        // From the second guest on (four players on one PC): with no identifier, every guest
-        // would fall back on the same SystemInfo.deviceName, two players with one identifier
-        // again. So each says its own.
+        // Two guests would share one deviceName, so each from the second on says its own.
         private static void NumberedIdentifierPostfix(ref bool __result, ref string __0)
         {
             __0 = $"loopback-guest-{Index}";
             __result = true;
         }
 
-        // Until the game patch of 2026-10-06, HouseNetworkManager.OnClientConnect threw on a join by
-        // IP (no EOS lobby behind it) and a prefix here skipped the lobby part. The patch removed
-        // EOSLobbyManager and the join by IP now goes through untouched (loopback guest verified).
-
-        // The game's own join, as JoinFriendCard.ActionJoin does it: the
-        // transport chosen from the address (not a number, so Kcp) and the
-        // client started, then the current menu swapped for the connecting
-        // one. That menu matters beyond looks: the authenticator's password
-        // and error paths switch it off and something else on.
+        // As JoinFriendCard.ActionJoin does it; the connecting menu matters to the authenticator.
         internal static void Join()
         {
             if (!IsGuest)
@@ -169,12 +121,10 @@ namespace BigWalkArchipelago.Debug
             ShowConnectingMenu();
         }
 
-        // Where a summoned guest lands: beside the host, not inside them.
+        // Beside the host, not inside them.
         private const float SummonSideOffset = 1.5f;
         private const float SummonLift = 0.5f;
 
-        // Host side, on its key: sends the host's position to the loopback
-        // guest through the ModChannel.
         internal static void SummonGuest()
         {
             if (!NetworkServer.active)
@@ -183,7 +133,7 @@ namespace BigWalkArchipelago.Debug
                 return;
             }
 
-            var host = DebugPlayerLookup.FindLocalPlayer();
+            var host = Core.LocalPlayer.Find();
             if (host == null)
             {
                 Plugin.Log.LogInfo($"{Tag} No local player to call the guest to.");
@@ -196,17 +146,13 @@ namespace BigWalkArchipelago.Debug
                 : $"{Tag} No loopback guest to call: none connected from this PC has said hello.");
         }
 
-        // Guest side, from the ModChannel: the game's own player teleport,
-        // the one its puzzle teleporters use (PeckEffectTeleporter.Peck ->
-        // PlayerGrease.Teleport, decompiled 2026-09-26). A player's position
-        // belongs to its owner (HouseNetworkTransform sends CmdMove), so a
-        // teleport done here is what the host sees too.
+        // The game's own player teleport; the guest owns its position, so the host sees it too.
         internal static void OnSummoned(Vector3 hostPosition, Quaternion hostRotation)
         {
             if (!IsGuest)
                 return;
 
-            var me = DebugPlayerLookup.FindLocalPlayer();
+            var me = Core.LocalPlayer.Find();
             if (me == null || me.grease == null)
             {
                 Plugin.Log.LogInfo($"{Tag} Called over by the host, but there is no local player to move yet.");

@@ -7,16 +7,7 @@ namespace BigWalkArchipelago.Debug
     // Lookup shared between the debug tools (DebugGourdUnlocker, DebugItemSimulator).
     internal static class DebugGourdLookup
     {
-        // Pure diagnostic (no writes). Scans Prop.allProps (not RewardGourd):
-        // confirmed in a test session on 2026-09-07, big keys have NO
-        // RewardGourd component at all (0 found via
-        // FindObjectsByType<RewardGourd>, even including inactive ones, while
-        // the player was standing in front of a key) — so contrary to the
-        // notes' initial hypothesis ("same RewardGourd/Prop pipeline as
-        // gourds"), a big key is a bare Prop (probably with a PeckSwitch
-        // onUseAsKey / PropGroup.BigKey, cf. big-walk-archipelago-notes.md),
-        // not a RewardGourd with a GourdState. Prop.allProps is the registry
-        // that covers all of them, gourds and big keys alike.
+        // Scans Prop.allProps, not RewardGourd: big keys have no RewardGourd component.
         internal static void LogNearby(int count)
         {
             var all = Prop.allProps;
@@ -26,13 +17,10 @@ namespace BigWalkArchipelago.Debug
                 return;
             }
 
-            var localPlayer = DebugPlayerLookup.FindLocalPlayer();
+            var localPlayer = Core.LocalPlayer.Find();
             Vector3? playerPosition = localPlayer != null ? localPlayer.transform.position : (Vector3?)null;
 
-            // Prop.allProps is an Il2CppSystem.Collections.Generic.List<Prop>
-            // (not a System.Collections.Generic.List<T>): no IEnumerable<T>
-            // on the interop side, so no LINQ directly on it — we materialize
-            // it into a real .NET List<> before sorting/logging.
+            // Prop.allProps is an Il2Cpp List with no IEnumerable<T>, so it is copied before LINQ.
             var entries = new List<(Prop prop, RewardGourd gourdComponent, bool active, bool saved, float sqrDistance)>();
             foreach (var prop in all)
             {
@@ -60,45 +48,20 @@ namespace BigWalkArchipelago.Debug
                 var entry = entries[i];
                 var distance = playerPosition.HasValue ? Math.Sqrt(entry.sqrDistance).ToString("F1") : "?";
                 var gourdState = entry.gourdComponent != null ? entry.gourdComponent.gourdState.ToString() : "n/a (no RewardGourd)";
-                Plugin.Log.LogInfo($"[{nameof(DebugGourdLookup)}]   {entry.prop.saveablePropName} — gourdState={gourdState} — already saved={entry.saved} — active={entry.active} — distance={distance}m");
+                Plugin.Log.LogInfo($"[{nameof(DebugGourdLookup)}]   {entry.prop.saveablePropName}, gourdState={gourdState}, already saved={entry.saved}, active={entry.active}, distance={distance}m");
             }
         }
 
-        // Pure diagnostic: lists the PropHome instances actually registered in
-        // the scene (not the raw SaveableHomeName enum list, which can
-        // contain reserved/unused values — cf. gourdTesting/bigKeyTesting)
-        // whose name contains "monoument" [sic, matches the game's own typo].
-        // Useful to verify in-game the real number of slots per monument (the
-        // player recalls 4 for the tutorial and 5 for the towers, which does
-        // not match the raw count found in the enum — to be confirmed against
-        // the PropHome instances that are actually active).
-        // Every RewardGourd currently loaded, with the one property the
-        // Archipelago logic turns out to need: isVariantChallenge.
-        //
-        // Why it exists (2026-09-21): the player found that the purple gourds
-        // and one radio station sit behind the chairlift, so they cannot be
-        // reached before the Green Cup Key. The world's region graph assumes
-        // the island is open apart from the ending, which makes that a real
-        // seed-breaking bug rather than a rough edge. Fixing it needs the list
-        // of which puzzles are gated, and a purple gourd is exactly a
-        // RewardGourd with isVariantChallenge set — so this prints the roster
-        // wherever it is pressed.
-        //
-        // Press it in the gated zone and again somewhere plainly open: the
-        // difference between the two lists is the set that needs a region.
+        // Every loaded RewardGourd with isVariantChallenge, sorted by distance from the player.
         internal static void LogAllLoaded()
         {
             var all = UnityEngine.Object.FindObjectsByType<RewardGourd>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
 
-            var localPlayer = DebugPlayerLookup.FindLocalPlayer();
+            var localPlayer = Core.LocalPlayer.Find();
             Vector3? playerPosition = localPlayer != null ? localPlayer.transform.position : (Vector3?)null;
 
-            // Sorted by distance, and that is the whole correction of
-            // 2026-09-21: the first version of this printed presence, and
-            // presence turned out to be useless because the game loads every
-            // gourd everywhere — two presses in two different zones returned
-            // byte-identical lists. Only distance says where something is.
+            // Every gourd is loaded everywhere, so only distance says where something is.
             var entries = new List<(string name, bool variant, bool known, string state, float distance)>();
             var loaded = new HashSet<string>(StringComparer.Ordinal);
             var variants = 0;
@@ -132,23 +95,16 @@ namespace BigWalkArchipelago.Debug
                     + $"| variantChallenge={entry.variant} | isALocation={entry.known} | state={entry.state}");
             }
 
-            // The counts matter more than the lines: "none here" and "the key
-            // did not register" must never look alike.
+            // "none here" and "the key did not register" must never look alike.
             Plugin.Log.LogInfo(
                 $"[{nameof(DebugGourdLookup)}] {all.Length} RewardGourd(s) in the world, {variants} of them purple"
                 + " (variantChallenge), nearest first"
-                + (playerPosition.HasValue ? "." : " — NO LOCAL PLAYER FOUND, so every distance is meaningless."));
+                + (playerPosition.HasValue ? "." : ", NO LOCAL PLAYER FOUND, so every distance is meaningless."));
 
             LogPuzzlesNotLoaded(loaded);
         }
 
-        // The complement of the list above, and the reason it exists (2026-09-21):
-        // thirteen puzzles had no RewardGourd loaded anywhere the dump was
-        // pressed, so their distance was never "far", it was unread — and the
-        // tool said nothing about them, which made the gap invisible until it
-        // was counted by hand afterwards. A puzzle missing from the roster is a
-        // puzzle whose zone this press cannot speak for, which is exactly the
-        // question being asked when the dump is taken behind a gate.
+        // Puzzles with no RewardGourd loaded here: this press cannot speak for their zone.
         private static void LogPuzzlesNotLoaded(HashSet<string> loaded)
         {
             var missing = new List<string>();
@@ -159,9 +115,7 @@ namespace BigWalkArchipelago.Debug
                 if (!name.StartsWith("gourd", StringComparison.Ordinal))
                     continue;
 
-                // Same filter as the registry: dev-only values and the one
-                // gourd the Archipelago world deliberately leaves out are not
-                // puzzles, so their absence means nothing.
+                // Dev-only values and the gourd the world leaves out are not puzzles.
                 if (!Core.GourdRegistry.TryGetLocationId(propName, out _))
                     continue;
 
@@ -177,7 +131,7 @@ namespace BigWalkArchipelago.Debug
             }
 
             Plugin.Log.LogInfo(
-                $"[{nameof(DebugGourdLookup)}] {missing.Count} puzzle gourd(s) NOT loaded here — never read, status unknown:");
+                $"[{nameof(DebugGourdLookup)}] {missing.Count} puzzle gourd(s) NOT loaded here, never read, status unknown:");
             foreach (var name in missing)
                 Plugin.Log.LogInfo($"[{nameof(DebugGourdLookup)}]   (absent) {name}");
         }
@@ -202,22 +156,18 @@ namespace BigWalkArchipelago.Debug
             foreach (var home in matches)
             {
                 var pinnedLabel = home.pinnedProp != null ? home.pinnedProp.saveablePropName.ToString() : "<empty>";
-                Plugin.Log.LogInfo($"[{nameof(DebugGourdLookup)}]   {home.saveableHomeName} — pinnedProp={pinnedLabel}");
+                Plugin.Log.LogInfo($"[{nameof(DebugGourdLookup)}]   {home.saveableHomeName}, pinnedProp={pinnedLabel}");
             }
         }
 
-        // Generic lookup, successor to FindNearestLocked: covers both gourds
-        // AND big keys based on the canonical signal "not yet written to
-        // SaveManager" (the same one ItemApplier/CheckTracker already use)
-        // rather than RewardGourd.gourdState, which does not exist for big
-        // keys (cf. LogNearby above).
+        // Gourds and big keys not yet written to SaveManager; big keys have no gourdState.
         internal static Prop FindNearestUncollectedProp()
         {
             var all = Prop.allProps;
             if (all == null || all.Count == 0)
                 return null;
 
-            var localPlayer = DebugPlayerLookup.FindLocalPlayer();
+            var localPlayer = Core.LocalPlayer.Find();
             Vector3? playerPosition = localPlayer != null ? localPlayer.transform.position : (Vector3?)null;
 
             Prop closest = null;
@@ -251,9 +201,8 @@ namespace BigWalkArchipelago.Debug
             if (all == null || all.Length == 0)
                 return null;
 
-            // Prefers the one closest to the local player (rather than an
-            // arbitrary order) so the effect is immediately visible/testable.
-            var localPlayer = DebugPlayerLookup.FindLocalPlayer();
+            // The closest to the local player, so the effect is visible at once.
+            var localPlayer = Core.LocalPlayer.Find();
             Vector3? playerPosition = localPlayer != null ? localPlayer.transform.position : (Vector3?)null;
 
             RewardGourd closest = null;

@@ -2,15 +2,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The colour of a flare gun's shot (C1, player 2026-10-06). Measured on the island's four
-    // guns: a gun's FlareGunFlare fires (PeckEffectParticleNetworked) a FlareParticleSystem kept
-    // outside the gun. Its colour lives in four of that system's parts:
-    //   FlareParticleSystem, ExplosionLight   start colour, one colour (the flare, its light)
-    //   SmokeParticleSystem                   a gradient: dark, the colour, lighter (#601414 >
-    //                                         #FF3B3B at 0.11 > #FF663B at 0.97 on the red gun)
-    //   SmokeParticleSystem (1)               a gradient: the colour, then darker
-    // The sparks, the flash, the explosion and the puff are the same on every gun and stay.
-    // The interop keeps only MinMaxGradient's Color constructor and its raw fields.
+    // Recolours a flare gun's shot. The interop keeps only MinMaxGradient's Color ctor and fields.
     internal static class FlareColours
     {
         internal static void Apply(ParticleSystem shot, Color colour)
@@ -34,8 +26,7 @@ namespace BigWalkArchipelago.Core
                     case "SmokeParticleSystem (1)":
                         main.startColor = Gradient((Color.Lerp(colour, Color.white, 0.15f), 0f), (Scale(colour, 0.6f), 1f));
                         break;
-                    // The last puffs, peach and yellow on every gun (#FFBC9C or #FFD758): read as
-                    // red smoke at the end of a blue shot (player, 2026-10-07). A pale tone of the colour.
+                    // These puffs are peach on every gun and read as red smoke after a blue shot.
                     case "PuffSystem":
                         var puff = new ParticleSystem.MinMaxGradient(Color.white);
                         puff.m_ColorMin = Color.Lerp(colour, Color.white, 0.55f);

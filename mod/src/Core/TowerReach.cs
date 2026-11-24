@@ -4,15 +4,7 @@ using Mirror;
 
 namespace BigWalkArchipelago.Core
 {
-    // A tower reached (ROADMAP S8 and H3, 0.5): when a tower's opening button is pressed (player,
-    // 2026-10-11, rather than where players stand), its check is made (`tower_sanity`) and what sits at
-    // its key cuts and its key deposit is hinted (`hint_discovered_key_locations`).
-    //
-    // The game records it itself, in the save: a tower's lookout light comes on when its button is
-    // pressed, and the Black Tower's interior door opens when the two buttons at its top are held
-    // together (the same records the teleport buttons use, Core/TeleportButtons). The host reads them,
-    // and a tower already open in a save is reached on the first look. Latched in the save, so it
-    // happens once per save; the server deduplicates the check and the hint all the same.
+    // Sends a tower's check and hints its keys once its opening button has been pressed.
     internal static class TowerReach
     {
         private const string Tag = "[" + nameof(TowerReach) + "]";
@@ -24,8 +16,7 @@ namespace BigWalkArchipelago.Core
             internal string Name;
             internal string SaveKey;
 
-            // The two without a button (the drawbridge, the Green Dome): reached when a player stands within the radius,
-            // marked in game with Alt + 1 (the player, 2026-10-12). Hints only: they have no check.
+            // Towers without a button: reached by standing within the radius. Hints only.
             internal UnityEngine.Vector3 Centre;
             internal float Radius;
         }
@@ -42,7 +33,6 @@ namespace BigWalkArchipelago.Core
             new Tower { Prop = "bigKeyOverflow", Name = "Green Dome", Centre = new UnityEngine.Vector3(-126.9f, 46.3f, -447.4f), Radius = 20f },
         };
 
-        // Every couple of seconds (TeleportButtons.Sync), on the host.
         internal static void Tick()
         {
             if (!NetworkServer.active || !WorldManager.isReadyForEffects || !ModConfig.ArchipelagoEnabled.Value)
@@ -78,7 +68,6 @@ namespace BigWalkArchipelago.Core
             return PlayerWithin(tower);
         }
 
-        // Whether a player stands at one of the towers that have a radius.
         internal static bool PlayerAt(string prop)
         {
             foreach (var tower in Towers)

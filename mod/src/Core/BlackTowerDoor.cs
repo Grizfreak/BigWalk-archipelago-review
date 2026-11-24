@@ -3,26 +3,12 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The Black Tower's door at its foot, open from the start when the slot asks
-    // (`open_black_tower`, player's wish 2026-10-05).
-    //
-    // In the game the door opens once the five monuments of the hub and the four towers are full:
-    // a combinator (`BlackTower <n>Player/Positioner/DoorLogic`, rule min5@1 over the five
-    // `LiveSignal_EndingGate` indicators) drives the door's state (`BasicDoor/BasicDoorPeckLogic`,
-    // saved nowhere), measured with the wiring dump of 2026-10-05. The host sets that state to open
-    // and Patches/BlackTowerDoorHoldPatch refuses it going back down, since the combinator writes
-    // it again whenever one of its indicators changes. The state is networked, so guests follow.
-    //
-    // With `tower_mode` (2026-10-17, a 1.0.1 seed stuck on it, like the Green Dome's the day before), the door also
-    // opens at the Black Tower's turn in the order, whatever `open_black_tower` says: the apworld's logic never asked
-    // for the five monuments, and a seed drawing the Black Tower before one of them had no monument taking gourds.
-    //
-    // The button at the top of the tower (its inner door) is left to the players.
+    // Holds the Black Tower's foot door open for `open_black_tower` or at its turn in `tower_mode`.
     internal static class BlackTowerDoor
     {
         internal static bool Enabled { get; private set; }
 
-        // Whether the door is held open now: from the start, or because the Black Tower takes gourds.
+        // Held open from the start, or because the Black Tower takes gourds.
         internal static bool Held => Enabled || (MonumentOrder.Active && MonumentOrder.IsOpen(5));
 
         private static TrackedPeckState _door;
@@ -37,8 +23,7 @@ namespace BigWalkArchipelago.Core
 
         internal static bool IsTheDoor(TrackedPeckState state) => _door != null && state == _door;
 
-        // Every couple of seconds (TeleportButtonRunner): finds the door once its world is
-        // loaded and opens it.
+        // Every couple of seconds: finds the door once its world is loaded and opens it.
         internal static void Enforce()
         {
             if (!NetworkServer.active || !Held)

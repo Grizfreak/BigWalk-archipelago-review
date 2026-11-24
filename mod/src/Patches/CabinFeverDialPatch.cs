@@ -3,7 +3,7 @@ using HarmonyLib;
 
 namespace BigWalkArchipelago.Patches
 {
-    // R6b: the Cabin Fever dial's animation (Core/CabinFeverDial), written after the game's own text.
+    // Draws the Cabin Fever dial animation after the game has written its own text.
     [HarmonyPatch(typeof(TimerTextController), nameof(TimerTextController.Update))]
     internal static class CabinFeverDialPatch
     {

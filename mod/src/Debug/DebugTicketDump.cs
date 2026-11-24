@@ -8,12 +8,12 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Every object carrying a ticket, switched off ones too, and who the office gives each ticket to.
+    // Every object with a ticket, disabled ones too, and who the office gives each ticket to.
     internal static class DebugTicketDump
     {
         private static float _nextRequestCheck;
 
-        // On a file BepInEx/ticket-dump.request, once the world is ready; written to ticket-dump.txt.
+        // On a BepInEx/ticket-dump.request file, once the world is ready; writes ticket-dump.txt.
         internal static void DumpOnRequest()
         {
             if (Time.unscaledTime < _nextRequestCheck)

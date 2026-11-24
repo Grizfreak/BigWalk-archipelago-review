@@ -6,85 +6,16 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // Spawns a cosmetic/pickup gourd at the hub when an Archipelago item is
-    // received — purely a visual notification ("hey, you just received an
-    // item"). For a gourd (ItemApplier.ApplyGourdItem), this is even its
-    // ONLY effect since the 2026-09-11 FIX (no more SaveManager write at
-    // all); for a big key (ItemApplier.ApplyBigKeyItem), the real work
-    // (SaveManager write, live pin) is still done separately before calling
-    // this spawner. Decided on 2026-09-09 (cf.
-    // big-walk-archipelago-notes.md, "On the appearance of the received
-    // gourd item"): lifetime = until picked up (no timer), visible to all
-    // players in the session (standard network spawn, no per-connection
-    // scoping).
-    //
-    // Approach: clone an already-loaded RewardGourd in the scene
-    // (Instantiate), rather than introducing a new network prefab (none
-    // registered for this mod, and NetworkServer.Spawn requires a prefab
-    // already known to NetworkManager so a client can instantiate it itself
-    // upon receiving the spawn message). Cloning an already-present
-    // instance works because its NetworkIdentity/PrefabHash is already that
-    // of a prefab ALL clients already know.
-    //
-    // This kind of cloning (an object PLACED IN THE SCENE, not a real
-    // prefab dynamically instantiated by the game) turned out to be riddled
-    // with Mirror/engine pitfalls, all encountered and resolved during a
-    // test session on 2026-09-11 — see inline comments for details on each:
-    //   1. NetworkIdentity.sceneId + hasSpawned (copied as-is by
-    //      Instantiate) make Awake() believe this clone is "the same"
-    //      already-known scene object -> "already spawned" warning from the
-    //      engine.
-    //   2. NetworkIdentity.SpawnedFromInstantiate (set to true by Awake())
-    //      must also be reset to false afterward.
-    //   3. `saveablePropName` copied as-is would create a SaveManager
-    //      collision if the clone is ever pinned to a real plinth —
-    //      neutralized (`notSavable`/`PropSaveType.Never`) BEFORE any
-    //      activation. Doing this AFTER ServerSetGourdState would be too
-    //      late: the latter can trigger a real check via GourdStatePatch if
-    //      the original name is still present (confirmed in testing — it
-    //      triggered a false "gourdTellerWindow").
-    //   4. `startHome` (a serialized reference to the template's original
-    //      slot) teleports the clone far from the hub via the `Prop.Start()`
-    //      restoration mechanism — neutralized (null) for the same reason
-    //      as saveablePropName.
-    //   5. `Prop.SetLoose()` must be called explicitly for the "dropped at
-    //      the hub" case: the gourdState SyncVar (driven by
-    //      ServerSetGourdState) only controls the puzzle's visual/logical
-    //      state, not the Prop's own physical state (otherwise the clone
-    //      stays "fixed"/without gravity as in its original clamp).
-    //   6. A per-instance MaterialPropertyBlock (not copied by Instantiate,
-    //      unlike serialized references) is captured and then reapplied to
-    //      the clone as a precaution.
-    //
-    // DECISION (2026-09-11, player): contrary to the initial intuition
-    // ("prevent any pin into a real monument, cf. propGroups.Clear() —
-    // since removed"), the DESIRED behavior is the opposite: puzzles no
-    // longer grant a directly usable gourd (the real donation goes through
-    // the AP network), so these cosmetic clones must become the ONLY way
-    // to fill monuments. The template's `propGroups` is therefore kept
-    // intact (allows a real pin into any real PropHome) — persistence of
-    // that pin is handled separately by `Core/CosmeticMonumentFillTracker.cs`
-    // (a dedicated `SaveManager` key per PropHome, independent of
-    // `saveablePropName`/`SaveableHomeName`, see that file for details).
+    // Spawns cosmetic gourds for received items: neutralized clones of a scene gourd.
     internal static class ReceivedItemSpawner
     {
         internal const string CosmeticNameSuffix = "(AP cosmetic)";
 
-        // A short step ahead, and a little above the ground so it drops
-        // rather than starting half-buried.
+        // A little above the ground, so it drops rather than starting half-buried.
         private const float PlayerSpawnDistance = 1.3f;
         private const float PlayerSpawnLift = 0.6f;
 
-        // Returns the created GameObject (or null on failure/no-op) — useful
-        // for ad-hoc diagnostics (cf. DebugHotkeys); ItemApplier (real usage)
-        // simply ignores the return value.
-        // toPlayer distinguishes the two ways a gourd can arrive, which
-        // want opposite things. One turning up mid-game is a gift: it
-        // belongs in the player's hands, or at worst at their feet. The
-        // dozens rebuilt at the start of a session are stock, and stock
-        // belongs at the hub — dropping them around whoever just loaded in
-        // would bury them, and the players are not necessarily at the hub
-        // when it happens (player's call, 2026-09-15).
+        // `toPlayer`: a mid-game gourd goes to a player; session-start stock goes to the hub.
         internal static GameObject SpawnCosmeticPickup(bool toPlayer)
         {
             using var activity = ModActivity.Enter("cosmetic gourd spawn");
@@ -112,26 +43,10 @@ namespace BigWalkArchipelago.Core
 
                 rewardGourd.ServerSetGourdState(GourdFlag.GourdState.Loose);
 
-                // Without this, the clone stays "fixed" (no gravity) as in
-                // its original clamp/cabinet — cf. point 5 at the top of the
-                // file.
+                // Without this the clone stays fixed, without gravity, as in its original clamp.
                 rewardGourd.prop?.SetLoose();
 
-                // Handing it over is deferred by a frame rather than done
-                // here. Putting it in the hands now would put the spawn of
-                // this gourd and the player's "is holding it" SyncVar in the
-                // same frame, and the other client resolves that SyncVar's
-                // reference by netId: if it lands before the spawn has been
-                // applied there, the reference comes back null and
-                // PlayerNetworking.OnSetHeld throws on it — taking the rest
-                // of that player's SyncVar batch down with it (the "read 62
-                // bytes / hash mismatch" seen in co-op on 2026-09-15).
-                //
-                // Deferring is right whether or not that race is what caused
-                // it: the two facts have no ordering guarantee between them,
-                // and one frame is not perceptible. What the frame does NOT
-                // buy is certainty that the guest has processed the spawn by
-                // then — only that the server sent it first.
+                // A frame later: spawn and hold in one frame can give a guest a null ref.
                 QueueHandover(rewardGourd.prop, recipient);
 
                 Plugin.Log.LogInfo(
@@ -140,21 +55,13 @@ namespace BigWalkArchipelago.Core
             }
             catch (Exception ex)
             {
-                // Must never make the actual item reception fail (already
-                // applied by ItemApplier before this call): purely
-                // cosmetic, an exception here must have no consequence on
-                // the real persistence.
+                // Cosmetic only: the item was already applied, so this must change nothing.
                 Plugin.Log.LogWarning($"[{nameof(ReceivedItemSpawner)}] Cosmetic spawn failed, ignored: {ex}");
                 return null;
             }
         }
 
-        // Variant used by CosmeticMonumentFillTracker to restore, on load,
-        // a cosmetic gourd already deposited in a previous session: clone +
-        // pin directly into propHome (rather than dropping it at the hub).
-        // Returns the created GameObject, or null on failure (never
-        // propagates an exception, same defensive logic as
-        // SpawnCosmeticPickup).
+        // Restores a gourd deposited in a previous session, pinned straight into its home.
         internal static GameObject SpawnCosmeticPickupPinnedTo(PropHome propHome)
         {
             using var activity = ModActivity.Enter("cosmetic gourd restore");
@@ -167,13 +74,7 @@ namespace BigWalkArchipelago.Core
                 if (rewardGourd == null || rewardGourd.prop == null)
                     return null;
 
-                // Stashed (not Loose): represents a gourd already deposited
-                // in its home, not a gourd that just appeared and is waiting
-                // to be picked up — consistent with the fact that it is
-                // pinned directly right below, without ever passing through
-                // a "dropped on the ground" state. Ignored by GourdStatePatch
-                // (guarded on newGourdState == Loose only), so no risk of a
-                // false check here either.
+                // Stashed, not Loose: GourdStatePatch only reacts to Loose, so no false check.
                 rewardGourd.ServerSetGourdState(GourdFlag.GourdState.Stashed);
                 rewardGourd.prop.ServerSetPinned(propHome);
 
@@ -186,57 +87,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Core logic shared by both entry points above: clones an existing
-        // RewardGourd at the given position/rotation, neutralized and ready
-        // to use (networked, activated, visually correct). Sets neither the
-        // puzzle state (gourdState) nor the physics/pin — left to the
-        // caller's discretion.
-        // Gives received gourds a colour of their own, so they read at a
-        // glance as "this came from Archipelago" rather than as a gourd that
-        // wandered out of a puzzle. A third party suggested exactly this
-        // (see apworld/design-decisions.md, community feedback).
-        //
-        // Reuses the game's own mechanism rather than poking at shaders:
-        // RewardGourd already carries `isVariantChallenge` + a
-        // `variantChallengeColor`, which is how the postgame purple gourds
-        // get their look, and PropertyBlockHelper.Refresh() is public. Set
-        // before activation so Awake picks it up, and refreshed after
-        // activation in case the helper only applies on demand.
-        //
-        // Until now the colour was whatever the cloned template happened to
-        // look like — FindTemplate takes the first RewardGourd the engine
-        // returns, in unspecified order, so it was arbitrary and could
-        // differ between sessions. It came out purple in-game on
-        // 2026-09-15, which was luck rather than design.
-        // NOT A SETTING, AND IT USED TO BE ONE (removed 2026-09-23).
-        //
-        // It is a measurement: keep every channel clearly below 0xFF. The
-        // first value, #FFA62B, put R at 0xFF exactly and rendered every
-        // received gourd as a featureless glowing white blob with no gourd
-        // shape at all — bloom through the game's own variant-challenge
-        // effect, measured 2026-09-22, not a matter of taste about the hue.
-        // So the config key offered no freedom worth having; what it offered
-        // was a way to break the look.
-        //
-        // What it actually did was worse than nothing. BepInEx never rewrites
-        // a key already present in a .cfg, so when the default moved to
-        // #805020 both machines silently kept the blob, and co-op found it
-        // the honest way: two players looking at two different colours
-        // (2026-09-23). A per-machine setting for something every player must
-        // see identically is a bug generator.
-        //
-        // Nor does it belong in the YAML, for the reason that decides most
-        // questions in this mod: slot_data reaches the HOST and nobody else,
-        // so a guest would never learn the value and the mismatch would come
-        // straight back one layer up.
-        //
-        // SIX COLOURS SINCE 2026-09-25, after the first alpha asked for the
-        // Archipelago logo's colours. Which one a gourd gets is read off its
-        // netId: the one number every machine already agrees on, so every
-        // screen paints it the same without a message saying so. A gourd
-        // respawned in a later session gets a new netId and may change
-        // colour; that was judged not worth a protocol. Every channel stays
-        // at 0xD2 or below, well clear of the 0xFF that blooms (see above).
+        // Picked by netId, the same on every machine. Channels stay under 0xFF, which blooms white.
         private static readonly string[] CosmeticGourdColorsHtml =
         {
             "#C83C3C", // red
@@ -249,8 +100,7 @@ namespace BigWalkArchipelago.Core
 
         private static void ApplyCosmeticColor(RewardGourd rewardGourd)
         {
-            // netId 0 is the host before NetworkServer.Spawn; the spawn path
-            // re-applies once the real number exists.
+            // netId is 0 before NetworkServer.Spawn; the spawn path re-applies once it exists.
             var identity = rewardGourd.GetComponent<NetworkIdentity>();
             var netId = identity != null ? identity.netId : 0u;
             var html = CosmeticGourdColorsHtml[(int)(netId % (uint)CosmeticGourdColorsHtml.Length)];
@@ -265,15 +115,7 @@ namespace BigWalkArchipelago.Core
             _pendingColorRefresh = rewardGourd;
         }
 
-        // What RewardGourd.Awake does with variantChallengeColor, and the
-        // only place it does it (decompiled 2026-09-26): copy it into
-        // propertyBlockHelper.colorSettings[0].color, then Refresh(). Awake
-        // runs once, when the clone is switched on — before it has a netId,
-        // so it copied netId 0's colour, the first of the six: every received
-        // gourd came out red, on both screens alike (test 22, 2026-09-26).
-        // Setting variantChallengeColor again once the netId existed changed
-        // nothing, because Refresh() pushes colorSettings, not the field.
-        // So the re-application writes where Awake writes.
+        // Writes where RewardGourd.Awake writes: Refresh() pushes colorSettings, not the field.
         private static void WriteHelperColor(RewardGourd rewardGourd, Color color)
         {
             var helper = rewardGourd.propertyBlockHelper;
@@ -281,15 +123,12 @@ namespace BigWalkArchipelago.Core
             if (settings == null || settings.Length == 0)
                 return;
 
-            // An element of an IL2CPP struct array comes back as a copy:
-            // changed, then stored back through the indexer.
+            // An element of an IL2CPP struct array comes back as a copy: changed, then stored back.
             var setting = settings[0];
             setting.color = color;
             settings[0] = setting;
 
-            // Once per session, read back: the write goes through the
-            // interop's array indexer, and a write that silently did not
-            // take would look exactly like the bug it fixes.
+            // Read back once per session: a write through the interop indexer could silently fail.
             if (!_helperWriteChecked && rewardGourd.GetComponent<NetworkIdentity>()?.netId > 0)
             {
                 _helperWriteChecked = true;
@@ -302,9 +141,7 @@ namespace BigWalkArchipelago.Core
 
         private static bool _helperWriteChecked;
 
-        // Applied after activation: Awake may be what pushes
-        // variantChallengeColor into the property block, and if it is not,
-        // this is. Harmless either way.
+        // Applied after activation: Awake may push variantChallengeColor; if not, this does.
         private static void RefreshCosmeticColor()
         {
             var target = _pendingColorRefresh;
@@ -322,17 +159,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Re-applies the cosmetic look after Mirror has finished spawning the
-        // object on a client.
-        //
-        // BuildNeutralizedClone already colours the clone, and on the host
-        // that is enough. On a client it is not: the handler returns the
-        // object and Mirror THEN runs the spawn payload over it —
-        // OnStartClient, the gourdState SyncVar, the RewardGourd's own
-        // initialisation — which puts the template's appearance back. The
-        // gourd came out glaring white instead of orange on the second
-        // player's screen (co-op, 2026-09-20) while looking correct on the
-        // host, which is exactly the shape of "something ran after us".
+        // On a client, Mirror's spawn payload runs after the handler and restores the old look.
         internal static void ReapplyCosmeticLook(RewardGourd rewardGourd)
         {
             if (rewardGourd == null)
@@ -342,9 +169,7 @@ namespace BigWalkArchipelago.Core
             RefreshCosmeticColor();
         }
 
-        // Logged once per session: if the colour above does not take, these
-        // are the shader properties the game actually drives, and the next
-        // fix can target one by name instead of guessing.
+        // Logged once per session: the shader properties the game drives, for the next fix.
         private static void LogColorSettingsOnce(RewardGourd rewardGourd)
         {
             if (_colorSettingsLogged)
@@ -374,23 +199,10 @@ namespace BigWalkArchipelago.Core
         private static RewardGourd _pendingColorRefresh;
         private static bool _colorSettingsLogged;
 
-        // The assetId the cosmetic clones are spawned under. Mirror
-        // identifies a scene object by its sceneId and a dynamically spawned
-        // one by its assetId, looked up in the client's registered-prefab
-        // table; a clone of a scene object has neither that a remote client
-        // can resolve, which is why the spawn used to fail there with
-        // "did you forget to add it to the NetworkManager?" while working
-        // perfectly on the host — where nothing has to be instantiated
-        // because the object is already local. Ours is a constant of our
-        // own, matched by the handler CosmeticGourdSpawnHandler registers on
-        // every client; the value is arbitrary, only the fact that both ends
-        // agree on it matters.
+        // Our own assetId for the clones, matched by CosmeticGourdSpawnHandler on every client.
         internal const uint CosmeticAssetId = 0xB16_9A00;
 
-        // Builds the clone WITHOUT spawning it. Split out so a client can
-        // run exactly the same construction from its spawn handler: the
-        // server no longer ships the object, it ships the instruction to
-        // build one, and each machine builds its own from its own scene.
+        // Builds without spawning, so each client's spawn handler builds the same clone itself.
         internal static RewardGourd BuildNeutralizedClone(Vector3 position, Quaternion rotation)
         {
             var template = FindTemplate();
@@ -400,18 +212,10 @@ namespace BigWalkArchipelago.Core
                 return null;
             }
 
-            // Per-instance MaterialPropertyBlock: captured on the template
-            // BEFORE cloning (cf. point 6 at the top of the file), to be
-            // explicitly reapplied to the clone further below.
+            // Instantiate does not copy property blocks: captured here, reapplied below.
             var templatePropertyBlocks = CapturePropertyBlocks(template.gameObject);
 
-            // Workaround for the Mirror pitfall (point 1 at the top of the
-            // file): the clone must not wake up (Awake()/OnEnable()) until its
-            // sceneId and saveablePropName/startHome have been neutralized.
-            //
-            // It is born under an INACTIVE parent rather than by switching the
-            // template off and on around Instantiate: the template is never
-            // touched, and the clone wakes only when it is unparented below.
+            // Born under an inactive parent: it must not wake before its ids are cleared.
             var holder = TemplateHolder();
             var clone = UnityEngine.Object.Instantiate(template.gameObject, position, rotation, holder);
 
@@ -422,11 +226,7 @@ namespace BigWalkArchipelago.Core
             {
                 cloneIdentity.sceneId = 0;
 
-                // hasSpawned is exposed as an Il2CppInterop-generated
-                // property (not a genuinely reflectable FieldInfo despite
-                // being declared as a private field on the game side) —
-                // reflection on the property's setter, not on a guessed
-                // field name.
+                // hasSpawned is an interop property, not a field: set through its setter.
                 GetPrivatePropertySetter<NetworkIdentity>("hasSpawned")?.Invoke(cloneIdentity, new object[] { false });
             }
 
@@ -440,9 +240,7 @@ namespace BigWalkArchipelago.Core
 
             ApplyCosmeticColor(rewardGourd);
 
-            // Neutralization BEFORE activation (points 3 and 4 at the top of
-            // the file) — not after ServerSetGourdState, which actually
-            // triggered a false check in testing.
+            // Neutralized before activation: after ServerSetGourdState it made a false check.
             NeutralizeProgression(rewardGourd.prop);
             DetachExternalPecks(rewardGourd.prop, clone.transform);
             var propsToMakeSavable = rewardGourd.propsToMakeSavable;
@@ -458,21 +256,14 @@ namespace BigWalkArchipelago.Core
                 }
             }
 
-            // Reapplying the MaterialPropertyBlocks captured above, by index
-            // (the clone's renderer hierarchy is an exact copy of the
-            // template's) — before activation, to avoid even a single frame
-            // with the default bare appearance.
+            // Reapplied by index, before activation, so not a single frame shows the bare look.
             ApplyPropertyBlocks(clone, templatePropertyBlocks);
 
-            // Wakes the clone: Awake()/OnEnable() run here, on the neutralized
-            // object, as they did when SetActive(true) was what woke it.
+            // Wakes the clone: Awake()/OnEnable() run here, on the neutralized object.
             clone.transform.SetParent(null, true);
             clone.SetActive(true);
 
-            // SpawnedFromInstantiate (point 2 at the top of the file): set
-            // to true BY Awake() itself (so only once SetActive is called
-            // above), reset to false afterward via reflection on the
-            // property's setter.
+            // Awake sets SpawnedFromInstantiate; it is reset to false through its setter.
             if (cloneIdentity != null)
                 GetPrivatePropertySetter<NetworkIdentity>(nameof(NetworkIdentity.SpawnedFromInstantiate))?.Invoke(cloneIdentity, new object[] { false });
 
@@ -481,16 +272,7 @@ namespace BigWalkArchipelago.Core
             return rewardGourd;
         }
 
-        // THE REAL CAUSE OF THE STRAY CHECK (found 2026-10-03, from the stack
-        // of the check itself). A gourd sealed in a puzzle (Coordinates
-        // Holding, reproduced) has Prop.onPickUpSwitch & co. pointing at a
-        // PeckSwitch that belongs to the puzzle, outside the gourd. Instantiate
-        // only remaps references INSIDE the cloned hierarchy, so the clone
-        // kept the puzzle's own switch: handing the clone to a player ran
-        // Prop.SetHeld -> PeckSwitch.Peck -> TrackedPeckState.SetState ->
-        // ServerSetGourdState(Loose) on the REAL gourd, and GourdStatePatch
-        // reported the puzzle as solved. Any switch the clone does not own is
-        // let go; one inside it is left alone.
+        // Instantiate keeps the puzzle's outside switches: holding the clone solved the real one.
         private static void DetachExternalPecks(Prop prop, Transform root)
         {
             if (prop == null)
@@ -540,18 +322,13 @@ namespace BigWalkArchipelago.Core
             if (rewardGourd == null)
                 return null;
 
-            // The assetId overload, rather than setting the property first:
-            // NetworkIdentity.assetId has an internal setter, and Mirror
-            // offers this exactly so a caller can say what a dynamically
-            // spawned object should be identified as.
+            // The assetId overload: NetworkIdentity.assetId has an internal setter.
             NetworkServer.Spawn(rewardGourd.gameObject, CosmeticAssetId);
 
             // Now that it has a netId, its real colour.
             ReapplyCosmeticLook(rewardGourd);
 
-            // The netId is what the other player's client will be asked to
-            // resolve when this gourd ends up in someone's hands, so it is
-            // worth being able to line it up against their log.
+            // The netId, to line this up with the other player's log.
             var identity = rewardGourd.GetComponent<NetworkIdentity>();
             Plugin.Log.LogInfo(
                 $"[{nameof(ReceivedItemSpawner)}] Cosmetic gourd spawned on the network (netId {(identity != null ? identity.netId : 0)}).");
@@ -559,54 +336,14 @@ namespace BigWalkArchipelago.Core
             return rewardGourd;
         }
 
-        // Shared with CosmeticMonumentFillTracker (detection in the
-        // PropHome.onAnyChangeServer event) and the debug tools: a cosmetic
-        // clone is unambiguously recognized by saveablePropName ==
-        // notSavable (never true for a normal game prop) + the name suffix,
-        // as a double check.
-        // Clears away every cosmetic gourd that is not sitting in a
-        // monument, so the session-start reconciliation can put the right
-        // number back. Returns how many were removed.
-        //
-        // This is the escape hatch for a gourd that has become unreachable
-        // without the world being reloaded — stranded in a sealed puzzle
-        // room, dropped somewhere awkward. Those are recovered on the next
-        // world load anyway, since loose clones are never persisted and the
-        // ledger recomputes; this simply makes that recovery available
-        // without quitting.
-        //
-        // Monument deposits are deliberately untouched: they are persisted
-        // (`ap_home_*`), they are what the Archipelago logic counts, and
-        // nothing about them can go wrong in a way this would fix.
-        //
-        // NEITHER IS ANYTHING ELSE THAT HAS A HOME, since 2026-09-23. This
-        // used to take "everything else — on the ground, in a player's hands,
-        // on a carried belt", which is what the player had asked the gadget
-        // sweep NOT to do the day before: "the backpacks and belts worn by
-        // players must not answer this command, and neither must the objects
-        // hanging inside them". The gadget sweep got the rule; this one never
-        // did, and co-op found it — Ctrl+R took a gourd out of a guest's
-        // backpack. Destroying it there did worse than lose a gourd: the
-        // wearer's PlayerShepherd keeps the colliders of everything that
-        // player carries, stowed things included, and it threw a
-        // NullReferenceException on the dead collider every physics tick —
-        // 1790 of them in one host's Player.log before anyone noticed.
-        //
-        // So a homed gourd stays, wherever the home is: a monument, a
-        // backpack, a carton, a belt. What goes is what lies on the ground
-        // or sits in someone's hands. Those that stay outside a monument are
-        // reported through `kept`, because the rebuild counts what exists and
-        // must not put them back a second time.
+        // Removes cosmetic gourds lying loose or held; a homed one stays and is counted in `kept`.
         internal static int DestroyLooseCosmeticGourds(out int kept)
         {
             kept = 0;
             var destroyed = 0;
             var seen = 0;
 
-            // Inactive included: a prop that has been picked up can leave
-            // the active hierarchy, and the default scan would quietly walk
-            // past exactly the gourd this is meant to reclaim. The mod's
-            // own debug lookup learned this already.
+            // Inactive included: a picked-up prop can leave the active hierarchy.
             var all = UnityEngine.Object.FindObjectsByType<RewardGourd>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (all == null)
@@ -627,12 +364,7 @@ namespace BigWalkArchipelago.Core
 
                 seen++;
 
-                // Tidying the hands is best effort; removing the gourd is
-                // not. Keeping these apart matters: the first version let a
-                // failure to drop abort the removal, so the one gourd that
-                // most needed reclaiming — the one being held — was the
-                // only one left behind, and the rebuild then counted it
-                // twice (observed in-game, 2026-09-15).
+                // Dropping is best effort and must not stop the removal of a held gourd.
                 ReleaseFromHands(gourd.prop);
 
                 try
@@ -653,15 +385,7 @@ namespace BigWalkArchipelago.Core
             return destroyed;
         }
 
-        // Destroying OR hiding a prop out of someone's hands would leave the
-        // hands believing they still hold it, so it is dropped first. Also
-        // called by GourdStatePatch, which hits exactly that case on the
-        // puzzles whose gourd goes Loose on pickup.
-        //
-        // Drop takes a PlayerHeldInformation, which is a struct carrying a
-        // NetworkIdentity — so the parameterless-looking `Drop()` passes one
-        // with a null identity and the game dereferences it. The type's own
-        // constructor takes the prop, which is what it wants.
+        // Drop before destroying or hiding. The struct is built from the prop: a default is null.
         internal static void ReleaseFromHands(Prop prop)
         {
             var players = PlayerCharacter.allPlayerCharacters;
@@ -689,8 +413,7 @@ namespace BigWalkArchipelago.Core
                 }
                 catch (Exception ex)
                 {
-                    // Last resort: sever the reference by hand rather than
-                    // leave the player holding an object about to vanish.
+                    // Last resort: sever the reference by hand.
                     Plugin.Log.LogWarning($"[{nameof(ReceivedItemSpawner)}] Drop failed, clearing the hand directly: {ex.Message}");
                     try { pc.hands.heldProp = null; }
                     catch (Exception inner) { Plugin.Log.LogWarning($"[{nameof(ReceivedItemSpawner)}] ...and that failed too: {inner.Message}"); }
@@ -700,28 +423,7 @@ namespace BigWalkArchipelago.Core
             ClearServerSideHold(prop, players);
         }
 
-        // THE HALF THE HOST CAN ACTUALLY REACH (2026-09-23, measured in co-op).
-        //
-        // Everything above works for the host's own hands and for nobody
-        // else's: a remote player's hands are that player's machine's
-        // business, and Drop() on the host's copy of them does not replicate
-        // (established 2026-09-15, see StaleHeldPropReleaser). So Ctrl+R
-        // reclaimed a key a guest was carrying, teleported it to the hub, and
-        // left it in the guest's hands on the guest's screen.
-        //
-        // The first fix for that sat on the guest and waited for the server
-        // to stop saying the guest held the key. It never did, and that was
-        // the flaw in it: nothing had told the SERVER. PlayerHeldInformation
-        // is a SyncVar the host owns, and it still named the key long after
-        // the key had left. The host cannot touch remote hands, but it can
-        // write that SyncVar, and a SyncVar write reaches every client —
-        // including the one whose hands are wrong.
-        //
-        // Built from the current value rather than from scratch: the struct
-        // holds a NetworkIdentity, so Il2CppInterop hands it over as a
-        // wrapper with no constructor for "nothing held". The action number
-        // goes UP, never back to zero — a hook that de-duplicates on it would
-        // otherwise take the change for a stale message and ignore it.
+        // A remote player's hands ignore a host Drop(), so the host rewrites the held SyncVar.
         private static void ClearServerSideHold(Prop prop, Il2CppSystem.Collections.Generic.List<PlayerCharacter> players)
         {
             if (!NetworkServer.active || prop == null || players == null)
@@ -768,30 +470,14 @@ namespace BigWalkArchipelago.Core
                 && prop.gameObject.name.Contains(CosmeticNameSuffix, StringComparison.Ordinal);
         }
 
-        // Found in testing on 2026-09-11: PropHome is a generic game
-        // concept, also reused for slots carried by the player (e.g. an
-        // inventory "belt", saveableHomeName == notSavable, always at ~0
-        // distance from the player since attached to their own character)
-        // — not just monuments. DebugCosmeticPinForce used to pick the
-        // nearest empty PropHome WITHOUT this filter, and pinned a cosmetic
-        // gourd into a "belt" instead of a real monument (log: "pinned into
-        // notSavable"). All real monument slots (`SaveableHomeName`) start
-        // with the prefix "monoument" (monoumentIntro/monoument0-3Slot.../
-        // monoumentFinalSlot.../monoumentOverflowSlot..., cf. the enum) —
-        // a shared filter to never reproduce this confusion.
+        // PropHome also serves carried slots like belts; monument slots all start with "monoument".
         internal static bool IsMonumentHome(PropHome home)
         {
             return home != null
                 && home.saveableHomeName.ToString().StartsWith("monoument", StringComparison.OrdinalIgnoreCase);
         }
 
-        // Point 6 at the top of the file, factored out: internal rather than
-        // private because GadgetItemSpawner needs the exact same capture
-        // twice over (once when caching its long-lived template, again for
-        // every clone spawned from that template) — Instantiate does not
-        // copy a per-instance MaterialPropertyBlock, unlike every serialized
-        // reference, and skipping this is what a gadget clone coming out
-        // shader-pink/magenta (in-game, 2026-09-22) turned out to be.
+        // Instantiate does not copy a per-instance MaterialPropertyBlock: clones went magenta.
         internal static MaterialPropertyBlock[] CapturePropertyBlocks(GameObject source)
         {
             var renderers = source.GetComponentsInChildren<Renderer>(true);
@@ -809,10 +495,7 @@ namespace BigWalkArchipelago.Core
             return blocks;
         }
 
-        // Reapplies blocks captured by CapturePropertyBlocks above, by
-        // index — valid only when target's renderer hierarchy is an exact
-        // copy of the source the blocks were captured from (true of any
-        // clone made via UnityEngine.Object.Instantiate).
+        // By index: valid only on an exact copy of the source, as Instantiate makes.
         internal static void ApplyPropertyBlocks(GameObject target, MaterialPropertyBlock[] blocks)
         {
             var renderers = target.GetComponentsInChildren<Renderer>(true);
@@ -823,19 +506,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // A gourd never needed this: RewardGourd puzzle props are already
-        // loose pickups in vanilla gameplay, never statically batched or
-        // lightmapped. Several of the island's own hand props (megaphone
-        // aside — cf. GadgetItemSpawner) ARE static, baked-lit set dressing,
-        // and Instantiate copies their lightmapIndex as-is — a slot number
-        // into the CURRENT zone's baked lightmap array. GadgetItemSpawner's
-        // template is captured once and kept for the rest of the session,
-        // so that slot number can end up stale (a different zone's lightmap
-        // set, or none at all) well before it is ever cloned again — the
-        // shader then samples nonsense and renders flat magenta (observed
-        // in-game, 2026-09-22: half the gadgets pink, half fine — exactly
-        // the split between static/baked props and already-loose ones).
-        // -1 means "not lightmapped"; falls back to light probes instead.
+        // A static prop's baked lightmap index goes stale on a kept template; -1 uses light probes.
         internal static void ClearLightmapReferences(GameObject target)
         {
             var renderers = target.GetComponentsInChildren<Renderer>(true);
@@ -849,28 +520,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The actual cause of the pink/magenta clones (found 2026-09-22 via
-        // Ctrl+M/DebugPropLookup.DumpCosmeticGadgets, not the lightmap
-        // theory above, which was ruled out first): a sub-mesh renderer with
-        // `sharedMaterial == null` — e.g. WalkieTalkieProp's own 'WalkieTalkie'
-        // renderer, sitting right alongside four other renderers that all
-        // carry a valid `hhVertexColors` material. Unity draws a materialless
-        // renderer with its built-in magenta error shader.
-        //
-        // Disabling that renderer outright (the first attempt) traded pink
-        // for invisible: measured in-game, this renderer turned out to be
-        // the object's own main body mesh, not decoration — hiding it hid
-        // the whole prop. The shader name is the clue to the real fix:
-        // "VertexColors" means the LOOK lives in the mesh's own baked
-        // per-vertex colour data, not in the material, so any renderer using
-        // that shared material should already display correctly regardless
-        // of which mesh it is drawing — this renderer is missing the
-        // material REFERENCE, not missing colour data. Some vanilla
-        // mechanism evidently assigns it based on the prop's real identity,
-        // which NeutralizeProgression deliberately erases; rather than chase
-        // that mechanism, borrowing whichever valid material a sibling
-        // renderer on the same object already carries is a same-object,
-        // same-shader-family fallback, not a guess at an unrelated asset.
+        // A sub-renderer without a material draws magenta: it borrows a sibling's material.
         internal static void FixMaterialessRenderers(GameObject target)
         {
             var renderers = target.GetComponentsInChildren<Renderer>(true);
@@ -895,23 +545,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The remaining pink after FixMaterialessRenderers (measured
-        // in-game, 2026-09-22: the walkie-talkie's body came back correct,
-        // its buttons stayed pink) is a second, unrelated mechanism —
-        // `PropertyBlockHelper`, the same generic (not gourd-specific)
-        // component DebugKeyLookup already found on a big key: a plain
-        // MonoBehaviour with `targetRenderer`/`colorSettings[] {
-        // propertyName, color }` and a public `Refresh()` that pushes those
-        // settings into the renderer's MaterialPropertyBlock. Nothing here
-        // calls it for a gadget clone, unlike a gourd (whose own
-        // `ApplyCosmeticColor`/`RefreshCosmeticColor` is a hand-rolled
-        // version of exactly this). Cheap and safe to call unconditionally:
-        // a Prop without one simply yields no components to iterate.
-        // Gives a kept template materials of its own. The game's PropertyBlockHelper swaps a
-        // renderer's material for an instance it owns and later destroys or replaces; a copy of the
-        // object keeps pointing at that instance, and once it is gone every refresh of the copy
-        // threw ("Value cannot be null. Parameter name: source", Player.log, 2026-10-05), and its
-        // glyph could come out blank or magenta. Copies made now are never touched by the game.
+        // A copy points at a PropertyBlockHelper's material, which the game later destroys.
         internal static void OwnMaterials(GameObject target)
         {
             foreach (var renderer in target.GetComponentsInChildren<Renderer>(true))
@@ -942,10 +576,7 @@ namespace BigWalkArchipelago.Core
                 helper?.Refresh();
         }
 
-        // Internal rather than private: GadgetItemSpawner (the same clone
-        // technique, generalized to a plain Prop for the island's own hand
-        // props used as filler items) reuses this instead of duplicating the
-        // reflection.
+        // Internal: GadgetItemSpawner reuses this reflection.
         internal static MethodInfo GetPrivatePropertySetter<T>(string propertyName)
         {
             return typeof(T)
@@ -953,7 +584,6 @@ namespace BigWalkArchipelago.Core
                 ?.GetSetMethod(nonPublic: true);
         }
 
-        // Internal rather than private: same reuse as above.
         internal static void NeutralizeProgression(Prop prop)
         {
             if (prop == null)
@@ -962,24 +592,11 @@ namespace BigWalkArchipelago.Core
             prop.saveablePropName = SaveablePropName.notSavable;
             prop.propSaveType = PropSaveType.Never;
 
-            // Point 4 at the top of the file: without this, Prop.Start()
-            // (the load-time restoration mechanism already documented in
-            // big-walk-archipelago-notes.md, section "RESOLVED 2026-09-03")
-            // teleports the clone to the template's original slot location,
-            // potentially at the other end of the map.
+            // Without this, Prop.Start() teleports the clone to the template's original slot.
             prop.startHome = null;
-
-            // `propGroups` is NO LONGER cleared here (unlike an earlier
-            // version): player decision (2026-09-11) to explicitly allow
-            // pinning into a real monument, cf. the "DECISION" section at
-            // the top of the file — CosmeticMonumentFillTracker handles the
-            // persistence of that pin separately.
         }
 
-        // Picks the InventorySpawn closest to the local player rather than
-        // the first one found — several InventorySpawn instances are loaded
-        // simultaneously (one per zone?), not a single point dedicated to
-        // the hub.
+        // The nearest InventorySpawn: several are loaded at once, not one for the hub.
         private static InventorySpawn FindSpawnPoint()
         {
             var all = UnityEngine.Object.FindObjectsByType<InventorySpawn>(FindObjectsSortMode.None);
@@ -1014,37 +631,7 @@ namespace BigWalkArchipelago.Core
             return player != null ? player.transform.position : null;
         }
 
-        // Hands the gourd straight to the player when their hands are free,
-        // rather than making them stoop for something the server just gave
-        // them (player request, 2026-09-15).
-        //
-        // Both conditions come from the game rather than from a guess:
-        // `isHoldingSomething` is the "are their hands free" it already
-        // tracks, and `IsSafeToPickUp` is its own judgement about whether a
-        // given prop may be picked up at all. Asking the game beats
-        // reasoning about it, which is the lesson from placing props by
-        // computed offsets.
-        //
-        // Self-limiting during a bulk restore: the first gourd fills the
-        // hands and every one after it simply drops as before.
-        //
-        // NOTE, and it is not solved by this: a gourd handed over inside a
-        // sealed puzzle room is stranded there for the session, exactly as
-        // one dropped at the player's feet would be, because the game does
-        // not let you carry it out. That is recovered on the next world
-        // load — the ledger recomputes received-minus-deposited and puts it
-        // back — but not before.
-        // Set by SpawnCosmeticPickup, consumed one tick later by ApRuntime.
-        // A single slot rather than a queue: hands hold one thing, so a
-        // second gourd arriving before the first is handed over would not
-        // have been picked up anyway. GadgetItemSpawner shares this same
-        // slot via QueueHandover below rather than keeping a queue of its
-        // own — a gourd and a gadget racing for it in the same tick is a
-        // one-in-a-blue-moon collision on a purely cosmetic hand-over, not
-        // worth a second mechanism.
-        // A queue since 2026-09-25, where it used to be a single slot: items
-        // now go to different players, so three arriving in the same tick are
-        // three hand-overs, not one.
+        // Pending hand-overs: items may go to different players in the same tick.
         private static readonly List<PendingHandover> Pending = new();
 
         private sealed class PendingHandover
@@ -1055,10 +642,7 @@ namespace BigWalkArchipelago.Core
             internal bool DropAsked;
         }
 
-        // How long a player who had to let go of something is given before
-        // the new item goes into their hands: the drop has to reach their
-        // machine first, or the two holds arrive together and the new one
-        // lands in hands that still think they are full.
+        // The drop has to reach the player's machine first, or the new hold lands in full hands.
         private const float DropSettleSeconds = 0.5f;
 
         internal static void QueueHandover(Prop prop, PlayerCharacter recipient)
@@ -1075,8 +659,7 @@ namespace BigWalkArchipelago.Core
             Pending.Add(new PendingHandover { Prop = prop, Recipient = recipient, NotBefore = Time.time });
         }
 
-        // Called from ApRuntime's Update, which already ticks on the host.
-        // Always at least one frame after the spawn: see SpawnCosmeticPickup.
+        // Host only, at least one frame after the spawn.
         internal static void DrainPendingHandover()
         {
             using var activity = ModActivity.Enter("handover");
@@ -1093,10 +676,7 @@ namespace BigWalkArchipelago.Core
                     continue;
                 }
 
-                // Everyone's hands were full, so this player was picked anyway:
-                // they let go first, as the players asked, and get the item a
-                // moment later. Asked once; if the hands are still full after
-                // that, the item stays on the ground in front of them.
+                // All hands were full: this player lets go first, once, and gets it after.
                 var held = entry.Recipient.hands.heldProp;
                 if (held != null && held != entry.Prop && !entry.DropAsked)
                 {
@@ -1126,16 +706,7 @@ namespace BigWalkArchipelago.Core
             ItemRecipients.Forget();
         }
 
-        // Runs on the host, and every PickUp here is a server-side call by
-        // design. playerHeldInformation is a SyncVar written by the server,
-        // so this is the only place from which a player - any player - can
-        // truthfully be given something to hold.
-        //
-        // The first attempt at handing a gourd to somebody else did it the
-        // other way round, on each client for itself, and produced a plain
-        // desync: the host saw the gourd in their own hands and the guest
-        // saw the SAME gourd in theirs (in co-op, 2026-09-16). A client
-        // calling PickUp only convinces itself.
+        // Server side only: the hold is a server SyncVar, and a client PickUp only fools itself.
         private static bool TryPutInHands(Prop prop, PlayerCharacter recipient)
         {
             if (prop == null || recipient == null || !NetworkServer.active)
@@ -1147,30 +718,13 @@ namespace BigWalkArchipelago.Core
             }
             catch (Exception ex)
             {
-                // Cosmetic to the last: the item already exists and is
-                // pickable, so failing to place it in the hands costs
-                // nothing.
+                // Cosmetic: the item exists and can be picked up, so failing costs nothing.
                 Plugin.Log.LogWarning($"[{nameof(ReceivedItemSpawner)}] Could not hand the item over: {ex.Message}");
                 return false;
             }
         }
 
-        // PickUp, then a check that it actually took on the network — and
-        // Prop.SetHeld as a fallback if it did not.
-        //
-        // PlayerHands.PickUp alone leaves the other player seeing nothing at
-        // all. Measured on 2026-09-20 with both logs side by side: the clone
-        // existed on the guest under the SAME netId the host had handed
-        // over, and stayed unclaimed for three full seconds — neither
-        // hands.heldProp nor the playerHeldInformation SyncVar ever pointed
-        // at it there. So PickUp is the local, input-side half of picking
-        // something up, and is not by itself what publishes the hold.
-        //
-        // Prop.SetHeld(PlayerCharacter) is its counterpart on the Prop, the
-        // sibling of the SetLoose and SetFixed this file already relies on.
-        // It is called only when PickUp has visibly failed to set the
-        // SyncVar, so on a build where PickUp does the whole job nothing
-        // changes.
+        // PickUp only acts locally; the hold must also be published on the network.
         private static bool TryGiveTo(PlayerCharacter player, Prop prop)
         {
             var hands = player != null ? player.hands : null;
@@ -1180,26 +734,10 @@ namespace BigWalkArchipelago.Core
             // Local effects, on this machine.
             hands.PickUp(prop);
 
-            // And the one write that other machines can see. Decompiled from
-            // the game on 2026-09-20 rather than guessed at, after a day of
-            // guessing: PlayerNetworking.UserCode_CmdPickUp — the SERVER
-            // side of the game's own pick-up Command — validates with
-            // IsSafeToPickUp and then does exactly this, sets
-            // NetworkplayerHeldInformation. Neither PlayerHands.PickUp nor
-            // Prop.SetHeld touches it; both are purely local, which is why
-            // the guest saw the clone under the right netId and still
-            // reported it unheld for three seconds.
-            //
-            // A Command cannot be sent on another client's behalf, and does
-            // not need to be: this is a SyncVar, and writing it is the
-            // server's prerogative.
+            // The game's CmdPickUp sets NetworkplayerHeldInformation on the server, so does this.
             try
             {
-                // Numbered past the player's last action. The owning client's
-                // OnSetHeld drops any value numbered below its own latest one
-                // (decompiled 2026-09-25), and a fresh PlayerHeldInformation
-                // is numbered 0: handed to anyone who had ever picked
-                // something up, the item was silently ignored on their screen.
+                // Numbered past the player's last action: OnSetHeld drops a value below its latest.
                 var networking = player.playerNetworking;
                 var hold = new PlayerHeldInformation(prop);
                 hold.actionNumber = networking.playerHeldInformation.actionNumber + 1;
@@ -1218,11 +756,7 @@ namespace BigWalkArchipelago.Core
             return true;
         }
 
-        // Says again, to everyone, what each player is holding. A guest who joins after a player
-        // picked something up is told the held state when the player's object reaches it, which can
-        // be before the held prop does: the state then names a prop the guest does not have yet and
-        // the hands stay empty on its screen (reported 2026-10-04: a gourd taken before the guest
-        // arrived). A fresh number makes the guests take it in again, the prop being there by now.
+        // A late guest can get a hold before its prop; a fresh number makes it take the hold again.
         internal static void RepublishHolds()
         {
             if (!NetworkServer.active)
@@ -1256,8 +790,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // "Published" means the networked field, not the local one: that is
-        // the only one another machine can read.
+        // "Published" means the networked field: the only one another machine can read.
         private static bool HoldIsPublished(PlayerCharacter player, Prop prop)
         {
             try
@@ -1292,31 +825,7 @@ namespace BigWalkArchipelago.Core
             return null;
         }
 
-        // Where a received gourd actually lands.
-        //
-        // The original decision (2026-09-09) was the hub, deliberately, so a
-        // received item could not drop in some arbitrary corner of the map.
-        // In play that turned out to mean walking back across the island for
-        // something the server just handed you — so when there is a player
-        // standing in the world, the gourd now appears just in front of
-        // them instead (player request, 2026-09-15).
-        //
-        // The hub remains the answer whenever there is no player character
-        // to speak of: loading, the menu, or any moment the world is not
-        // really inhabited yet. That is the "if the players are connected"
-        // condition, expressed as the only thing actually checkable.
-        //
-        // Kept close on purpose. Placing props at a computed offset has
-        // already cost two rounds of gourds lost in geometry (see the
-        // session-start restore), and the further in front this reaches the
-        // more likely it is to reach through a wall. A short step is enough
-        // to be visible, and the player is by definition standing somewhere
-        // valid.
-        // In front of whoever the item is for since 2026-09-25, which is no
-        // longer necessarily the host (see ItemRecipients).
-        // Where the next resync puts what it restocks, instead of the nearest inventory spawn:
-        // set by a gather button of a tower (Core/TeleportButtons) so the items land in front of it.
-        // It lapses by itself, because the restock runs over a few seconds, not at once.
+        // Where the next resync puts its restock (a tower's gather button); lapses by itself.
         private static Vector3? _gatherAt;
         private static float _gatherUntil;
         private const float GatherLifetime = 20f;
@@ -1358,13 +867,7 @@ namespace BigWalkArchipelago.Core
             return spawnPoint != null ? spawnPoint.GetNextSpawnPosition() : null;
         }
 
-        // Last template found, reused while it is still alive. Without this,
-        // every single spawn paid for a full FindObjectsByType scan of the
-        // scene — unnoticeable for one gourd, but the session-start
-        // reconciliation can restore dozens at four per frame, and that was
-        // four scene-wide scans per frame (visible stutter reported
-        // in-game, 2026-09-15). Cleared implicitly when the object dies: a
-        // world reload invalidates it and the next call re-scans once.
+        // Cached: a scene-wide scan per spawn stuttered during the session-start restore.
         private static RewardGourd _cachedTemplate;
 
         private static RewardGourd FindTemplate()
@@ -1376,26 +879,7 @@ namespace BigWalkArchipelago.Core
             if (all == null || all.Length == 0)
                 return null;
 
-            // Excludes our own previous clones (marked by CosmeticNameSuffix):
-            // otherwise an already-spawned clone would serve as the template
-            // for the next clone, which clones a clone which clones a
-            // clone... — always clone from a real game RewardGourd.
-            //
-            // Prefers a gourd that is already "Loose" (rendered/visuals in
-            // the "normally pickable" state); failing that, any loaded gourd
-            // will do, since its state will be forced explicitly by the
-            // caller right after cloning anyway.
-            //
-            // ONLY A PUZZLE GOURD (2026-09-25). The first alpha's host saw every
-            // received gourd turn into "the glowing white gourd from the Big
-            // Game ending" partway through a session, on their screen alone —
-            // and then the ones in the monuments too. Each machine picks its
-            // own template, and picks again when the cached one unloads; the
-            // shiny white gourd behind the Spawn Secret Door sits beside the
-            // spawn and is a RewardGourd like any other, with a look of its own
-            // that no tint covers. It is `notSavable`, as are the test gourds,
-            // so a template must be a gourd the registry knows: all of those
-            // are the same plain prop on every machine.
+            // Only a puzzle gourd the registry knows: other gourds have a look of their own.
             foreach (var candidate in all)
             {
                 if (IsPlainPuzzleGourd(candidate) && candidate.gourdState == GourdFlag.GourdState.Loose)
@@ -1419,9 +903,7 @@ namespace BigWalkArchipelago.Core
             return null;
         }
 
-        // Which puzzle's gourd the cosmetic clones are built from: a clone
-        // carries that gourd's components, and one of them may still answer to
-        // its puzzle (a stray gourdCoordinatesHolding check, 2026-10-03).
+        // A clone carries its template's components, and one may still answer to its puzzle.
         private static void LogTemplate(RewardGourd template)
         {
             var name = $"'{template.gameObject.name}' ({template.prop.saveablePropName})";

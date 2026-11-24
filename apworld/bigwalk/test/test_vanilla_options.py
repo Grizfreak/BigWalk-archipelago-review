@@ -1,7 +1,4 @@
-"""
-The vanilla behaviours back as options (ROADMAP L2 to L5, L8; 0.6): the Map Room open from the start, keys that
-open their own door, puzzles that hold their own gourd, the purple puzzles as in the game, the key cuts.
-"""
+"""The vanilla behaviours as options: Map Room, keys, own gourds, purple puzzles, key cuts."""
 
 from BaseClasses import LocationProgressType
 
@@ -26,7 +23,7 @@ class TestMapRoomOpen(BigWalkTestBase):
 
 
 class TestMapRoomAlwaysProgression(BigWalkTestBase):
-    """Locked by default, and progression even with no check behind its door (player, 2026-10-15)."""
+    """Locked by default, and progression even with no check behind its door."""
 
     options = {"object_sanity": "off", "light_sanity": "off", "map_tracker": "off"}
 
@@ -132,7 +129,7 @@ class TestPickupSanityJunk(BigWalkTestBase):
 
 
 class TestPackSanityVanilla(BigWalkTestBase):
-    """S1 `pack_sanity: vanilla`: each pack's check holds itself, and the pool holds no other pack."""
+    """`pack_sanity: vanilla`: each pack's check holds itself, and the pool no other pack."""
 
     options = {"pack_sanity": "vanilla", "backpacks_in_pool": 8, "belts_in_pool": 8, "gourd_cartons_in_pool": 4}
 
@@ -156,7 +153,7 @@ class TestPackSanityVanilla(BigWalkTestBase):
 
 
 class TestPickupSanityOldToggle(BigWalkTestBase):
-    """A YAML from 0.7.1 or before, when both were toggles."""
+    """A YAML from when both were toggles."""
 
     options = {"pack_sanity": "true", "flare_gun_sanity": "false"}
 
@@ -214,7 +211,7 @@ class TestLinearTowersByItemTight(BigWalkTestBase):
 
 
 class TestLinearTowersOneDepositBox(BigWalkTestBase):
-    """`linear_towers: one_deposit_box`: the key comes at a gourd drawn per tower, at its own location."""
+    """`linear_towers: one_deposit_box`: the key comes at a gourd drawn per tower."""
 
     options = {"linear_towers": "one_deposit_box", "monument_sanity": False}
 
@@ -261,8 +258,7 @@ class TestLinearTowersOneDepositBoxInOrder(BigWalkTestBase):
                "linear_arch_doors": True}
 
     def test_counted_after_the_monuments_before(self) -> None:
-        # A tower after the first that holds its key (not the Drawbridge when it does not come first: its key stays
-        # in the pool, world.key_in_its_monument).
+        # A later tower holding its key; a late Drawbridge's stays in the pool.
         order = self.world.tower_order
         position = next(i for i in range(1, len(order)) if data.tower_by_prop(order[i]) in self.world.monument_keys())
         tower = data.tower_by_prop(order[position])

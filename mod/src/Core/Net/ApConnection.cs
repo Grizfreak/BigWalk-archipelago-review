@@ -11,22 +11,7 @@ using Archipelago.MultiClient.Net.Packets;
 
 namespace BigWalkArchipelago.Core.Net
 {
-    // The only file in the mod that touches the Archipelago client library.
-    //
-    // THREADING, and it is not a detail here: this library raises its events
-    // on its own network threads, while everything the mod does to the game
-    // (SaveManager, Prop, NetworkServer, spawning a gourd) is IL2CPP and must
-    // happen on Unity's main thread — calling into IL2CPP from a thread the
-    // runtime never attached is a native crash, not a catchable exception.
-    // So this class is deliberately inert: its callbacks only ever touch
-    // managed types and concurrent queues, and ApRuntime drains them from
-    // Update(). Nothing here may ever reach for a game object, however
-    // tempting it looks.
-    //
-    // TryConnectAndLogin is also blocking, which is why connecting runs on a
-    // Task and the caller polls Status instead of waiting: doing it inline
-    // would freeze the game for the length of the handshake, or for the whole
-    // timeout when the address is wrong.
+    // Library events come on network threads: callbacks touch managed types only, never IL2CPP.
     internal sealed class ApConnection
     {
         internal enum ConnectionStatus
@@ -40,30 +25,21 @@ namespace BigWalkArchipelago.Core.Net
         // Matches required_client_version in the apworld's world.py.
         private static readonly Version ClientVersion = new(0, 6, 0);
 
-        // Recreated per connection attempt, and the handler below captures
-        // the instance it was registered with rather than reading this field.
-        // That is what keeps a dying session from dropping a stale item into
-        // the queue the new session is filling — which would shift the whole
-        // received-items count by one and make ApItemCursor skip a real item
-        // forever.
+        // Per attempt, captured by the handler: a dying session must not push into the new queue.
         private volatile ConcurrentQueue<ItemInfo> _incomingItems = new();
 
-        // R7: how many of each item this slot has received, by name, for the logic of the next-check board
-        // (Core/ApLogic). Counted on the socket's thread as items come in, under its own lock; a new one per connection,
-        // like the queue.
+        // Items received by name, for the logic; counted on the socket's thread under its own lock.
         private volatile Dictionary<string, int> _receivedByName = new();
 
-        // R7: the hints the server knows that concern this slot, as it last sent them (the hint board).
+        // The hints the server knows that concern this slot, as it last sent them.
         private volatile Hint[] _hints = Array.Empty<Hint>();
 
-        // R7: the locations of this slot that hold a progression item, for anyone (scouted once at login, no hint
-        // made): the next-check board puts them first.
+        // Locations of this slot that hold a progression item, scouted once at login.
         private volatile HashSet<long> _progressionHere = new();
 
         private ArchipelagoSession _session;
 
-        // The DeathLink service of the current session, made with it, and what it has received:
-        // "source: cause", for ApRuntime to drain on the main thread (threading note above).
+        // DeathLinks received as "source: cause", for ApRuntime to drain on the main thread.
         private DeathLinkService _deathLink;
         private readonly ConcurrentQueue<string> _deathLinksReceived = new();
         private volatile ConnectionStatus _status = ConnectionStatus.Idle;
@@ -71,29 +47,16 @@ namespace BigWalkArchipelago.Core.Net
         // Bumped for every attempt, so a stale one can be fenced off.
         private volatile int _generation;
 
-        // Written by the connect task, read by the main thread once Status
-        // has flipped to Connected/Failed — that flip is the handoff, so no
-        // extra locking is needed around them.
+        // Written by the connect task; the Status flip to Connected/Failed is the handoff.
         private HashSet<long> _slotLocations = new();
 
-        // How many monument slots this slot has filled, as the server last
-        // knew it (DataStorage, key below, per slot). Read once on the connect
-        // task, with a short wait: 0 when the key is absent, the read fails or
-        // times out, which is exactly the behaviour without this feature, a new
-        // save re-depositing by hand. Never read on the main thread.
+        // Monument slots filled, from DataStorage; 0 when absent or the read fails.
         internal int StoredDeposits { get; private set; }
 
         private const string DepositsKey = "bigwalk_deposits";
         private const int StorageWaitMilliseconds = 4000;
 
-        // Asks the socket itself rather than trusting an event to have told
-        // us. Proven necessary in-game (2026-09-15): killing the server
-        // mid-session raised ErrorReceived and never SocketClosed, so the
-        // status stayed Connected, nothing retried, and the mod happily
-        // considered a dead connection alive — no warning, no reconnection,
-        // checks quietly going nowhere. Which event a WebSocket stack
-        // chooses to raise on an abrupt drop is not something to depend on;
-        // `Connected` is the answer to the actual question.
+        // Asks the socket: an abrupt server drop can raise ErrorReceived and never SocketClosed.
         internal ConnectionStatus Status
         {
             get
@@ -120,23 +83,12 @@ namespace BigWalkArchipelago.Core.Net
                 return false;
             }
         }
-        // NULL until a login has succeeded. Everything downstream of a
-        // connection can read it freely; anything reached from a
-        // MonoBehaviour Update or a Harmony patch cannot, because those run
-        // whether or not this session ever connected. Cost an in-game
-        // session on 2026-09-22, where the status overlay dereferenced it
-        // every frame from the moment the player started hosting — and since
-        // that ran at the top of ApRuntime.Update, it killed the pump that
-        // would have done the connecting.
+        // Null until a login has succeeded: Update and patch code must check it.
         internal ApSlotData SlotData { get; private set; }
         internal string SeedName { get; private set; } = string.Empty;
         internal string SlotName { get; private set; } = string.Empty;
 
-        // Which save file this session was opened for. ApRuntime compares it
-        // against the loaded save every frame: quitting to the menu and
-        // hosting a different save leaves the socket open, and applying that
-        // session's items to the new save with the old cursor would be a
-        // genuine corruption, not just an oddity.
+        // Hosting another save leaves the socket open; ApRuntime checks this against the save.
         internal string SaveUuid { get; private set; } = string.Empty;
         internal string LastError { get; private set; } = string.Empty;
 
@@ -154,19 +106,7 @@ namespace BigWalkArchipelago.Core.Net
             Task.Run(() => ConnectBlocking(endpoint, generation));
         }
 
-        // Gives up on an attempt that never came back, so the retry loop can
-        // start a fresh one.
-        //
-        // Needed because TryConnectAndLogin does not reliably return when
-        // the port is dead: proven in-game (2026-09-15) by killing the
-        // server and watching the client log one failed attempt and then
-        // nothing at all for minutes — stuck in Connecting, which ApRuntime
-        // treats as "wait", so it waited forever.
-        //
-        // The abandoned attempt is not cancellable, so it is fenced off
-        // instead: bumping the generation makes every write it might still
-        // perform a no-op, and a later reply from a session nobody is
-        // waiting for can no longer resurrect a stale connection.
+        // TryConnectAndLogin may never return on a dead port: fenced off by bumping the generation.
         internal void AbandonAttempt(string reason)
         {
             if (_status != ConnectionStatus.Connecting)
@@ -190,10 +130,7 @@ namespace BigWalkArchipelago.Core.Net
                 _hints = Array.Empty<Hint>();
                 _progressionHere = new HashSet<long>();
 
-                // Subscribed BEFORE logging in, on purpose: the server sends
-                // every item the slot has ever received as soon as the
-                // connection is established, and a handler attached after
-                // that would miss the entire backlog.
+                // Before login: the server sends the whole backlog once connected.
                 session.Items.ItemReceived += (ReceivedItemsHelper helper) => OnItemReceived(helper, queue, received);
                 session.Socket.SocketClosed += OnSocketClosed;
                 session.Socket.ErrorReceived += OnErrorReceived;
@@ -208,10 +145,7 @@ namespace BigWalkArchipelago.Core.Net
                     endpoint.Password,
                     true);
 
-                // Everything past this point writes shared state, so it
-                // only counts if this attempt is still the current one. An
-                // attempt abandoned for taking too long must not come back
-                // later and declare itself connected.
+                // An attempt abandoned as too slow must not declare itself connected.
                 if (generation != _generation)
                     return;
 
@@ -237,15 +171,12 @@ namespace BigWalkArchipelago.Core.Net
                         string.IsNullOrEmpty(received.Cause) ? received.Source : $"{received.Source}: {received.Cause}");
                 };
 
-                // A check this slot sent, as the server tells it (player, 2026-10-13): what it was and what it gave to
-                // whom, a short line on the overlay. On the socket's thread: queued, shown from the main thread.
+                // A check this slot sent; queued here, shown from the main thread.
                 session.MessageLog.OnMessageReceived += message =>
                 {
                     try
                     {
-                        // R7: the server's answer to a hint asked at the hub's sign, a line on the overlay for a short
-                        // while after the question: the hint itself, or a refusal, which comes as a plain message
-                        // ("Nothing found for recognized item name ...", seen 2026-10-13) or a command's result.
+                        // The answer to a hint asked at the sign: the hint, or a refusal.
                         if (DateTime.UtcNow < _hintAnswerUntil
                             && (message is Archipelago.MultiClient.Net.MessageLog.Messages.HintItemSendLogMessage
                                 || message is Archipelago.MultiClient.Net.MessageLog.Messages.CommandResultLogMessage
@@ -259,17 +190,17 @@ namespace BigWalkArchipelago.Core.Net
                             && message is not Archipelago.MultiClient.Net.MessageLog.Messages.HintItemSendLogMessage
                             && sent.IsSenderTheActivePlayer && sent.Item != null)
                         {
-                            // Always who it went to, this slot included (player, 2026-10-13).
+                            // Always who it went to, this slot included.
                             ApNotices.PostFromSocket($"Check: {sent.Item.LocationName} -> {sent.Item.ItemName} ({sent.Receiver?.Name})");
                         }
                     }
                     catch (Exception)
                     {
-                        // A message the library cannot describe is no reason to touch the connection.
+                        // An undescribable message is no reason to touch the connection.
                     }
                 };
 
-                // R7: the hints of this slot, now and as they change (the hint board reads them on the main thread).
+                // The hints of this slot, now and as they change.
                 try
                 {
                     session.DataStorage.TrackHints(hints => _hints = hints ?? Array.Empty<Hint>(), true);
@@ -279,8 +210,7 @@ namespace BigWalkArchipelago.Core.Net
                     Plugin.Log.LogWarning($"[{nameof(ApConnection)}] Could not follow the hints: {ex.Message}");
                 }
 
-                // R7: what every location of this slot holds, quietly (HintCreationPolicy.None): only whether it is
-                // progression is kept, for the next-check board's order.
+                // Every location of this slot, quietly: only progression is kept.
                 try
                 {
                     var ids = new List<long>(session.Locations.AllLocations).ToArray();
@@ -310,10 +240,7 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // The deposits this slot has made, from the server's own storage. Only
-        // ever goes up (see StoreDeposits), and a room is one seed, so a new
-        // seed starts at nothing. Called on the connect task, where waiting is
-        // allowed; any failure is a 0 and a log line, never an exception.
+        // Only ever goes up and a room is one seed; any failure is a 0 and a log line.
         private static int ReadStoredDeposits(ArchipelagoSession session)
         {
             try
@@ -343,9 +270,7 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // Fire and forget, and a MAXIMUM: the server keeps the larger of what it
-        // has and `count`, so a late or repeated write can never lower it. A
-        // write lost to a dead socket is covered by the next one.
+        // The server keeps the larger value, so a late or repeated write can never lower it.
         internal void StoreDeposits(int count)
         {
             if (_status != ConnectionStatus.Connected || count <= 0)
@@ -364,7 +289,7 @@ namespace BigWalkArchipelago.Core.Net
         private static void OnItemReceived(ReceivedItemsHelper helper, ConcurrentQueue<ItemInfo> queue,
             Dictionary<string, int> received)
         {
-            // Managed types only — see the threading note at the top.
+            // Managed types only: see the threading note at the top.
             try
             {
                 var item = helper.DequeueItem();
@@ -383,19 +308,14 @@ namespace BigWalkArchipelago.Core.Net
 
         private void OnSocketClosed(string reason)
         {
-            // Never demote a Failed status back to something softer, and
-            // never touch the game from here: ApRuntime notices the change on
-            // its next frame and decides what to do about it.
+            // Never demote Failed, and never touch the game from here: ApRuntime reacts next frame.
             LastError = string.IsNullOrEmpty(reason) ? "connection closed" : reason;
             _status = ConnectionStatus.Failed;
         }
 
         private void OnErrorReceived(Exception exception, string message)
         {
-            // Recorded, not acted on: an error is not proof the connection
-            // is gone, and Status asks the socket directly anyway. Keeping
-            // the message means the warning the player sees names the real
-            // cause instead of a generic "connection dropped".
+            // Recorded, not acted on: Status asks the socket; the message names the real cause.
             LastError = string.IsNullOrEmpty(message) ? exception?.Message ?? "socket error" : message;
             Plugin.Log.LogWarning($"[{nameof(ApConnection)}] Socket error: {message} ({exception?.Message}).");
         }
@@ -405,32 +325,19 @@ namespace BigWalkArchipelago.Core.Net
             return _incomingItems.TryDequeue(out item);
         }
 
-        // Whether the server's replay is still arriving. ApRuntime waits for
-        // this to go quiet before reconciling gourds, because that
-        // reconciliation depends on having seen the whole item history.
+        // ApRuntime waits for this to go quiet before reconciling gourds.
         internal bool HasPendingItems => !_incomingItems.IsEmpty;
 
-        // Whether an id belongs to this slot at all. Snapshotted once at
-        // login rather than read live, both to avoid enumerating a collection
-        // the network thread is mutating and because the answer cannot
-        // change: which locations exist in a slot is fixed at generation.
-        //
-        // This is the guard apworld/protocol.md §3 insists on — it is what
-        // makes it safe for the mod to report anything the game writes
-        // without first knowing which options this slot was rolled with.
         // This slot's number in the multiworld; -1 before a login.
         internal int SlotNumber => _session?.ConnectionInfo?.Slot ?? -1;
 
+        // Snapshotted at login: a slot's locations are fixed at generation.
         internal bool BelongsToSlot(long locationId)
         {
             return _slotLocations.Contains(locationId);
         }
 
-        // The multiworld's name for a location, for the feed on screen. The
-        // mod's own identifiers are the game's enum values (`gourdHighButton`),
-        // which are no use to a player: the datapackage is the only place the
-        // player-facing name exists, so a lookup that fails falls back to the
-        // number rather than inventing one.
+        // The datapackage name for a location; falls back to the number when the lookup fails.
         internal string LocationName(long locationId)
         {
             try
@@ -444,8 +351,7 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // Hints for these locations of this slot (ROADMAP H3): what sits there, shown to the player and
-        // free, like the hints at the start. Announced once each by the server.
+        // Free hints for these locations of this slot; the server announces each once.
         internal void ScoutAsHints(long[] locationIds)
         {
             if (_status != ConnectionStatus.Connected || locationIds.Length == 0)
@@ -472,16 +378,12 @@ namespace BigWalkArchipelago.Core.Net
             }
             catch (Exception ex)
             {
-                // Not lost: every reported check is persisted in the save
-                // (CheckTracker) and the whole set is resent on reconnect.
+                // Not lost: reported checks are saved and the whole set is resent on reconnect.
                 Plugin.Log.LogWarning($"[{nameof(ApConnection)}] Failed to send {locationIds.Length} check(s), will resend on reconnect: {ex.Message}");
             }
         }
 
-        // Returns whether the server actually took it, so the caller can
-        // leave the goal armed rather than marking it sent into a dead
-        // socket. It matters since the second ending reports itself from the
-        // frame the game tears the world down (Patches/EndingStartPatch).
+        // Whether the server took it, so the caller can keep the goal armed on a dead socket.
         internal bool SendGoal()
         {
             if (_status != ConnectionStatus.Connected)
@@ -500,9 +402,7 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // A DeathLink for the other games: a Bounce packet tagged "DeathLink", which the server
-        // hands only to clients that asked for the tag. Sending needs no tag of ours; whether it
-        // kills anything is the other game's business.
+        // A Bounce tagged "DeathLink"; sending needs no tag of ours.
         internal bool SendDeathLink(string cause)
         {
             if (_status != ConnectionStatus.Connected || _deathLink == null)
@@ -520,8 +420,7 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // Asks the server for the DeathLinks of the multiworld (the "DeathLink" tag), with the
-        // slot's `death_link` on receive or both. Sending needs no tag.
+        // Subscribes to the "DeathLink" tag, for `death_link` on receive or both.
         internal void ListenForDeathLinks(bool listen)
         {
             if (_status != ConnectionStatus.Connected || _deathLink == null)
@@ -540,9 +439,7 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // ------------------------------------------------------------------
-        // TrapLink: Bounce packets tagged "TrapLink", {"time", "source", "trap_name"}
-        // ------------------------------------------------------------------
+        // TrapLink: Bounce packets tagged "TrapLink", {"time", "source", "trap_name"}.
 
         private readonly ConcurrentQueue<(string source, string trap)> _trapLinksReceived = new();
         private bool _trapLinkHooked;
@@ -623,10 +520,10 @@ namespace BigWalkArchipelago.Core.Net
             return _deathLinksReceived.TryDequeue(out cause);
         }
 
-        // R7: until when an answer of the server is taken as the answer to a hint asked at the sign.
+        // Until when a server message is taken as the answer to a hint asked at the sign.
         private DateTime _hintAnswerUntil = DateTime.MinValue;
 
-        // R7: a hint asked at the hub's sign, as the Text Client's `!hint`: it costs the slot's hint points.
+        // Like the Text Client's `!hint`: it costs the slot's hint points.
         internal void AskHint(string text)
         {
             if (_session == null || _status != ConnectionStatus.Connected || string.IsNullOrWhiteSpace(text))
@@ -642,7 +539,7 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // R7: the slot's hint points and what a hint costs (-1, -1 when unknown).
+        // The slot's hint points and what a hint costs (-1, -1 when unknown).
         internal (int points, int cost) HintBudget()
         {
             try
@@ -655,7 +552,7 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // R7: what this slot has received, by item name (a copy, safe on the main thread).
+        // What this slot has received, by item name (a copy, safe on the main thread).
         internal Dictionary<string, int> ReceivedByName()
         {
             var received = _receivedByName;
@@ -663,7 +560,7 @@ namespace BigWalkArchipelago.Core.Net
                 return new Dictionary<string, int>(received);
         }
 
-        // R7: the locations of this slot the server knows as checked (a copy; empty when not connected).
+        // The locations of this slot the server knows as checked (a copy; empty if offline).
         internal HashSet<long> CheckedLocations()
         {
             try
@@ -677,8 +574,7 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // R7: the answer to the quiet scout of every location (a method, not a lambda: the interop build has no
-        // NullableAttribute for one over these generic types).
+        // A method, not a lambda: the interop build lacks NullableAttribute for these types.
         private void OnScouted(Task<Dictionary<long, ScoutedItemInfo>> task)
         {
             if (task.IsFaulted || task.Result == null)
@@ -693,7 +589,7 @@ namespace BigWalkArchipelago.Core.Net
             Plugin.Log.LogInfo($"[{nameof(ApConnection)}] Scouted the slot: {progression.Count} location(s) hold a progression item.");
         }
 
-        // R7: how many of this slot's locations are not checked yet.
+        // How many of this slot's locations are not checked yet.
         internal int UncheckedCount(HashSet<long> checkedIds)
         {
             var count = 0;
@@ -705,10 +601,10 @@ namespace BigWalkArchipelago.Core.Net
             return count;
         }
 
-        // R7: whether a location of this slot holds a progression item (scouted at login).
+        // Whether a location of this slot holds a progression item (scouted at login).
         internal bool HoldsProgression(long locationId) => _progressionHere.Contains(locationId);
 
-        // R7: the locations of this slot that open hints point to (anyone's item, not found yet).
+        // The locations of this slot that open hints point to (anyone's item, not found yet).
         internal HashSet<long> HintedLocations()
         {
             var result = new HashSet<long>();
@@ -731,8 +627,7 @@ namespace BigWalkArchipelago.Core.Net
             return result;
         }
 
-        // R7: the hints this slot asked for that are still open: an item for this slot, not found yet, newest last
-        // (player, 2026-10-13: "nothing if the player did not ask"). Each as "item: location (finder)".
+        // Open hints for this slot's items, newest last, as "item: location (finder)".
         internal List<string> OpenHintLines()
         {
             var lines = new List<string>();
@@ -751,7 +646,7 @@ namespace BigWalkArchipelago.Core.Net
                     var receiver = session.Players.GetPlayerInfo(hint.ReceivingPlayer);
                     var item = session.Items.GetItemName(hint.ItemId, receiver?.Game) ?? hint.ItemId.ToString();
                     var location = session.Locations.GetLocationNameFromId(hint.LocationId, finder?.Game) ?? hint.LocationId.ToString();
-                    // The slot it is in, even this one (player, 2026-10-13).
+                    // The slot it is in, even this one.
                     var where = finder == null ? location : $"{location} ({finder.Name})";
                     lines.Add($"{item}: {where}");
                 }

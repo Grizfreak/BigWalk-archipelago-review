@@ -4,12 +4,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Measuring pass for C1 (ROADMAP, player 2026-10-06): what carries the colour of the buoys,
-    // the flare guns and their flares, before writing any. One example of each kind of object
-    // (by name, up to the first " ("), everything that could hold a colour: the
-    // PropertyBlockHelpers (the game's own way, which the received gourds already use), every
-    // renderer's material and the colour properties its shader really has, the property block,
-    // the lights and the particle systems. Ctrl+F5; fire a flare first to catch one in flight.
+    // Dumps what carries the colour of buoys, flare guns and flares (Ctrl+F5).
     internal static class DebugColourProbe
     {
         private const string Tag = "[" + nameof(DebugColourProbe) + "]";
@@ -39,8 +34,7 @@ namespace BigWalkArchipelago.Debug
             log.AppendLine($"{Tag} === colour probe: {examples.Count} kind(s) ===");
             DescribeShots(log);
 
-            // Every active object whose name appeared since the last press, whatever the name: a flare in flight is not
-            // called "flare" (2026-10-06), so press once, fire, press again.
+            // A flare in flight is not called "flare": press once, fire, press again.
             var now = new HashSet<string>();
             foreach (var transform in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
             {
@@ -71,8 +65,7 @@ namespace BigWalkArchipelago.Debug
             Plugin.Log.LogInfo(log.ToString());
         }
 
-        // Every flare gun's shot, system by system: how its start colour is made (the smoke keeps
-        // its own colour when the flare's is changed, 2026-10-06).
+        // The smoke keeps its own colour when the flare's is changed.
         private static void DescribeShots(StringBuilder log)
         {
             foreach (var effect in UnityEngine.Object.FindObjectsByType<PeckEffectParticleNetworked>(FindObjectsInactive.Include, FindObjectsSortMode.None))
@@ -174,8 +167,7 @@ namespace BigWalkArchipelago.Debug
                 }
             }
 
-            // What a peck effect fires (the flare gun's shot, 2026-10-06): its particle system can
-            // live outside the object, so it is followed by reference.
+            // The particle system can live outside the object, so it is followed by reference.
             foreach (var effect in root.GetComponentsInChildren<PeckEffectParticleNetworked>(true))
             {
                 var target = effect.targetParticleSystem;
@@ -191,7 +183,7 @@ namespace BigWalkArchipelago.Debug
                     Describe(target.gameObject, 1, log);
             }
 
-            // Big Mask (2026-10-07): what a blindfold helmet is made of, and who wears what.
+            // What a blindfold helmet is made of, and who wears what.
             var components = new List<string>();
             foreach (var component in root.GetComponentsInChildren<Component>(true))
             {
@@ -207,8 +199,7 @@ namespace BigWalkArchipelago.Debug
             if (components.Count > 0)
                 log.AppendLine($"  components: {string.Join(", ", components)}");
 
-            // The sounds a prop's peck effects play, state by state (Big Flare's shot has none of its
-            // own, 2026-10-09): which effect, under which state system, playing which asset.
+            // The sounds a prop's peck effects play, state by state.
             foreach (var audio in root.GetComponentsInChildren<PeckEffectAudio>(true))
             {
                 var system = audio.systemReference != null && audio.systemReference.peckSystem != null
@@ -237,8 +228,7 @@ namespace BigWalkArchipelago.Debug
             }
         }
 
-        // By hand: ColorUtility.ToHtmlStringRGBA is stripped from the game ("Method unstripping
-        // failed", 2026-10-06). HDR values (above 1) are shown as numbers too.
+        // ColorUtility.ToHtmlStringRGBA is stripped from the game.
         private static string Hex(Color colour)
         {
             int Byte(float v) => Mathf.Clamp(Mathf.RoundToInt(v * 255f), 0, 255);

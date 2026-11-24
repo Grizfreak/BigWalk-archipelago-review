@@ -10,20 +10,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // What each puzzle is built from, as the game's own components say it —
-    // the table `apworld/bigwalk/data.py` (PUZZLE_TAGS) needs to be switched
-    // on and off in game. Written 2026-10-02 for `lock_puzzle_needs`.
-    //
-    // The puzzles are assembled from generic parts: a button is a PeckSwitch,
-    // a synchronized button a SimPressSwitch, a panel a PegTileRenderer (what
-    // it shows is its PropGroup and its PegTileSet), a timer a PeckEffectTimer.
-    // Nothing names the puzzle a part belongs to, so each part is written with
-    // its position and the nearest puzzle gourd, and the table is read off
-    // the result.
-    //
-    // Everything is loaded everywhere (DebugGourdLookup.LogAllLoaded,
-    // 2026-09-21), so one run on the title screen's far side is enough. The
-    // output is a tab-separated file, not log lines: hundreds of PeckSwitch.
+    // Dumps each puzzle part with its position and nearest gourd, to build the apworld PUZZLE_TAGS.
     internal class DebugPuzzleNeedsDump : MonoBehaviour
     {
         // Constructor required by Il2CppInterop for any type injected into IL2CPP.
@@ -51,7 +38,7 @@ namespace BigWalkArchipelago.Debug
             if (Time.time - _readySince < DelayAfterReadySeconds)
                 return;
 
-            // Only on request: run on every load, it froze the game for half a second (2026-10-27).
+            // Only on request: run on every load, it froze the game for half a second.
             if (Time.unscaledTime < _nextRequestCheck)
                 return;
             _nextRequestCheck = Time.unscaledTime + 2f;
@@ -109,8 +96,7 @@ namespace BigWalkArchipelago.Debug
             Add<CoordinatesHelper>(rows, puzzles, "CoordinatesHelper", s => s.transform, s => string.Empty);
             Add<CapsuleBomb>(rows, puzzles, "CapsuleBomb", s => s.transform, s => string.Empty);
 
-            // Props that are carried: the group is what a pick-up refusal
-            // (lock_pickups, R2) would key on.
+            // Carried props: the group is what a pick-up refusal would key on.
             var wantedGroups = new HashSet<string> { "TimerBall", "CannonBall", "CannonFireable", "Blindfold" };
             Add<Prop>(rows, puzzles, "Prop", s => s.transform, s =>
                 $"name={s.saveablePropName} groups={string.Join("+", Groups(s))}",
@@ -128,11 +114,7 @@ namespace BigWalkArchipelago.Debug
             DumpLightSwitches(puzzles);
         }
 
-        // Which lamps does each light switch command? The switch writes a
-        // TrackedPeckState, and the effects listening to that state are the
-        // answer: a toggle's targets, a material property's block, a tween.
-        // A state can also sit on a PeckBus shared with other blocks, which
-        // is how one switch can light a whole building, so the bus is named.
+        // A switch's lamps are the effects listening to its state, or to its PeckBus.
         private static void DumpLightSwitches(List<(string name, Vector3 position)> puzzles)
         {
             var effects = new List<(TrackedPeckState state, string kind, string path, string detail)>();

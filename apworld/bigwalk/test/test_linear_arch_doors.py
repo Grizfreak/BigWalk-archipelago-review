@@ -1,4 +1,4 @@
-"""L6 `linear_arch_doors`: the hub's arch doors as in the game, opened by their buttons; no door is an item."""
+"""`linear_arch_doors`: the hub's arch doors as in the game, opened by their buttons."""
 
 from BaseClasses import CollectionState
 

@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""
-One command to get a Big Walk room running for an in-game test.
-
-Rebuilds the apworld, installs it into an Archipelago setup, generates a
-seed from tools/players/, and hosts it — so iterating on the mod does not
-mean redoing the Generate/Server dance by hand every time.
-
-    python tools/testroom.py                        # solo-smoke.yaml, port 38281
-    python tools/testroom.py --yaml solo-full.yaml
-    python tools/testroom.py --no-host              # generate only
-
-Stdlib only, and it finds Archipelago by itself (see find_archipelago).
-"""
+"""Rebuilds the apworld, generates a seed from tools/players/ and hosts it for a game test."""
 
 from __future__ import annotations
 
@@ -31,13 +19,11 @@ APWORLD = REPO / "apworld" / "dist" / "bigwalk.apworld"
 DEFAULT_PORT = 38281
 
 
-# Lets tools/deathlink.py run server commands (`admin "/send BWTraps Big Drop"`) through
-# `!admin`, since the console of a room started in the background takes no input.
+# Lets tools/deathlink.py send server commands through `!admin`: a background room takes no input.
 ADMIN_PASSWORD = "bwtest"
 
 
-# A resumed room takes its options back from its .apsave, the server password among them, so a
-# room first hosted without one would keep remote administration off.
+# A resumed room keeps its .apsave options, the server password included.
 def keep_admin_password(archipelago: Path, apsave: Path) -> None:
     if not apsave.is_file():
         return
@@ -55,14 +41,7 @@ def keep_admin_password(archipelago: Path, apsave: Path) -> None:
 
 
 def find_archipelago(explicit: str | None) -> Path:
-    """
-    Locate an Archipelago setup: either a source checkout (Generate.py) or an
-    installed build (ArchipelagoGenerate.exe). Both work.
-
-    Looked for, in order: --archipelago, then a folder named Archipelago
-    beside this repo, then one beside its parent — which covers the usual
-    layout of a dev checkout living inside an Archipelago install.
-    """
+    """Finds a source checkout or an installed build: --archipelago, then beside the repo."""
     candidates = []
     if explicit:
         candidates.append(Path(explicit))
@@ -88,12 +67,7 @@ def run(command: list[str], cwd: Path) -> None:
 def build_and_install_apworld(archipelago: Path) -> None:
     run([sys.executable, str(REPO / "apworld" / "build.py")], cwd=REPO)
 
-    # A dev checkout may already expose the world as a live folder under
-    # worlds/ (a junction or symlink back to apworld/bigwalk). Installing the
-    # packaged copy on top of that registers the same game twice and
-    # Archipelago silently picks one — which is how you end up testing the
-    # previous build without noticing. The live folder wins, since it is the
-    # one that reflects what is on disk right now.
+    # A live worlds/ folder wins: installing on top would register the game twice.
     linked = archipelago / "worlds" / "bigwalk"
     if linked.exists():
         print(f"using the linked world at {linked} (skipping the packaged copy)")
@@ -106,17 +80,12 @@ def build_and_install_apworld(archipelago: Path) -> None:
 
 
 def generate(archipelago: Path, yaml_name: str, seed: int | None) -> Path:
-    # One YAML per run rather than the whole folder: these files are
-    # alternative setups for the same single slot, not a multiworld.
+    # One YAML per run: these files are alternative setups for one slot, not a multiworld.
     yaml_path = PLAYERS / yaml_name
     if not yaml_path.is_file():
         sys.exit(f"No such player file: {yaml_path}")
 
-    # Deliberately does NOT wipe tools/out. Next to each seed lives its room
-    # state (AP_<seed>.apsave: what the server has already sent and
-    # received), and deleting that silently destroys the continuity of an
-    # ongoing test — which is exactly what you need to reconnect a save and
-    # watch the replay behave. Only the staging folder is rebuilt.
+    # Keeps tools/out: each seed's .apsave holds the room state a reconnecting save replays.
     OUTPUT.mkdir(parents=True, exist_ok=True)
 
     staging = OUTPUT / "players"
@@ -132,12 +101,7 @@ def generate(archipelago: Path, yaml_name: str, seed: int | None) -> Path:
     if seed is not None:
         command += ["--seed", str(seed)]
 
-    # Which zip is the one just produced: the one that was not there
-    # before. Sorting the folder and taking the last entry looked
-    # equivalent and is not — the names carry a random seed, so their
-    # alphabetical order says nothing about age. On 2026-09-15 that quietly
-    # hosted a three-hour-old seed, complete with its .apsave and the items
-    # already sent in it, while announcing the new one on screen.
+    # The new zip is the one not there before: the names carry a random seed, not a date.
     before = {path.name for path in OUTPUT.glob("AP_*.zip")}
     run(command, cwd=archipelago)
 
@@ -145,8 +109,7 @@ def generate(archipelago: Path, yaml_name: str, seed: int | None) -> Path:
     if not produced:
         sys.exit("Generation reported success but produced no new archive.")
     if len(produced) > 1:
-        # Never expected with one YAML, but picking blind here would bring
-        # back exactly the bug above.
+        # Never expected with one YAML, but picking blind would host the wrong seed.
         sys.exit("Generation produced several archives: " + ", ".join(p.name for p in produced))
     return produced[0]
 
@@ -164,10 +127,7 @@ def server_command(archipelago: Path) -> list[str]:
 
 
 def read_slot_name(yaml_name: str) -> str:
-    # The slot name is the YAML's `name:`, and the in-game save must match it
-    # exactly. Read rather than assumed: the files in tools/players no longer
-    # all share one slot name, and printing the wrong one sends you to type a
-    # save name the server will reject.
+    # The slot name is the YAML's `name:`, which the in-game save must match exactly.
     for line in (PLAYERS / yaml_name).read_text(encoding="utf-8").splitlines():
         if line.startswith("name:"):
             return line.split(":", 1)[1].strip()
@@ -182,14 +142,7 @@ def world_version() -> str:
 
 
 def port_in_use(port: int) -> bool:
-    """
-    Whether something already answers on this port, on either loopback.
-
-    Asked before anything is built: on 2026-09-26 the first test room never
-    started because another project's server held 38281, the room's window
-    said so in passing, and the game connected to that other room. Hosting a
-    second room on a taken port is never what was meant.
-    """
+    """Whether something already answers on this port, on either loopback."""
     for family, host in ((socket.AF_INET, "127.0.0.1"), (socket.AF_INET6, "::1")):
         with socket.socket(family, socket.SOCK_STREAM) as probe:
             probe.settimeout(0.5)
@@ -216,16 +169,13 @@ def print_cheat_sheet(yaml_name: str, port: int) -> None:
     print()
     print("Useful commands in this server console:")
     print(f"    /send {slot} Gourd                 spawn a gourd at the hub")
-    # The door and the key are two items since 2026-09-21, and the console is
-    # where the difference is easiest to see: one opens something, the other
-    # is six checks you carry. Keys are named after their tower, features
-    # after what they open.
+    # A feature opens something; its key opens nothing and carries six checks.
     print(f"    /send {slot} Drawbridge            the door: opens live")
     print(f"    /send {slot} Drawbridge Key        the key: opens nothing, carries checks")
     print(f"    /send_location {slot} Cabin Fever Puzzle   mark a check server-side")
     print("    /players                           who is connected")
     print()
-    print("The test that matters most: quit the game, relaunch, reconnect —")
+    print("The test that matters most: quit the game, relaunch, reconnect.")
     print("no gourd may be spawned twice. That is the item cursor working.")
     print(f"({yaml_name}; Ctrl+C here stops the room.)")
     print("=" * 70)
@@ -255,9 +205,7 @@ def main() -> None:
     print(f"Archipelago: {archipelago}")
 
     if args.resume:
-        # Reconnecting a save only works against the room it was bound to:
-        # the cursor is keyed on (seed, slot), and the item history lives in
-        # that room's .apsave, not in the seed. A new seed is a new world.
+        # A save reconnects only to its own room: its item history lives in the .apsave.
         existing = sorted(OUTPUT.glob("AP_*.zip"), key=lambda p: p.stat().st_mtime)
         if not existing:
             sys.exit(f"Nothing to resume: no seed in {OUTPUT}.")

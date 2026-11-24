@@ -6,17 +6,12 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Measuring pass for U12 (ROADMAP, player 2026-10-09): the clips of the three sounds the mod
-    // wants to play (a gourd dropped into a monument, a puzzle's end, a click). The dump has no clip
-    // names, so this lists every PeckEffectAudio of the scene, active or not, with the state
-    // system it listens to and, state by state, the asset it plays, to BepInEx/audio-probe.tsv
-    // (one line per asset). Ctrl + Backslash, from anywhere: grep it for the monuments and the puzzles.
+    // Lists every PeckEffectAudio and the assets it plays to BepInEx/audio-probe.tsv.
     internal static class DebugAudioProbe
     {
         private const string Tag = "[" + nameof(DebugAudioProbe) + "]";
 
-        // Every asset seen, by name: the probe's dump and the played-sound log both feed it, and the
-        // cycling keys (Ctrl + [ and Ctrl + ]) play from it, to hear a candidate and read its name.
+        // Fed by the dump and the played-sound log; Ctrl + [ and Ctrl + ] play from it.
         internal static readonly SortedDictionary<string, AudioAsset> Assets = new(StringComparer.OrdinalIgnoreCase);
         private static int _cycle = -1;
 
@@ -26,8 +21,6 @@ namespace BigWalkArchipelago.Debug
                 Assets[asset.name] = asset;
         }
 
-        // Plays the next (or previous) remembered asset whose name holds the filter, where the
-        // local player stands, and logs which: the ear picks, the log names it.
         internal static void Cycle(int step)
         {
             var filter = ModConfig.AudioFilter.Value ?? "";
@@ -40,7 +33,7 @@ namespace BigWalkArchipelago.Debug
 
             _cycle = ((_cycle + step) % names.Count + names.Count) % names.Count;
             var name = names[_cycle];
-            var player = DebugPlayerLookup.FindLocalPlayer();
+            var player = Core.LocalPlayer.Find();
             var at = player != null ? player.transform.position : Vector3.zero;
             DebugAudioLog.Mute = true;
             try
@@ -97,8 +90,7 @@ namespace BigWalkArchipelago.Debug
                 }
             }
 
-            // Every AudioAsset the game has in memory, played or not, one name per line: the catalogue
-            // to look a candidate up in (a monument's own sound, a gourd's "place").
+            // Every AudioAsset in memory, played or not, one name per line.
             try
             {
                 var all = Resources.FindObjectsOfTypeAll<AudioAsset>();

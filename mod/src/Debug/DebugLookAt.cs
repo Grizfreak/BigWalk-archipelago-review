@@ -8,17 +8,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // "What is that thing?" — for the parts DebugPuzzleNeedsDump could not
-    // name (speakers, teapots, lights, a panel nobody can place), added
-    // 2026-10-02 for lock_puzzle_needs. Two answers in one press:
-    //
-    //  - the object under the crosshair: its hierarchy path, the components
-    //    on it and on each parent up to the puzzle's root, the nearest
-    //    puzzle, and the state of any PeckSwitch / TrackedPeckState on it;
-    //  - everything with a collider within a few metres, one line each, so
-    //    a thing behind the crosshair is not missed.
-    //
-    // Read-only. The output goes to the BepInEx log.
+    // Logs the object under the crosshair and everything with a collider a few metres around.
     internal static class DebugLookAt
     {
         private const float RayDistance = 25f;
@@ -40,8 +30,7 @@ namespace BigWalkArchipelago.Debug
             var (nearest, nearestDistance) = NearestPuzzle(origin);
             Plugin.Log.LogInfo($"[{nameof(DebugLookAt)}] ---- from {Fmt(origin)}, nearest puzzle {nearest} at {nearestDistance.ToString("F1", CultureInfo.InvariantCulture)}m");
 
-            // The ray starts inside the player's own head: skip every hit on a
-            // PlayerCharacter and take the nearest of the rest.
+            // The ray starts inside the player's own head, so PlayerCharacter hits are skipped.
             var hits = Physics.RaycastAll(origin, camera.transform.forward, RayDistance)
                 .Where(h => !PathOf(h.collider.transform).StartsWith("PlayerCharacter", StringComparison.Ordinal))
                 .OrderBy(h => h.distance)

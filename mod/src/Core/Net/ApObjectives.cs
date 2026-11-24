@@ -4,17 +4,7 @@ using System.Linq;
 
 namespace BigWalkArchipelago.Core.Net
 {
-    // What a seed asks for, one by one (ROADMAP G5, 0.5). The apworld's `objectives` list: every one
-    // is required, in any order, and at least one of them is an ending (an ending plays once per
-    // save, so the order cannot matter and each one is latched when it happens).
-    //
-    //   big_wall        the chapel bell broken by two players (EndingGate); an ending, the short one
-    //   big_goodbye     the Gauntlet's bell (GauntletComplete); an ending
-    //   big_game        the secret ending behind the Spawn Secret Door; an ending
-    //   big_collection  deposit_goal_amount gourds in the towers' slots
-    //
-    // A seed with no list (only a `goal`) is played as the list of that goal alone (player, 2026-10-14: the overlay's
-    // objectives line and the hub's board for every seed); each ending is told done here as ApRuntime told it before.
+    // The seed's `objectives`, all required in any order; a lone `goal` is a list of one.
     internal static class ApObjectives
     {
         private static readonly string[] Known =
@@ -24,7 +14,7 @@ namespace BigWalkArchipelago.Core.Net
         };
         private static readonly string[] Endings = { "big_goodbye", "big_game", "big_wall" };
 
-        // Set by the debug key (DebugApFeed.NextObjectives), to see the board and the overlay without a server.
+        // Set by the debug key, to see the board and the overlay without a server.
         internal static string[] DebugKeys;
 
         internal static IReadOnlyList<string> Keys => DebugKeys ?? FromSlot();
@@ -60,14 +50,11 @@ namespace BigWalkArchipelago.Core.Net
 
         internal static bool Active => Keys.Count > 0;
 
-        // Every listed objective is one this build can detect: a list with a name it does not know
-        // would never be finished, and is refused the way an unknown goal is.
+        // An objective this build cannot detect would never finish, so the list is refused.
         internal static bool Detectable =>
             Active && Keys.All(key => Array.IndexOf(Known, key) >= 0 && (!ObjectiveSpots.IsSpot(key) || ObjectiveSpots.Known(key)));
 
-        // The checks the keys and the stations are: counted from what this save has reported.
-        // What the tracker keeps is the game's own name: a big key's prop (its placement) and a station's
-        // SavableSystem.
+        // The tracker keeps the game's names: a big key's prop and a station's SavableSystem.
         internal static int KeysPlaced() =>
             CheckTracker.GetReportedLocationNames().Count(name =>
                 Enum.TryParse<SaveablePropName>(name, out var prop) && GourdRegistry.IsBigKey(prop));
@@ -76,8 +63,7 @@ namespace BigWalkArchipelago.Core.Net
             CheckTracker.GetReportedLocationNames().Count(name =>
                 Enum.TryParse<SavableSystem>(name, out var system) && RadioStations.IsRealStation(system));
 
-        // The counts the seed asks for; a made-up few when the fake list of the debug key is on and no
-        // server has said anything.
+        // A made-up few when the debug key's fake list is on and no server has said anything.
         private static int GourdTarget => ApRuntime.SlotData != null ? ApRuntime.SlotData.DepositGoalAmount : DebugKeys != null ? 10 : 0;
         private static int TowersTarget => ApRuntime.SlotData != null ? ApRuntime.SlotData.TowersRequired : 0;
         private static int KeysTarget => ApRuntime.SlotData != null ? ApRuntime.SlotData.KeysRequired : DebugKeys != null ? 3 : int.MaxValue;
@@ -86,7 +72,7 @@ namespace BigWalkArchipelago.Core.Net
         private static int ObjectsTarget => ApRuntime.SlotData != null ? ApRuntime.SlotData.ObjectsRequiredCount : DebugKeys != null ? 5 : 0;
         private static int BodyTarget => ApRuntime.SlotData != null ? ApRuntime.SlotData.BodyRequiredCount : DebugKeys != null ? 5 : 0;
 
-        // Object Sanity's checks this save has sent: each object (every) or each kind (first_pickup).
+        // Object Sanity checks sent: each object (every) or each kind (first_pickup).
         internal static int ObjectsPicked() =>
             CheckTracker.GetReportedLocationNames().Count(name =>
                 name.StartsWith(ApLocationIds.ObjectPrefix, StringComparison.Ordinal)
@@ -174,7 +160,7 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // For the overlay, one line each (it splits on '\n'): "Objectives 1/3", then "[x]  Big Wall" and so on.
+        // One line each, for the overlay, which splits on newlines.
         internal static string Summary() =>
             $"Objectives {DoneCount}/{Keys.Count}"
             + string.Concat(Keys.Select(key => $"\n   [{(IsDone(key) ? "x" : "  ")}]  {(IsEnding(key) ? $"<b>{Label(key)}</b>" : Label(key))}"));

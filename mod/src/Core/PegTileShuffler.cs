@@ -5,31 +5,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The island's peg tiles swapped among their own places, per seed, in every Archipelago game
-    // (player's wish 2026-10-05: "they are always laid out the same"; no option since: "it has to
-    // be native"). Never in a save hosted without Archipelago (ApRuntime.ShufflesPegTiles).
-    //
-    //  - Within one set of tiles only: the rack or the set the scene lays them out in
-    //    (PegTileRack_SetA, PegTileSetInvisibleInk...), and within one family of symbols (A, B,
-    //    Priest A...). It used to be the whole landmark (the first two levels of the scene path),
-    //    and LandmarksPlayerCount2/Contents is one landmark for the Silent Gauntlet, the Ring Room,
-    //    the Charades and Semaphore rooms and the Trap Room: 452 tiles of five puzzles in one draw
-    //    (players, 2026-10-15: tiles strewn about, duplicated in one puzzle and missing in another,
-    //    invisible ink in a plain puzzle and plain tiles in the ink one). A rack belongs to one
-    //    puzzle, holds one kind of tile, ink or not, and one puzzle need.
-    //  - Each tile takes another's spot: its home if it is pinned to one, else its place (most
-    //    tiles simply lie there; each keeps its own turn). The draw is fixed by the seed and the set.
-    //  - A set is drawn a few seconds after the world is ready, wherever the players are (the player,
-    //    2026-10-20: drawn when one came near, the tiles changed in front of them). A tile lying loose far from
-    //    anyone has no ground loaded under it and would fall through (the strewn tiles of 2026-10-15), so it is
-    //    held still (kinematic) after it is placed, and let go once a player is within NearMetres of it.
-    //  - Every world load, the same result. A reload put the tiles back where the scene has them
-    //    (players, 2026-10-15: "reloading fixed it"), and a key in the save used to stop the
-    //    shuffle there. The draw now gives each tile, in a fixed order, a spot in a fixed order
-    //    (the spots by their place in the set, which a swap does not change), so it lands on the
-    //    same layout from the scene's places and leaves an already shuffled layout as it is.
-    //  - Left alone: the tiles in a puzzle's slots (PegSlot...), held ones, the mod's own.
-    //  - The host moves them: a home is networked (ServerSetPinned), and so is a loose prop's place.
+    // Swaps the island's peg tiles among their own spots, per seed, within one rack and family.
     internal static class PegTileShuffler
     {
         private const string Tag = "[" + nameof(PegTileShuffler) + "]";
@@ -39,8 +15,7 @@ namespace BigWalkArchipelago.Core
         private static float _at = -1f;
         private static float _nextScan;
 
-        // Sets already drawn in this world, by key, and the tiles they moved: a tile set loose may
-        // leave its rack in the scene, and must not be drawn a second time from wherever it went.
+        // Sets already drawn here: a tile set loose may leave its rack and must not be drawn twice.
         private static readonly HashSet<string> _done = new();
         private static readonly HashSet<int> _moved = new();
 
@@ -57,9 +32,7 @@ namespace BigWalkArchipelago.Core
 
         internal static void MarkDirty() => _dirty = true;
 
-        // How near a player must be for a set to be drawn: close enough for its ground to be
-        // there, far enough for the swaps to happen out of sight (60 m: the player saw the tiles change in front of
-        // them, 2026-10-20).
+        // Close enough for the ground to be loaded, far enough for the swaps to be out of sight.
         private const float NearMetres = 150f;
 
         internal static void Configure(string seed)
@@ -75,7 +48,6 @@ namespace BigWalkArchipelago.Core
             _seed = seed ?? string.Empty;
         }
 
-        // Every couple of seconds (TeleportButtonRunner).
         internal static void Tick()
         {
             if (!_enabled || !Net.ApRuntime.ShufflesPegTiles || !NetworkServer.active)
@@ -112,8 +84,7 @@ namespace BigWalkArchipelago.Core
             _nextQuietScan = 0f;
         }
 
-        // Where a tile is: the home it is pinned to, or, for a tile simply lying there (most of
-        // them: the first version swapped homes and found none, 2026-10-05), its place.
+        // The home a tile is pinned to, or, for a tile simply lying there (most), its place.
         private struct Spot
         {
             internal PropHome Home;
@@ -137,8 +108,7 @@ namespace BigWalkArchipelago.Core
                     || IsHeld(prop))
                     continue;
 
-                // A tile in a puzzle's own slot is that puzzle's display or answer: left alone.
-                // Nor one stowed in something carried (a backpack, a carton).
+                // A tile in a puzzle's slot (display or answer) or stowed in a pack: left alone.
                 var home = prop.currentHome;
                 if (home != null && (home.name.StartsWith("PegSlot", StringComparison.Ordinal)
                                      || home.GetComponentInParent<Prop>() != null))
@@ -217,11 +187,11 @@ namespace BigWalkArchipelago.Core
                     }
                     else
                     {
-                        // The place only: each tile keeps its own turn (player, 2026-10-05).
+                        // The place only: each tile keeps its own turn.
                         tile.SetLoose();
                         tile.transform.position = spot.Position;
 
-                        // Held still until a player is near enough for the ground to be there (ReleaseNear).
+                        // Held still until a player is near enough for the ground to be there.
                         if (tile.rb != null)
                         {
                             tile.rb.isKinematic = true;
@@ -229,8 +199,7 @@ namespace BigWalkArchipelago.Core
                         }
                     }
 
-                    // A tile hidden by its puzzle need has no collider: set loose, it would fall through the
-                    // ground before the hider holds it again. Held until shown (PuzzleNeedHider.SoftShow).
+                    // A soft-hidden tile has no collider and would fall through: held until shown.
                     if (PuzzleNeedHider.IsSoftHidden(tile.gameObject) && tile.rb != null)
                         tile.rb.isKinematic = true;
 
@@ -245,8 +214,7 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} {moved} tile(s) swapped about in {key}.");
         }
 
-        // The rack or set a tile is laid out in: its nearest parent named PegTileRack... or PegTileSet...,
-        // else its own parent (a tile alone in a room's dressing).
+        // Its nearest parent named PegTileRack... or PegTileSet..., else its own parent.
         private static Transform SetRoot(Transform tile)
         {
             for (var parent = tile.parent; parent != null; parent = parent.parent)
@@ -260,7 +228,7 @@ namespace BigWalkArchipelago.Core
             return tile.parent;
         }
 
-        // The symbols' family (PegTileA, PegTilePriestB...): a tile only ever swaps with its own kind.
+        // The symbols' family (PegTileA, PegTilePriestB...): a tile only swaps with its own kind.
         private static string FamilyOf(Prop prop)
         {
             foreach (var group in prop.propGroups)
@@ -298,7 +266,6 @@ namespace BigWalkArchipelago.Core
             return Mathf.RoundToInt(a.Local.y * 10f).CompareTo(Mathf.RoundToInt(b.Local.y * 10f));
         }
 
-        // The tiles held still, by what Draw placed loose.
         private static readonly List<Prop> Frozen = new();
 
         private static void ReleaseNear()

@@ -5,9 +5,7 @@ using Mirror;
 
 namespace BigWalkArchipelago.Patches
 {
-    // A pack picked up, for its check (Core/PackChecks). After the server half of the game's
-    // pick-up Command, and only when the pick-up went through: the player's held information then
-    // names the prop asked for. Every player's pick-up passes here on the host.
+    // Runs on the host after the pick-up Command; the held information then names the prop.
     [HarmonyPatch(typeof(PlayerNetworking), "UserCode_CmdPickUp__PlayerHeldInformation")]
     internal static class PackPickUpPatch
     {

@@ -3,15 +3,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The mod's version, in a corner of every menu (player request,
-    // 2026-09-25). The first thing worth comparing when two players compare
-    // notes is whether they run the same build — the fingerprint check in
-    // tools/deploy-mod.ps1 exists because three co-op tests were once lost to
-    // a guest on older code — and until now the only place a player could
-    // read it was the first lines of BepInEx's log.
-    //
-    // Menus only: in the world the corner belongs to the game, and the
-    // Archipelago overlay already has the top-left; in the world, only while its menus are open.
+    // The mod's version in a corner of the menus, so players can check they run the same build.
     internal class ModVersionLabel : MonoBehaviour
     {
         // Constructor required by Il2CppInterop for any type injected into IL2CPP.
@@ -27,8 +19,7 @@ namespace BigWalkArchipelago.Core
 
         private static readonly string Text = $"{Plugin.PluginName} v{Plugin.PluginVersion}";
 
-        // Built on first use: anything touching GUI.skin outside OnGUI is
-        // invalid in Unity.
+        // Built on first use: GUI.skin is only valid inside OnGUI.
         private GUIStyle _style;
 
         private void OnGUI()
@@ -48,7 +39,7 @@ namespace BigWalkArchipelago.Core
             GUI.Label(rect, Text, _style);
         }
 
-        // In the world, the pause and settings menus too (Tyrope, 2026-11-15).
+        // In the world, the pause and settings menus too.
         private static bool WorldMenuOpen()
         {
             var menus = WorldMenuManager.instance;

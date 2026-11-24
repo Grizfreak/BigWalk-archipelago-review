@@ -3,18 +3,7 @@ using BigWalkArchipelago.Core.Net;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Simulates receiving an Archipelago item remotely, without a real
-    // Archipelago network connection: exercises exactly the same code path
-    // (Core.ItemApplier) that a real client will call later on. Targets the
-    // nearest non-collected savable Prop to the player.
-    //
-    // Goes through DebugGourdLookup.FindNearestUncollectedProp
-    // (Prop.allProps), not RewardGourd: confirmed in a test session on
-    // 2026-09-07, big keys have no RewardGourd component (hence no
-    // gourdState), contrary to the notes' initial hypothesis —
-    // FindNearestLocked (which filters on RewardGourd.gourdState == Locked)
-    // never finds them. ItemApplier never needed RewardGourd anyway: only
-    // saveablePropName matters.
+    // Simulates a received item through the real ItemApplier path, on the nearest uncollected prop.
     internal static class DebugItemSimulator
     {
         internal static void SimulateReceiveNext()
@@ -32,12 +21,7 @@ namespace BigWalkArchipelago.Debug
             Dispatch(prop.saveablePropName);
         }
 
-        // Targets a specific SaveablePropName directly, without going
-        // through FindNearestUncollectedProp: useful for testing a big key
-        // that is not in the currently loaded area (cable car/train, cf.
-        // big-walk-archipelago-notes.md "To test" from 2026-09-09), or one
-        // whose application we want to force regardless of the player's
-        // proximity.
+        // For a big key that is not in the loaded area.
         internal static void SimulateReceive(SaveablePropName propName)
         {
             Plugin.Log.LogInfo(
@@ -45,11 +29,8 @@ namespace BigWalkArchipelago.Debug
             Dispatch(propName);
         }
 
-        // Cycles through every GadgetKind, one per press, so a single key can
-        // exercise all five filler gadgets across a session without needing
-        // one binding each.
         private static int _nextGadgetIndex;
-        // Every kind an item can give: not the trap tomato nor the Big Mask helmet, which no item is.
+        // Kinds an item can give: not the trap tomato nor the Big Mask helmet.
         private static readonly GadgetKind[] GadgetKinds = System.Array.FindAll(
             (GadgetKind[])System.Enum.GetValues(typeof(GadgetKind)), kind => kind != GadgetKind.Pomodoro && kind != GadgetKind.Blindfold);
 
@@ -61,22 +42,12 @@ namespace BigWalkArchipelago.Debug
             Plugin.Log.LogInfo(
                 $"[{nameof(DebugItemSimulator)}] Simulating item reception: {kind}");
 
-            // Counted the same way a real item is (ApRuntime.DrainIncomingItems),
-            // not skipped: without this, a simulated gadget never enters the
-            // received ledger, so pressing this key could never demonstrate
-            // the persistence-across-reload it exists to test (player
-            // request, 2026-09-22).
+            // Counted like a real item, so the reload persistence can be tested.
             ApItemCursor.CountGadgetReceived(kind);
             ItemApplier.ApplyGadgetItem(kind, toPlayer: true);
         }
 
-        // A gourd simulated via a specific SaveablePropName (gourdXxx) no
-        // longer makes 1:1 sense since the 2026-09-11 FIX (big-walk-
-        // archipelago-notes.md): ApplyGourdItem is now generic, without a
-        // propName. We keep the parameter here (useful for targeting a
-        // specific big key, or for choosing which gourd to simulate via
-        // keyboard), and just route to the right ItemApplier path based on
-        // the type.
+        // ApplyGourdItem is generic; the prop name only picks which path to take.
         private static void Dispatch(SaveablePropName propName)
         {
             if (GourdRegistry.IsBigKey(propName))

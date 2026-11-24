@@ -15,7 +15,7 @@ namespace BigWalkArchipelago.Core
 
         internal static bool IsItem(long itemId) => Gates.ContainsKey(itemId);
 
-        // Host: slot_data has arrived, after the ledger was cleared for a rebound save.
+        // Called after the ledger was cleared for a rebound save.
         internal static void Configure(Dictionary<long, string[]> gates)
         {
             Gates.Clear();
@@ -50,7 +50,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Every couple of seconds (TeleportButtonRunner): opens the gates of every door granted.
+        // Every couple of seconds (TeleportButtonRunner).
         internal static void Enforce()
         {
             if (Gates.Count == 0 || !NetworkServer.active || !WorldManager.isReadyForEffects)

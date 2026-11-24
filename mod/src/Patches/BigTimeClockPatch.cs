@@ -5,10 +5,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Patches
 {
-    // Big Time's clocks (Core/Traps): the game's LobbyClock turns a clock's two hands on the island's time, fast.
-    // A clock the mod made tells the real time of this machine's own computer instead (player, 2026-10-13):
-    // the black hand the hours, the red one the minutes (positive angles turn clockwise on this model, seen 2026-10-13). Each machine draws its own clocks, so each player
-    // reads their own time.
+    // Big Time clocks show this machine's real time: black hand for hours, red hand for minutes.
     [HarmonyPatch(typeof(LobbyClock), nameof(LobbyClock.Update))]
     internal static class BigTimeClockPatch
     {

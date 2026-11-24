@@ -4,12 +4,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago
 {
-    // Single entry point to disable the Debug/ module without touching
-    // anything else: ModConfig.DebugModeEnabled.Value == false is enough
-    // (see Plugin.Load()). Named "ModConfig" (not "Config") to avoid a
-    // conflict with the BasePlugin.Config property inherited by Plugin: a
-    // plain "Config.Xxx" in Plugin.cs would have resolved to the inherited
-    // instance, not this static class.
+    // Named ModConfig so it does not clash with the BasePlugin.Config property.
     internal static class ModConfig
     {
         internal static ConfigEntry<KeyboardShortcut> HoldTrackedStateKey;
@@ -127,8 +122,7 @@ namespace BigWalkArchipelago
         internal static ConfigEntry<bool> AutoHostGuest;
         internal static ConfigEntry<bool> PerfProbe;
 
-        // The debug tools' settings live in a file of their own, written only when Debug.Enabled is on (player,
-        // 2026-10-14: a player's .cfg was ninety lines of developer keys). Off, they keep their defaults in memory.
+        // Debug settings live in their own file, written only when Debug.Enabled is on.
         internal const string DebugFileName = "com.grizfreak.bigwalk.archipelago.debug.cfg";
 
         internal static void Bind(ConfigFile file)
@@ -154,19 +148,19 @@ namespace BigWalkArchipelago
                 "Archipelago",
                 "HostPort",
                 "archipelago.gg:",
-                "Last value entered in the host:port field of the hosting screen (Patches/HostMenuConfirmPatch.cs) — persisted so it doesn't need to be retyped on every launch.");
+                "Last value entered in the host:port field of the hosting screen (Patches/HostMenuConfirmPatch.cs), persisted so it doesn't need to be retyped on every launch.");
 
             ColorBigKeys = file.Bind(
                 "Archipelago",
                 "ColorBigKeys",
                 true,
-                "Tints the five identical yellow big keys — the drawbridge and the four coloured towers — so they can be told apart once they start arriving from Archipelago and piling up at the spawn point. The Black Monolith and Green Dome keys are left alone: they already have models of their own, and repainting them would destroy the one distinction the game gives you for free.");
+                "Tints the five identical yellow big keys, the drawbridge and the four coloured towers, so they can be told apart once they start arriving from Archipelago and piling up at the spawn point. The Black Monolith and Green Dome keys are left alone: they already have models of their own, and repainting them would destroy the one distinction the game gives you for free.");
 
             KeyColorProperty = debug.Bind(
                 "Archipelago",
                 "KeyColorProperty",
                 "_TintColor",
-                "Shader colour properties the tint above is written to, comma-separated. Measured in game on 2026-09-21: the keys run 'househouse/VertexColors', which declares _TintColor, _TintMask0 to _TintMask3, and _EmissionColor — and NOT the _RColor the Black Monolith key's own helper uses, which is why the first attempt silently painted nothing. _TintColor multiplies the mesh's baked vertex colours, which is the classic setup for a shader by that name. If a key still comes out yellow, add the masks (_TintColor,_TintMask0,_TintMask1,_TintMask2,_TintMask3) and see which one owns its body.");
+                "Shader colour properties the tint above is written to, comma-separated. Measured in game on 2026-09-21: the keys run 'househouse/VertexColors', which declares _TintColor, _TintMask0 to _TintMask3, and _EmissionColor, and NOT the _RColor the Black Monolith key's own helper uses, which is why the first attempt silently painted nothing. _TintColor multiplies the mesh's baked vertex colours, which is the classic setup for a shader by that name. If a key still comes out yellow, add the masks (_TintColor,_TintMask0,_TintMask1,_TintMask2,_TintMask3) and see which one owns its body.");
 
             CosmeticGourdRestoreInterval = debug.Bind(
                 "Archipelago",
@@ -184,7 +178,7 @@ namespace BigWalkArchipelago
                 "Archipelago",
                 "PutGourdInHands",
                 true,
-                "Puts a gourd or gadget received during play straight into a player's hands. It goes to a player whose hands are free, the one given the fewest items this session first, ties at random; if nobody's hands are free, to one of everyone the same way, who drops what they were holding first. The count is not saved. With this off, items only drop in front of that player. Never applies to the batch rebuilt at the start of a session. Note that a gourd received inside a sealed puzzle room stays there until the next world load, hands or not — the game does not let you carry it out.");
+                "Puts a gourd or gadget received during play straight into a player's hands. It goes to a player whose hands are free, the one given the fewest items this session first, ties at random; if nobody's hands are free, to one of everyone the same way, who drops what they were holding first. The count is not saved. With this off, items only drop in front of that player. Never applies to the batch rebuilt at the start of a session. Note that a gourd received inside a sealed puzzle room stays there until the next world load, hands or not, the game does not let you carry it out.");
 
             GourdName = file.Bind(
                 "Archipelago",
@@ -216,7 +210,7 @@ namespace BigWalkArchipelago
                 "Archipelago",
                 "ShowConnectionStatus",
                 true,
-                "Shows the Archipelago connection in the corner of the screen, for the whole session rather than only when something is wrong — a silent, self-healing connection is still worth being able to check at a glance. Only ever appears for the host, since nobody else connects. Turn off for a clean screen; the same information stays in the BepInEx log either way. This is the master switch: the item feed and the resync hint below are drawn under this line and go with it.");
+                "Shows the Archipelago connection in the corner of the screen, for the whole session rather than only when something is wrong, a silent, self-healing connection is still worth being able to check at a glance. Only ever appears for the host, since nobody else connects. Turn off for a clean screen; the same information stays in the BepInEx log either way. This is the master switch: the item feed and the resync hint below are drawn under this line and go with it.");
 
             StatusFontSize = file.Bind(
                 "Archipelago",
@@ -296,7 +290,7 @@ namespace BigWalkArchipelago
                 "Debug",
                 "HoldTrackedStateKey",
                 new KeyboardShortcut(KeyCode.Keypad4),
-                "Holds down the nearest matching TrackedPeckState for as long as this key is held — a sustained hold, not a tap. For the sealed-box puzzles, whose door is opened by a momentary push button a second player would normally keep pressed (only has an effect if Debug.Enabled is active).");
+                "Holds down the nearest matching TrackedPeckState for as long as this key is held, a sustained hold, not a tap. For the sealed-box puzzles, whose door is opened by a momentary push button a second player would normally keep pressed (only has an effect if Debug.Enabled is active).");
 
             HoldTrackedStateName = debug.Bind(
                 "Debug",
@@ -333,7 +327,7 @@ namespace BigWalkArchipelago
                 "Debug",
                 "DumpNearbyKey",
                 new KeyboardShortcut(KeyCode.F5),
-                "Logs the RewardGourd instances nearest to the player (name + state + distance), regardless of their state — diagnostic to see what's actually present around you (only has an effect if Debug.Enabled is active).");
+                "Logs the RewardGourd instances nearest to the player (name + state + distance), regardless of their state, diagnostic to see what's actually present around you (only has an effect if Debug.Enabled is active).");
 
             DumpMonumentHomesKey = debug.Bind(
                 "Debug",
@@ -345,43 +339,43 @@ namespace BigWalkArchipelago
                 "Debug",
                 "DumpNearbyCombinatorKey",
                 new KeyboardShortcut(KeyCode.F7),
-                "Logs nearby PeckCombinator instances (directControlSystem, onConditionMet/onConditionStop, rules with systems[]/minimumMatches) — diagnostic for combined-condition mechanisms (e.g. two buttons pressed simultaneously) (only has an effect if Debug.Enabled is active).");
+                "Logs nearby PeckCombinator instances (directControlSystem, onConditionMet/onConditionStop, rules with systems[]/minimumMatches), diagnostic for combined-condition mechanisms (e.g. two buttons pressed simultaneously) (only has an effect if Debug.Enabled is active).");
 
             DumpAllSaveEntriesKey = debug.Bind(
                 "Debug",
                 "DumpAllSaveEntriesKey",
                 new KeyboardShortcut(KeyCode.F8),
-                "Logs all int entries of SaveManager.currentData.entries — to diff before/after an in-game action and find the real key without guessing via the Peck graph (only has an effect if Debug.Enabled is active).");
+                "Logs all int entries of SaveManager.currentData.entries, to diff before/after an in-game action and find the real key without guessing via the Peck graph (only has an effect if Debug.Enabled is active).");
 
             DumpNearbyKeywordKey = debug.Bind(
                 "Debug",
                 "DumpNearbyKeywordKey",
                 new KeyboardShortcut(KeyCode.F9),
-                "Logs nearby GameObjects (name or component containing 'arch'/'door'/'switch'/'button'/'gate'/'peck'/'shortcut') along with their components — generic diagnostic to identify a mechanism with no known dedicated C# class (only has an effect if Debug.Enabled is active).");
+                "Logs nearby GameObjects (name or component containing 'arch'/'door'/'switch'/'button'/'gate'/'peck'/'shortcut') along with their components, generic diagnostic to identify a mechanism with no known dedicated C# class (only has an effect if Debug.Enabled is active).");
 
             DumpNearbyPeckDevHelperKey = debug.Bind(
                 "Debug",
                 "DumpNearbyPeckDevHelperKey",
                 new KeyboardShortcut(KeyCode.F10),
-                "Logs nearby PeckDevHelper instances along with their assigned UnlockRules (unlocks/lights/chairlift/train/bell/tunnel/map/gourd) — diagnostic for figuring out which rule triggers which cheat switch (only has an effect if Debug.Enabled is active).");
+                "Logs nearby PeckDevHelper instances along with their assigned UnlockRules (unlocks/lights/chairlift/train/bell/tunnel/map/gourd), diagnostic for figuring out which rule triggers which cheat switch (only has an effect if Debug.Enabled is active).");
 
             TriggerUnlocksKey = debug.Bind(
                 "Debug",
                 "TriggerUnlocksKey",
                 new KeyboardShortcut(KeyCode.F11),
-                "Calls PeckDevHelper.Trigger with UnlockRules.unlocks=true (cheat already built into the game) — test for the Arch doors/HubGate (only has an effect if Debug.Enabled is active).");
+                "Calls PeckDevHelper.Trigger with UnlockRules.unlocks=true (cheat already built into the game), test for the Arch doors/HubGate (only has an effect if Debug.Enabled is active).");
 
             TriggerGourdKey = debug.Bind(
                 "Debug",
                 "TriggerGourdKey",
                 new KeyboardShortcut(KeyCode.F12),
-                "Calls PeckDevHelper.Trigger with UnlockRules.gourd=true (cheat already built into the game) — test for the purple gourds/variant challenges, normally unlocked after a first ending (only has an effect if Debug.Enabled is active).");
+                "Calls PeckDevHelper.Trigger with UnlockRules.gourd=true (cheat already built into the game), test for the purple gourds/variant challenges, normally unlocked after a first ending (only has an effect if Debug.Enabled is active).");
 
             DumpSpawnHubGateKey = debug.Bind(
                 "Debug",
                 "DumpSpawnHubGateKey",
                 new KeyboardShortcut(KeyCode.Insert),
-                "Logs all TrackedPeckState instances of category SpawnHubGate (the 3 Arch doors) with their SaveIdentity.saveGuid and current SaveManager value — diagnostic to target these 3 doors directly without going through PeckDevHelper.Trigger (only has an effect if Debug.Enabled is active).");
+                "Logs all TrackedPeckState instances of category SpawnHubGate (the 3 Arch doors) with their SaveIdentity.saveGuid and current SaveManager value, diagnostic to target these 3 doors directly without going through PeckDevHelper.Trigger (only has an effect if Debug.Enabled is active).");
 
             DumpPeckSwitchTargetKey = debug.Bind(
                 "Debug",
@@ -399,19 +393,19 @@ namespace BigWalkArchipelago
                 "Debug",
                 "RemotePeckSwitchName",
                 "",
-                "Substring (case-insensitive) of the name of the GameObject whose PeckSwitch should be triggered remotely by FireRemotePeckSwitchKey — find the name via F9/Delete beforehand. Empty = nothing gets triggered.");
+                "Substring (case-insensitive) of the name of the GameObject whose PeckSwitch should be triggered remotely by FireRemotePeckSwitchKey, find the name via F9/Delete beforehand. Empty = nothing gets triggered.");
 
             FlightSpeedMultiplier = debug.Bind(
                 "Debug",
                 "FlightSpeedMultiplier",
                 4f,
-                "Multiplier applied to CameraCheatMover.movingSpeed when the free camera is enabled (ToggleFlightKey) — 1 = the game's vanilla camera-cheat speed.");
+                "Multiplier applied to CameraCheatMover.movingSpeed when the free camera is enabled (ToggleFlightKey), 1 = the game's vanilla camera-cheat speed.");
 
             FireRemotePeckSwitchKey = debug.Bind(
                 "Debug",
                 "FireRemotePeckSwitchKey",
                 new KeyboardShortcut(KeyCode.PageUp),
-                "Remotely triggers (PeckSwitch.Peck(), without having to stand in front of it) all PeckSwitch instances in the zone whose name contains RemotePeckSwitchName — to solo-test a mechanism designed for 2 players (only has an effect if Debug.Enabled is active).");
+                "Remotely triggers (PeckSwitch.Peck(), without having to stand in front of it) all PeckSwitch instances in the zone whose name contains RemotePeckSwitchName, to solo-test a mechanism designed for 2 players (only has an effect if Debug.Enabled is active).");
 
             DumpGauntletKey = debug.Bind(
                 "Debug",
@@ -477,19 +471,19 @@ namespace BigWalkArchipelago
                 "Debug",
                 "ForceNearbyCombinatorKey",
                 new KeyboardShortcut(KeyCode.End),
-                "Directly forces (TrackedPeckState.SetState, no button simulation) the state of all systems[]/block.systems[] of PeckCombinator instances within 30m to their desiredState — to solo-satisfy an 'N simultaneous players' condition (e.g. N-hold bells) without depending on the press/hold system (only has an effect if Debug.Enabled is active).");
+                "Directly forces (TrackedPeckState.SetState, no button simulation) the state of all systems[]/block.systems[] of PeckCombinator instances within 30m to their desiredState, to solo-satisfy an 'N simultaneous players' condition (e.g. N-hold bells) without depending on the press/hold system (only has an effect if Debug.Enabled is active).");
 
             ForceEndingFlagsKey = debug.Bind(
                 "Debug",
                 "ForceEndingFlagsKey",
                 new KeyboardShortcut(KeyCode.PageDown),
-                "Remotely forces the 7 big keys (via ItemApplier) + SaveManager[EndingGate]=1 + SaveManager[GauntletComplete]=1 all at once — to test whether the hub's black sphere reacts to this flag combination without having to redo everything for real. Use on a save that has never seen the ending screen (only has an effect if Debug.Enabled is active).");
+                "Remotely forces the 7 big keys (via ItemApplier) + SaveManager[EndingGate]=1 + SaveManager[GauntletComplete]=1 all at once, to test whether the hub's black sphere reacts to this flag combination without having to redo everything for real. Use on a save that has never seen the ending screen (only has an effect if Debug.Enabled is active).");
 
             ApplyBigKeyOverflowKey = debug.Bind(
                 "Debug",
                 "ApplyBigKeyOverflowKey",
                 new KeyboardShortcut(KeyCode.O),
-                "Applies only bigKeyOverflow (via ItemApplier.ApplyBigKeyItem, so a real live pin on bigKeyPlinthGoodbye2) — isolated test (a single variable, unlike ForceEndingFlagsKey) of the 2026-09-11 hypothesis: the bigKeyPlinthGoodbye2 plinth sits just behind the hub's black sphere, possibly the real trigger for OpenSystem/PropHomeBlock rather than some notion of 'game already finished' (only has an effect if Debug.Enabled is active).");
+                "Applies only bigKeyOverflow (via ItemApplier.ApplyBigKeyItem, so a real live pin on bigKeyPlinthGoodbye2), isolated test (a single variable, unlike ForceEndingFlagsKey) of the 2026-09-11 hypothesis: the bigKeyPlinthGoodbye2 plinth sits just behind the hub's black sphere, possibly the real trigger for OpenSystem/PropHomeBlock rather than some notion of 'game already finished' (only has an effect if Debug.Enabled is active).");
 
             SpawnCosmeticPickupKey = debug.Bind(
                 "Debug",
@@ -501,19 +495,19 @@ namespace BigWalkArchipelago
                 "Debug",
                 "ToggleNeverCullKey",
                 new KeyboardShortcut(KeyCode.C),
-                "Toggles CullingAgent.Instance.neverCull (dev cheat already built into the game) — isolated test of the 2026-09-11 hypothesis: the cosmetic gourd spawned by P stays invisible despite every Unity indicator being green (enabled/isVisible/observers), possibly due to the game's own region-based culling system, which might ignore an object never registered in any CullingRegion (only has an effect if Debug.Enabled is active).");
+                "Toggles CullingAgent.Instance.neverCull (dev cheat already built into the game), isolated test of the 2026-09-11 hypothesis: the cosmetic gourd spawned by P stays invisible despite every Unity indicator being green (enabled/isVisible/observers), possibly due to the game's own region-based culling system, which might ignore an object never registered in any CullingRegion (only has an effect if Debug.Enabled is active).");
 
             ForceCosmeticPinKey = debug.Bind(
                 "Debug",
                 "ForceCosmeticPinKey",
                 new KeyboardShortcut(KeyCode.N),
-                "Directly pins (Prop.ServerSetPinned, without going through manual interaction/holding) the nearest cosmetic gourd into the nearest empty PropHome (30m) — to test CosmeticMonumentFillTracker without having to redo the deposit interaction for real (only has an effect if Debug.Enabled is active).");
+                "Directly pins (Prop.ServerSetPinned, without going through manual interaction/holding) the nearest cosmetic gourd into the nearest empty PropHome (30m), to test CosmeticMonumentFillTracker without having to redo the deposit interaction for real (only has an effect if Debug.Enabled is active).");
 
             DumpHostMenuConfirmKey = debug.Bind(
                 "Debug",
                 "DumpHostMenuConfirmKey",
                 new KeyboardShortcut(KeyCode.M),
-                "Dumps the full hierarchy of the hosting screen (HostMenuConfirm) — press while on this screen, before coding an addition of the AP host:port field on it (only has an effect if Debug.Enabled is active).");
+                "Dumps the full hierarchy of the hosting screen (HostMenuConfirm), press while on this screen, before coding an addition of the AP host:port field on it (only has an effect if Debug.Enabled is active).");
 
             DumpRadioKey = debug.Bind(
                 "Debug",
@@ -531,49 +525,49 @@ namespace BigWalkArchipelago
                 "Debug",
                 "ForceBigKeyDoorKey",
                 new KeyboardShortcut(KeyCode.U, KeyCode.LeftControl),
-                "Opens a big-key door without the key, by driving the TrackedPeckState the key itself carries in taggedPinSystems for its plinth's PropGroup — which is what Prop.SetPinDirectControlSystem does when a key goes in, and what a received feature item will do instead. Takes the key whose plinth is nearest unless BigKeyDoorName says otherwise, and prints all seven with their distances either way. Moved off Ctrl+D (player report, 2026-09-22: fired on its own during ordinary play) — D is a WASD movement key, so Ctrl+D collides with crouch-while-moving-right in this game's own controls. Letter + LeftControl otherwise, since that is the only key format proven to register reliably in this game — but never a WASD letter specifically, for the same reason (only has an effect if Debug.Enabled is active).");
+                "Opens a big-key door without the key, by driving the TrackedPeckState the key itself carries in taggedPinSystems for its plinth's PropGroup, which is what Prop.SetPinDirectControlSystem does when a key goes in, and what a received feature item will do instead. Takes the key whose plinth is nearest unless BigKeyDoorName says otherwise, and prints all seven with their distances either way. Moved off Ctrl+D (player report, 2026-09-22: fired on its own during ordinary play), D is a WASD movement key, so Ctrl+D collides with crouch-while-moving-right in this game's own controls. Letter + LeftControl otherwise, since that is the only key format proven to register reliably in this game, but never a WASD letter specifically, for the same reason (only has an effect if Debug.Enabled is active).");
 
             GrantBigKeyItemKey = debug.Bind(
                 "Debug",
                 "GrantBigKeyItemKey",
                 new KeyboardShortcut(KeyCode.G, KeyCode.LeftControl),
-                "Simulates receiving the big KEY item for one tower (Core/KeyCustody.Grant), which unlocks that key from its stone and drops it at the spawn point. Not the same thing as the feature item that opens its door — that one is Ctrl+D, or F4. Uses BigKeyDoorName to choose, or the nearest plinth when that is empty. Needed because the keys are shuffled into the multiworld like everything else, so they no longer arrive on their own (only has an effect if Debug.Enabled is active).");
+                "Simulates receiving the big KEY item for one tower (Core/KeyCustody.Grant), which unlocks that key from its stone and drops it at the spawn point. Not the same thing as the feature item that opens its door, that one is Ctrl+D, or F4. Uses BigKeyDoorName to choose, or the nearest plinth when that is empty. Needed because the keys are shuffled into the multiworld like everything else, so they no longer arrive on their own (only has an effect if Debug.Enabled is active).");
 
             GrantBigKeyFeatureKey = debug.Bind(
                 "Debug",
                 "GrantBigKeyFeatureKey",
                 new KeyboardShortcut(KeyCode.F, KeyCode.LeftControl),
-                "Simulates receiving the FEATURE item for one tower (Core/KeyFeatures.Grant) — the map room, the chairlift, the train. Unlike ForceBigKeyDoorKey, which drives the door's state directly and bypasses the ledger, this takes the path a real Archipelago item takes and therefore also tests that the door reopens after a world reload. Uses BigKeyDoorName to choose, or the nearest plinth when that is empty. F4 is no substitute: it targets the nearest uncollected prop, which is rarely the one you are standing in front of (only has an effect if Debug.Enabled is active).");
+                "Simulates receiving the FEATURE item for one tower (Core/KeyFeatures.Grant), the map room, the chairlift, the train. Unlike ForceBigKeyDoorKey, which drives the door's state directly and bypasses the ledger, this takes the path a real Archipelago item takes and therefore also tests that the door reopens after a world reload. Uses BigKeyDoorName to choose, or the nearest plinth when that is empty. F4 is no substitute: it targets the nearest uncollected prop, which is rarely the one you are standing in front of (only has an effect if Debug.Enabled is active).");
 
             BigKeyDoorName = debug.Bind(
                 "Debug",
                 "BigKeyDoorName",
                 "",
-                "Substring (case-insensitive) of the SaveablePropName of the big key whose door ForceBigKeyDoorKey should open — bigKeyGreenZone, bigKeyIntro, and so on. Empty = whichever plinth is nearest. An escape hatch for the case where the plinths turn out to be instantiated everywhere, like the key blanks are, and distance stops meaning anything.");
+                "Substring (case-insensitive) of the SaveablePropName of the big key whose door ForceBigKeyDoorKey should open, bigKeyGreenZone, bigKeyIntro, and so on. Empty = whichever plinth is nearest. An escape hatch for the case where the plinths turn out to be instantiated everywhere, like the key blanks are, and distance stops meaning anything.");
 
             DumpPropsKey = debug.Bind(
                 "Debug",
                 "DumpPropsKey",
                 new KeyboardShortcut(KeyCode.J, KeyCode.LeftControl),
-                "Lists the objects loaded around you that could plausibly become Archipelago items — the ones carrying a savablePropGuid (the game's own per-prop identity, and the only thing a location could be keyed on), a radioVoiceAssigner (a walkie-talkie) or a use-while-held switch. The binary names none of these: they are plain Prop prefabs, so only the running game can inventory them (only has an effect if Debug.Enabled is active).");
+                "Lists the objects loaded around you that could plausibly become Archipelago items, the ones carrying a savablePropGuid (the game's own per-prop identity, and the only thing a location could be keyed on), a radioVoiceAssigner (a walkie-talkie) or a use-while-held switch. The binary names none of these: they are plain Prop prefabs, so only the running game can inventory them (only has an effect if Debug.Enabled is active).");
 
             DumpGourdRosterKey = debug.Bind(
                 "Debug",
                 "DumpGourdRosterKey",
                 new KeyboardShortcut(KeyCode.V, KeyCode.LeftControl),
-                "Lists every RewardGourd loaded around you with its saveablePropName and whether it is a purple 'variant challenge' gourd. Written to settle which puzzles sit behind the chairlift: the world's logic assumes the island is open apart from the ending, and a puzzle that is not would make some seeds unbeatable. Press it in the gated zone and again somewhere plainly open — the difference is the set that needs its own region (only has an effect if Debug.Enabled is active).");
+                "Lists every RewardGourd loaded around you with its saveablePropName and whether it is a purple 'variant challenge' gourd. Written to settle which puzzles sit behind the chairlift: the world's logic assumes the island is open apart from the ending, and a puzzle that is not would make some seeds unbeatable. Press it in the gated zone and again somewhere plainly open, the difference is the set that needs its own region (only has an effect if Debug.Enabled is active).");
 
             PositionPingKey = debug.Bind(
                 "Debug",
                 "PositionPingKey",
                 new KeyboardShortcut(KeyCode.X, KeyCode.LeftControl),
-                "Logs the player's current world position and, of every puzzle and big-key plinth known to the Archipelago world, the single nearest one and its distance — for labelling what a puzzle needs (a sound cue, a timer, a held item, ...) against the coordinates already pulled from DebugPuzzleMapDump, without having to eyeball which dot on a map you are standing next to (only has an effect if Debug.Enabled is active).");
+                "Logs the player's current world position and, of every puzzle and big-key plinth known to the Archipelago world, the single nearest one and its distance, for labelling what a puzzle needs (a sound cue, a timer, a held item, ...) against the coordinates already pulled from DebugPuzzleMapDump, without having to eyeball which dot on a map you are standing next to (only has an effect if Debug.Enabled is active).");
 
             LookAtKey = debug.Bind(
                 "Debug",
                 "LookAtKey",
                 new KeyboardShortcut(KeyCode.E, KeyCode.LeftControl),
-                "Logs the object under the crosshair (hierarchy path, components of it and of its parents, nearest puzzle) and everything with a collider within four metres — for naming a puzzle's parts (a speaker, a teapot, a light, a panel) that no class name gives away (only has an effect if Debug.Enabled is active).");
+                "Logs the object under the crosshair (hierarchy path, components of it and of its parents, nearest puzzle) and everything with a collider within four metres, for naming a puzzle's parts (a speaker, a teapot, a light, a panel) that no class name gives away (only has an effect if Debug.Enabled is active).");
 
             DaylightKey = debug.Bind(
                 "Debug",
@@ -759,19 +753,19 @@ namespace BigWalkArchipelago
                 "Debug",
                 "SimulateGadgetItemKey",
                 new KeyboardShortcut(KeyCode.I, KeyCode.LeftControl),
-                "Simulates receiving the next filler gadget item (Megaphone, Walkie-Talkie, Backpack, Belt, Flare Gun, one per press, cycling), via ItemApplier.ApplyGadgetItem — same code path a real Archipelago item takes, without a network connection. Tests GadgetItemSpawner's clone/spawn in isolation (only has an effect if Debug.Enabled is active).");
+                "Simulates receiving the next filler gadget item (Megaphone, Walkie-Talkie, Backpack, Belt, Flare Gun, one per press, cycling), via ItemApplier.ApplyGadgetItem, same code path a real Archipelago item takes, without a network connection. Tests GadgetItemSpawner's clone/spawn in isolation (only has an effect if Debug.Enabled is active).");
 
             DumpHeldItemKey = debug.Bind(
                 "Debug",
                 "DumpHeldItemKey",
                 new KeyboardShortcut(KeyCode.H, KeyCode.LeftControl),
-                "Logs the GameObject name, guid, saveablePropName and propGroups of whatever the local player is currently holding — for identifying an object by description alone, without needing to know its prefab name first (only has an effect if Debug.Enabled is active).");
+                "Logs the GameObject name, guid, saveablePropName and propGroups of whatever the local player is currently holding, for identifying an object by description alone, without needing to know its prefab name first (only has an effect if Debug.Enabled is active).");
 
             DumpCosmeticGadgetsKey = debug.Bind(
                 "Debug",
                 "DumpCosmeticGadgetsKey",
                 new KeyboardShortcut(KeyCode.M, KeyCode.LeftControl),
-                "Finds every cosmetic gadget clone currently loose in the scene (the ones a filler item spawns) and logs each renderer's actual shader/material/lightmapIndex — for diagnosing the pink/magenta clones directly rather than through a held item, whose visible mesh turned out not to live under prop.gameObject at all (only has an effect if Debug.Enabled is active).");
+                "Finds every cosmetic gadget clone currently loose in the scene (the ones a filler item spawns) and logs each renderer's actual shader/material/lightmapIndex, for diagnosing the pink/magenta clones directly rather than through a held item, whose visible mesh turned out not to live under prop.gameObject at all (only has an effect if Debug.Enabled is active).");
 
             DumpNetworkKey = debug.Bind(
                 "Debug",
@@ -807,7 +801,7 @@ namespace BigWalkArchipelago
                 "Debug",
                 "LoopbackVanillaGuestKey",
                 new KeyboardShortcut(KeyCode.Y, KeyCode.LeftControl),
-                "On the host: like LoopbackJoinKey, but the second instance runs without the mod — it only joins, and meets the host's items, messages and objects as a PlayStation or Xbox player would. For testing that players without the mod are never blocked (only has an effect if Debug.Enabled is active).");
+                "On the host: like LoopbackJoinKey, but the second instance runs without the mod, it only joins, and meets the host's items, messages and objects as a PlayStation or Xbox player would. For testing that players without the mod are never blocked (only has an effect if Debug.Enabled is active).");
 
             AutoHostSave = debug.Bind(
                 "Debug",
@@ -832,8 +826,7 @@ namespace BigWalkArchipelago
             DropOrphans(file);
         }
 
-        // Settings an older version wrote and this one no longer reads (the debug keys moved out, a few gone) are
-        // kept by BepInEx as orphans and written back; they are dropped once.
+        // BepInEx writes back settings an older version left; drop them once.
         private static void DropOrphans(ConfigFile file)
         {
             try

@@ -1,7 +1,4 @@
-"""
-The logic as it travels to the mod (R7, `tracker_board`): evaluated again here the way the mod evaluates it
-(Core/ApLogic.cs, the same sweep), it must agree with Archipelago's own logic on what can be reached.
-"""
+"""The logic sent to the mod, evaluated the way the mod does, must agree with Archipelago's."""
 
 import json
 from collections import Counter
@@ -13,7 +10,7 @@ from .bases import BigWalkTestBase
 
 
 def reachable(logic: dict[str, Any], received: Counter) -> set[str]:
-    """The mod's sweep: regions and locations reachable with `received`, events collected as they are reached."""
+    """The mod's sweep: what `received` reaches, events collected as they are reached."""
     rules = logic["rules"]
     have = Counter(received)
     regions: set[str] = {logic["origin"]}
@@ -63,7 +60,7 @@ def reachable(logic: dict[str, Any], received: Counter) -> set[str]:
 
 
 class LogicExportChecks:
-    """Mixed into a test case with `tracker_board` on (not a test case itself: it has no options)."""
+    """Mixed into a test case with `tracker_board` on; not a test case itself."""
 
     run_default_tests = False
 

@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""
-The shortest way through a run (player, 2026-10-14): the checks a seed's goal needs, sphere by sphere, for the mod's
-teleport tour (Debug/DebugLogicTour: Ctrl + Shift + 1 next, Ctrl + Shift + 2 back, Ctrl + Shift + 0 flags the stop).
-
-Reads the Playthrough of the seed's spoiler (Archipelago's own minimal path: the progression the goal cannot do
-without), in the AP_*.zip the generator wrote or the _Spoiler.txt itself. At each stop the overlay says what the check
-gives. A check in another player's world is a stop with no place, to wait for.
-
-    python tools/logic_path.py <AP_*.zip | *_Spoiler.txt> [--player NAME] [--out PATH]
-
-`--player`: the Big Walk slot to follow when the seed has several (the first one otherwise). Needs nothing installed:
-it reads the world's data.py straight from apworld/bigwalk.
-"""
+"""Lists the checks a seed's goal needs, sphere by sphere from its spoiler, for the mod's tour."""
 
 from __future__ import annotations
 
@@ -54,7 +42,7 @@ def main() -> None:
     from logic_tour import keys_by_location
 
     text = spoiler_text(args.seed)
-    # Several players: each one's name and game, and " (name)" after every location and item of the Playthrough.
+    # Several players: each one's name and game, and " (name)" after every location and item.
     names = [name.strip() for name in re.findall(r"^Player \d+: (.+)$", text, re.M)]
     games = [game.strip() for game in re.findall(r"^Game:\s+(.+)$", text, re.M)]
     multi = len(names) > 1
@@ -90,18 +78,16 @@ def main() -> None:
         location, owner = split(where)
         item, receiver = split(what)
         if location == "Victory":
-            # The Gauntlet's bell is at its top, the finale past the seventh stage (Level7); the other goals have no place the mod
-            # knows.
+            # The Gauntlet's bell is past the seventh stage; other goals have no known place.
             goal = re.search(r"^Goal:\s+(.+)$", text, re.M)
             goal = goal.group(1).strip() if goal else "the goal"
             key = "gauntlet:7" if goal.lower().replace("_", " ") in ("big goodbye", "gauntlet") else "none:"
             if key != "none:":
-                # The bell waits for all seven stages solved (player, 2026-10-14), which the Playthrough does not list
-                # (the stages are checks the goal needs in the game, not progression).
+                # The bell waits for all seven stages, which the Playthrough does not list.
                 for stage in data.GAUNTLET_STAGES:
                     rows.append((sphere, "gauntlet", f"gauntlet:{stage.index}", stage.location_name, "",
                                  "Solve it (Alt+7 solves the stage you stand in): the bell waits for all seven"))
-            # A sphere of its own, so the tour (nearest first within a sphere) keeps it after the stages.
+            # A sphere of its own, so the tour keeps it after the stages.
             rows.append((sphere + 1 if key != "none:" else sphere, "goal", key, "The goal", "", f"Done: {goal}"))
             continue
         gives = f"Gives: {item}" + (f" (to {receiver})" if multi and receiver != me else "")

@@ -1,7 +1,4 @@
-"""
-`tunnel_sanity` opens the tunnels door by door: four outlets, any of which lets you in, and the purple hole on
-its own, the way to the seven purple puzzles past the chairlift.
-"""
+"""`tunnel_sanity`: four outlets, any of which lets you in, and the purple hole on its own."""
 
 from .. import data, regions
 from .bases import BigWalkTestBase
@@ -67,7 +64,7 @@ class TestTunnelSanity(BigWalkTestBase):
 
 
 class TestPurpleObjects(BigWalkTestBase):
-    """The lamps past the purple hole wait for it too (caitlin, 1.0.8), as gadgets and as lights."""
+    """The lamps past the purple hole wait for it too, as gadgets and as lights."""
 
     options = {"tunnel_sanity": True, "object_sanity": "every", "light_sanity": "lamps"}
     run_default_tests = False

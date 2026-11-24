@@ -7,20 +7,14 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Every timer of the game, for the Cabin Fever puzzles (ROADMAP R6): they ask the player to
-    // wait in a room for some minutes, and the wait is very likely a PeckEffectTimer (or its
-    // networked sibling), whose `duration` is a plain field. One press lists each of them with
-    // its place in the scene, its duration, what starts it and how far it is from the player,
-    // so the two Cabin Fever ones can be told from the rest by standing near them.
-    //
-    // Pure diagnostic, no writes to the game.
+    // Lists every game timer with its duration and distance, to find the Cabin Fever waits.
     internal static class DebugTimerDump
     {
         private static int _count;
 
         internal static void Dump()
         {
-            var player = DebugPlayerLookup.FindLocalPlayer();
+            var player = Core.LocalPlayer.Find();
             var origin = player != null ? player.transform.position : Vector3.zero;
             var text = new StringBuilder();
             text.AppendLine("kind\tdistance\tduration\tactive\tposition\tstate\tpath");

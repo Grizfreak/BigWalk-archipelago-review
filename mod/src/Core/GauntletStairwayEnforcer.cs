@@ -4,11 +4,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // Says when GauntletStairways opens the stairways its slot has given. The
-    // game does not save a stairway, so a world that loads, or a stairway whose
-    // object loads late, finds it shut again: this asks every couple of
-    // seconds while a world is ready on the host. Like ArchDoorUnlocker, it is
-    // a real feature and not a debug tool.
+    // The game does not save opened stairways, so this reopens the slot's ones every few seconds.
     internal class GauntletStairwayEnforcer : MonoBehaviour
     {
         // Constructor required by Il2CppInterop for any type injected into IL2CPP.
@@ -26,7 +22,6 @@ namespace BigWalkArchipelago.Core
             var worldReady = NetworkServer.active && WorldManager.isReadyForEffects;
             if (!worldReady)
             {
-                // The gates belong to the world that is going away.
                 if (_worldWasReady)
                     GauntletStairways.ForgetGates();
 

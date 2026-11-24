@@ -2,10 +2,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Big Mask, measuring pass (player, 2026-10-07: into 0.4). The puzzles put a screen mask on a
-    // player through PeckEffectMask.SetMask (Binoculars, Telescope, Blindfold). Each Ctrl+F8 puts
-    // the next kind on this machine's screen through one of the island's own PeckEffectMasks, and
-    // takes it off five seconds later: does the screen show it, and does it come off cleanly.
+    // Ctrl+F8 puts the next puzzle screen mask on this machine for five seconds.
     internal static class DebugMaskTrap
     {
         private const string Tag = "[" + nameof(DebugMaskTrap) + "]";
@@ -37,11 +34,10 @@ namespace BigWalkArchipelago.Debug
             Plugin.Log.LogInfo($"{Tag} No {kind} mask in this world.");
         }
 
-        // R11's knock-out, measuring pass: the daze of a big fall (PlayerFaller.TriggerFall) on this
-        // machine's own player, Ctrl+F9. Does it look and feel like landing from a height.
+        // Ctrl+F9 dazes the local player as after a big fall.
         internal static void Daze()
         {
-            var player = DebugPlayerLookup.FindLocalPlayer();
+            var player = Core.LocalPlayer.Find();
             var faller = player != null ? player.faller : null;
             if (faller == null)
             {

@@ -2,10 +2,7 @@ using Mirror;
 
 namespace BigWalkArchipelago.Core
 {
-    // What the gourds are called on screen (ROADMAP U14, player 2026-10-06): the host names them
-    // in Settings > Archipelago, and everyone's overlay says that name instead of "Gourd". The
-    // host's .cfg keeps it; guests are told it in the snapshot (ModChannel) and cannot change it.
-    // Left at "Gourd", the host shows the seed's gourd_name instead.
+    // The gourds' on-screen name, set by the host and sent to guests.
     internal static class GourdNames
     {
         internal const string Default = "Gourd";
@@ -14,7 +11,6 @@ namespace BigWalkArchipelago.Core
         private static string _mirrored;
         private static string _seed;
 
-        // The name in force on this machine: the host's own, or what the host said.
         internal static string Current
         {
             get
@@ -40,9 +36,7 @@ namespace BigWalkArchipelago.Core
 
         internal static bool IsGuest => NetworkClient.active && !NetworkServer.active;
 
-        // What a name may hold, the same as the apworld's (gourd_name.py): letters, marks and digits of any
-        // script, spaces, and a few signs. The rest (control and invisible characters, emoji, `<` and `>`,
-        // which TextMeshPro reads as tags, braces, `|`, `#`, slashes, quotes) is dropped.
+        // Same filter as the apworld's gourd_name.py; TextMeshPro reads `<` and `>` as tags.
         private const string AllowedSigns = "'-_.,!?&+:;()@";
 
         internal static string Clean(string name)
@@ -50,14 +44,14 @@ namespace BigWalkArchipelago.Core
             if (string.IsNullOrEmpty(name))
                 return string.Empty;
 
-            // Decorated letters become plain ones first, as the apworld does (NFKC).
+            // NFKC first, as the apworld does.
             try
             {
                 name = name.Normalize(System.Text.NormalizationForm.FormKC);
             }
             catch (ArgumentException)
             {
-                // A lone surrogate cannot be normalised: the filter below drops it anyway.
+                // A lone surrogate cannot be normalised; the filter below drops it anyway.
             }
 
             var text = new System.Text.StringBuilder();
@@ -82,7 +76,7 @@ namespace BigWalkArchipelago.Core
 
             var cleaned = string.Join(" ", text.ToString().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
 
-            // A name needs a letter: only digits and signs (`{0}` once the braces are dropped) is no name (the player, 2026-10-12).
+            // A name needs a letter: digits and signs alone are no name.
             foreach (var character in cleaned)
             {
                 if (char.IsLetter(character))
@@ -106,8 +100,7 @@ namespace BigWalkArchipelago.Core
             _mirrored = Clean(name);
         }
 
-        // Current is read often (the overlay, the board): the .cfg's text, which can be edited by hand, is
-        // cleaned once and remembered.
+        // The .cfg text can be edited by hand: clean it once and cache the result.
         private static string _lastRaw;
         private static string _lastCleaned = string.Empty;
 
@@ -129,8 +122,7 @@ namespace BigWalkArchipelago.Core
             _mirrored = null;
         }
 
-        // Matched by id: the server may already send the seed's name. The carton follows the gourds
-        // (a player, 2026-10-14), as the apworld's gourd_name.carton_name does.
+        // Matched by id: the server may already send the seed's name.
         internal static string Display(long itemId, string itemName)
         {
             if (itemId == Net.ApLocationIds.GourdItemId)
@@ -140,7 +132,6 @@ namespace BigWalkArchipelago.Core
             return itemName;
         }
 
-        // "gourds" in a sentence: the custom name with an s, or the plain word.
         internal static string Plural => Current == Default ? "gourds" : Current + "s";
     }
 }

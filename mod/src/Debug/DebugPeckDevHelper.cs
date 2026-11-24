@@ -4,23 +4,12 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // PeckDevHelper.Trigger(UnlockRules) is a static cheat method already
-    // built into the game (probably used internally by House House to
-    // quickly test advanced states): every "DevUnlock" switch in the scene
-    // carries a PeckDevHelper with an assigned UnlockRules (unlocks, lights,
-    // chairlift, train, bell, tunnel, map, gourd) and fires when Trigger() is
-    // called with rules that match (UnlockRules.Matches). Found in-game (F9)
-    // near a "HubGate": a GameObject named "DevUnlock" with PeckDevHelper +
-    // PeckSwitch, 6-9m from a GateMainSystem (TrackedPeckState + PeckRelay) —
-    // cf. big-walk-archipelago-notes.md, session from 2026-09-09, "Arch
-    // doors" discussion. Trigger()'s body is not decompiled (RVA missing
-    // from the il2cpp.cs dump): we use it as a black box, observing the
-    // in-game effect rather than re-decompiling via Ghidra.
+    // PeckDevHelper.Trigger is the game's own dev cheat: it fires every DevUnlock it matches.
     internal static class DebugPeckDevHelper
     {
         internal static void DumpNearby(float radius)
         {
-            var localPlayer = DebugPlayerLookup.FindLocalPlayer();
+            var localPlayer = Core.LocalPlayer.Find();
             if (localPlayer == null)
             {
                 Plugin.Log.LogInfo($"[{nameof(DebugPeckDevHelper)}] Local player not found.");
@@ -58,9 +47,9 @@ namespace BigWalkArchipelago.Debug
                 var distance = Math.Sqrt(sqrDistance).ToString("F1");
                 var rules = helper.unlockRules;
                 Plugin.Log.LogInfo(
-                    $"[{nameof(DebugPeckDevHelper)}]   {helper.gameObject.name} — distance={distance}m — " +
+                    $"[{nameof(DebugPeckDevHelper)}]   {helper.gameObject.name}, distance={distance}m, " +
                     $"unlockRules(unlocks={rules.unlocks}, lights={rules.lights}, chairlift={rules.chairlift}, " +
-                    $"train={rules.train}, bell={rules.bell}, tunnel={rules.tunnel}, map={rules.map}, gourd={rules.gourd}) — " +
+                    $"train={rules.train}, bell={rules.bell}, tunnel={rules.tunnel}, map={rules.map}, gourd={rules.gourd}), " +
                     $"fireWithUnlocks={helper.fireWithUnlocks}, fireWithLights={helper.fireWithLights}, fireWithTrain={helper.fireWithTrain}");
             }
         }
