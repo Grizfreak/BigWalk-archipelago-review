@@ -80,7 +80,7 @@ namespace BigWalkArchipelago.Debug
                 text.AppendLine($"{path}\t[{string.Join(", ", types)}]");
             }
 
-            var home = Core.GourdRegistry.TryGetHome(SaveableHomeName.bigKeyPlinthTunnels);
+            var home = GourdRegistry.TryGetHome(SaveableHomeName.bigKeyPlinthTunnels);
             var door = home != null ? home.pinDirectControlSystem : null;
             text.AppendLine($"== Yellow plinth door: {(door != null ? PathOf(door.transform) : "not loaded")}");
 

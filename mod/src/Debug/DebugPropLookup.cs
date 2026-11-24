@@ -153,7 +153,7 @@ namespace BigWalkArchipelago.Debug
         private static void DumpVanillaCounterpart(string cosmeticName)
         {
             var prefabName = cosmeticName.Replace(
-                BigWalkArchipelago.Core.ReceivedItemSpawner.CosmeticNameSuffix, string.Empty).Trim();
+                ReceivedItemSpawner.CosmeticNameSuffix, string.Empty).Trim();
 
             var all = UnityEngine.Object.FindObjectsByType<Prop>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (all == null)
@@ -165,7 +165,7 @@ namespace BigWalkArchipelago.Debug
                     continue;
 
                 var name = candidate.gameObject.name;
-                if (name.Contains(BigWalkArchipelago.Core.ReceivedItemSpawner.CosmeticNameSuffix, System.StringComparison.Ordinal)
+                if (name.Contains(ReceivedItemSpawner.CosmeticNameSuffix, System.StringComparison.Ordinal)
                     || name.Contains("(AP template)", System.StringComparison.Ordinal)
                     || !name.StartsWith(prefabName, System.StringComparison.Ordinal))
                     continue;
@@ -202,7 +202,7 @@ namespace BigWalkArchipelago.Debug
                 total++;
 
                 var role = name.Contains("(AP template)", System.StringComparison.Ordinal) ? "TEMPLATE"
-                    : name.Contains(BigWalkArchipelago.Core.ReceivedItemSpawner.CosmeticNameSuffix, System.StringComparison.Ordinal) ? "CLONE"
+                    : name.Contains(ReceivedItemSpawner.CosmeticNameSuffix, System.StringComparison.Ordinal) ? "CLONE"
                     : "vanilla";
 
                 var baseName = name;
@@ -280,7 +280,7 @@ namespace BigWalkArchipelago.Debug
             foreach (var prop in all)
             {
                 if (prop == null || prop.gameObject == null
-                    || !prop.gameObject.name.Contains(BigWalkArchipelago.Core.ReceivedItemSpawner.CosmeticNameSuffix, System.StringComparison.Ordinal))
+                    || !prop.gameObject.name.Contains(ReceivedItemSpawner.CosmeticNameSuffix, System.StringComparison.Ordinal))
                     continue;
 
                 found++;

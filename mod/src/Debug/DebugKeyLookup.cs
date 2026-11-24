@@ -276,7 +276,7 @@ namespace BigWalkArchipelago.Debug
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
 
             Plugin.Log.LogInfo(
-                $"[{nameof(DebugKeyLookup)}] key custody \u2014 {effects.Length} PeckEffectPropHomeSettings loaded:");
+                $"[{nameof(DebugKeyLookup)}] key custody, {effects.Length} PeckEffectPropHomeSettings loaded:");
 
             foreach (var prop in Prop.allProps)
             {
@@ -287,7 +287,7 @@ namespace BigWalkArchipelago.Debug
                 if (home == null)
                 {
                     Plugin.Log.LogInfo(
-                        $"[{nameof(DebugKeyLookup)}]   {prop.saveablePropName}: in no home at all \u2014 loose "
+                        $"[{nameof(DebugKeyLookup)}]   {prop.saveablePropName}: in no home at all, loose "
                         + "already, so nothing is holding it.");
                     continue;
                 }

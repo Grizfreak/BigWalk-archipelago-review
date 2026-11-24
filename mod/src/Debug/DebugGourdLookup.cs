@@ -73,7 +73,7 @@ namespace BigWalkArchipelago.Debug
 
                 var prop = gourd.prop;
                 var propName = prop != null ? prop.saveablePropName.ToString() : "<no prop>";
-                var known = prop != null && Core.GourdRegistry.TryGetLocationId(prop.saveablePropName, out _);
+                var known = prop != null && GourdRegistry.TryGetLocationId(prop.saveablePropName, out _);
 
                 if (gourd.isVariantChallenge)
                     variants++;
@@ -116,7 +116,7 @@ namespace BigWalkArchipelago.Debug
                     continue;
 
                 // Dev-only values and the gourd the world leaves out are not puzzles.
-                if (!Core.GourdRegistry.TryGetLocationId(propName, out _))
+                if (!GourdRegistry.TryGetLocationId(propName, out _))
                     continue;
 
                 if (!loaded.Contains(name))

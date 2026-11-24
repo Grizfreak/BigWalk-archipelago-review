@@ -116,6 +116,38 @@
     </Reference>
   </ItemGroup>
 
+  <!-- The feature namespaces, so files need no using line for each other. -->
+  <ItemGroup>
+    <Using Include="BigWalkArchipelago.Core" />
+    <Using Include="BigWalkArchipelago.Core.Net" />
+    <Using Include="BigWalkArchipelago.Patches" />
+    <Using Include="BigWalkArchipelago.Core.Items" />
+    <Using Include="BigWalkArchipelago.Core.Gourds" />
+    <Using Include="BigWalkArchipelago.Core.Keys" />
+    <Using Include="BigWalkArchipelago.Core.Towers" />
+    <Using Include="BigWalkArchipelago.Core.Doors" />
+    <Using Include="BigWalkArchipelago.Core.Puzzles" />
+    <Using Include="BigWalkArchipelago.Core.Checks" />
+    <Using Include="BigWalkArchipelago.Core.Abilities" />
+    <Using Include="BigWalkArchipelago.Core.Tiles" />
+    <Using Include="BigWalkArchipelago.Core.Visuals" />
+    <Using Include="BigWalkArchipelago.Core.Effects" />
+    <Using Include="BigWalkArchipelago.Core.Hub" />
+    <Using Include="BigWalkArchipelago.Core.Diagnostics" />
+    <Using Include="BigWalkArchipelago.Patches.Abilities" />
+    <Using Include="BigWalkArchipelago.Patches.Doors" />
+    <Using Include="BigWalkArchipelago.Patches.Towers" />
+    <Using Include="BigWalkArchipelago.Patches.Effects" />
+    <Using Include="BigWalkArchipelago.Patches.Checks" />
+    <Using Include="BigWalkArchipelago.Patches.Gourds" />
+    <Using Include="BigWalkArchipelago.Patches.Puzzles" />
+    <Using Include="BigWalkArchipelago.Patches.Keys" />
+    <Using Include="BigWalkArchipelago.Patches.Hub" />
+    <Using Include="BigWalkArchipelago.Patches.Items" />
+    <Using Include="BigWalkArchipelago.Patches.Menus" />
+    <Using Include="BigWalkArchipelago.Patches.Compat" />
+  </ItemGroup>
+
   <!-- The debug tools are left out of the released DLL. -->
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
     <Compile Remove="Debug\**" />

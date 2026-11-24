@@ -7,7 +7,7 @@ namespace BigWalkArchipelago.Debug
     {
         private const string Tag = "[" + nameof(DebugBuoyTint) + "]";
 
-        internal static (string name, Color body, Color halo)[] Palette => BigWalkArchipelago.Core.Palette.Colours;
+        internal static (string name, Color body, Color halo)[] Palette => Core.Visuals.Palette.Colours;
 
         private static int _step = -1;
 

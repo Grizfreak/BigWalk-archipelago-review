@@ -330,7 +330,7 @@ namespace BigWalkArchipelago.Debug
                 }
             }
 
-            var atlas = Core.CustomTiles.Atlas;
+            var atlas = CustomTiles.Atlas;
             if (atlas != null)
             {
                 text.AppendLine($"mod atlas '{atlas.name}' {atlas.width}x{atlas.height} mips {atlas.mipmapCount} format {atlas.format} -> mod-atlas.png");
