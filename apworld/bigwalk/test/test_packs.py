@@ -43,7 +43,7 @@ class TestOnByDefault(BigWalkTestBase):
         for i, guid in enumerate(slot["pickup_guids"]):
             name = data.PICKUPS[i].location_name
             self.assertEqual(locations.LOCATION_NAME_TO_ID[name],
-                             data.BASE_ID + slot["pickup_id_offset"] + i)
+                             data.BASE_ID + data.PICKUP_ID_OFFSET + i)
             self.assertEqual(guid, data.PICKUPS[i].guid)
         self.assertEqual(slot["firework_keys"][0], "Hub")
 

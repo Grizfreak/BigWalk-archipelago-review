@@ -88,7 +88,7 @@ namespace BigWalkArchipelago.Core.Hub
         private const float ArrivalDistance = 1.6f;
 
         private static string _mode = "off";
-        private static int _idOffset = ApLocationIds.DefaultTeleportOffset;
+        private static int _idOffset = ApLocationIds.TeleportOffset;
         private static string[] _keys = Array.Empty<string>();
 
         private static int _mirroredMask;

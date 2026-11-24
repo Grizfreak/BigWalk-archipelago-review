@@ -266,7 +266,6 @@ class BigWalkWorld(World):
             "green_dome_slots": monuments.tower_slots(self, data.tower_by_prop("bigKeyOverflow")),
             "monument_item_id": data.progressive_monument_id(),
             "tower_reached_keys": [tower.prop_name for tower in data.reached_towers() if self.options.tower_sanity],
-            "tower_reached_id_offset": data.TOWER_REACHED_ID_OFFSET,
             "tower_reach_hints": monuments.tower_reach_hints(self),
             "deposit_goal_amount": self.deposit_goal,
             "deposit_locations": bigwalk_options.GOURD_SANITY_ON_THE_WIRE[
@@ -277,13 +276,10 @@ class BigWalkWorld(World):
 
             # `SavableSystem` names of the doors held closed until their item arrives.
             "locked_arch_doors": [door.system_name for door in self.locked_arch_doors],
-            "arch_door_id_offset": data.ARCH_DOOR_ID_OFFSET,
 
-            "gauntlet_id_offset": data.GAUNTLET_ID_OFFSET,
 
             # Teleport destinations in the order of their item ids.
             "teleport_destinations": [key for key, _ in data.TELEPORT_DESTINATIONS],
-            "teleport_id_offset": data.TELEPORT_ID_OFFSET,
 
             # Outside trackers (PopTracker) evaluate it instead of porting the rules.
             "logic": logic_export.export(self),
@@ -299,22 +295,16 @@ class BigWalkWorld(World):
             "pack_sanity": "self" if self.options.pack_sanity == bigwalk_options.PackSanity.option_vanilla
             else bool(self.options.pack_sanity),
             "pickup_guids": [pickup.guid for pickup in data.PICKUPS],
-            "pickup_id_offset": data.PICKUP_ID_OFFSET,
             "firework_keys": [firework.key for firework in data.FIREWORKS],
-            "firework_id_offset": data.FIREWORK_ID_OFFSET,
             "flare_gun_sanity": bool(self.options.flare_gun_sanity),
             "flare_gun_guids": [pickup.guid for pickup in data.FLARE_GUN_PICKUPS],
-            "flare_gun_id_offset": data.FLARE_GUN_ID_OFFSET,
             "object_guids": [obj.guid for obj in data.ISLAND_OBJECTS] if checks.object_location_names(self) else [],
-            "object_id_offset": data.OBJECT_ID_OFFSET,
             "object_kinds": [kind for kind, _ in data.OBJECT_KINDS],
-            "object_kind_id_offset": data.OBJECT_KIND_ID_OFFSET,
             # The mod hides the other kinds while object_sanity is on.
             "object_sanity_kinds": [kind for kind, _ in data.OBJECT_KINDS if checks.object_kind_counted(self, kind)],
             "object_sanity_kind_keys": sorted(self.options.object_sanity_kinds.value),
             # Light keys in id order: a lamp by guid, a switch by its state's path.
             "light_keys": [light.key for light in data.LIGHTS] if checks.lights(self) else [],
-            "light_id_offset": data.LIGHT_ID_OFFSET,
             "lights_required_count": checks.lights_target(self),
             "lights_counted": [light.key for light in checks.lights_counted(self)],
             # Gadgets each zone item keeps off the map; lamps and switches are only out of logic.
@@ -343,18 +333,14 @@ class BigWalkWorld(World):
 
             # Need keys in the order of their item ids.
             "puzzle_need_keys": [need.key for need in data.PUZZLE_NEEDS],
-            "puzzle_need_id_offset": data.PUZZLE_NEED_ID_OFFSET,
 
             "ability_keys": [ability.key for ability in data.ABILITIES],
-            "ability_id_offset": data.ABILITY_ID_OFFSET,
             "lock_running": bool(self.options.lock_running),
 
             "monument_full_keys": [tower.prop_name for tower in monuments.monuments_full(self)],
-            "monument_full_id_offset": data.MONUMENT_FULL_ID_OFFSET,
             # Each monument key is sent once its monument holds the gourds at the same position.
             "monument_key_keys": [tower.prop_name for tower in monuments.monument_keys(self)],
             "monument_key_gourds": [monuments.key_gourds(self, tower) for tower in monuments.monument_keys(self)],
-            "monument_key_id_offset": data.MONUMENT_KEY_ID_OFFSET,
 
             # Not options: sent so a mod too old to read them keeps the vanilla keys and doors.
             "big_key_features": True,
@@ -364,12 +350,5 @@ class BigWalkWorld(World):
             "total_monument_slots": self.gourd_count,
             "deposit_location_amounts": list(self.deposit_amounts),
 
-            # Id arithmetic, so the mod computes ids instead of keeping a copy of data.py.
-            "location_id_base": data.BASE_ID,
-            "radio_id_offset": data.RADIO_ID_OFFSET,
-            "deposit_id_offset": data.DEPOSIT_ID_OFFSET,
-            "cut_id_offset": data.CUT_ID_OFFSET,
-            "key_item_id_offset": data.KEY_ITEM_ID_OFFSET,
-            "gourd_item_id": items.ITEM_NAME_TO_ID[data.GOURD_ITEM_NAME],
             "gourd_name": self.gourd_name,
         }

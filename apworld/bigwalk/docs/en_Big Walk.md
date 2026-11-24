@@ -102,8 +102,8 @@ item arrives (**Gauntlet Stage 1 Door** to **Gauntlet Stage 7 Door**).
   are items like everywhere else, and Big Goodbye needs them. With
   `locked_stages` the stage checks need them too. Turn it off to leave the
   Gauntlet's parts on the map.
-- `gauntlet_stages_local` (on by default): the seven items stay in your own
-  world, so another game never holds up a stage.
+- To keep the seven items in your own world, add `Gauntlet Doors` to
+  Archipelago's `local_items`.
 
 Everyone needs the same build of the mod.
 
@@ -292,7 +292,8 @@ same for green, blue and yellow. A zone's gadgets aren't on the map until its
 item arrives. Its lamps and switches still work but are out of logic until then.
 The tutorial, Map Room, chairlift, tunnels and train keep their usual locks.
 `start_with_zone_locks` lists the zones you start with (`red_lamps`,
-`blue_gadgets`...), and `zone_locks_local` keeps the 8 items in your world.
+`blue_gadgets`...), and `Zone Locks` in Archipelago's `local_items` keeps
+the 8 items in your world.
 
 `tunnel_sanity` opens the tunnels door by door: the **Tunnels** item gives way to
 **Red Tunnel Door**, **Green Tunnel Door**, **Blue Tunnel Door**, **Yellow Tunnel
@@ -398,7 +399,8 @@ All off by default.
   it waits for the monuments of the drawbridge and the four coloured towers;
   with `tower_mode` in_order or by_item, it opens at the Black Tower's turn
   (with by_item, its Progressive Monument). The logic waits for it too.
-- `hint_keys: from_start`: the seven big keys are hinted from the start.
+- To have the seven big keys hinted from the start, add `Big Keys` to
+  Archipelago's `start_hints`.
 - `fast_golf`: the golf ball (the cannonball) is no longer too heavy.
 - `tower_resync_stations`: a resync station in each of the five towers, at the
   Drawbridge and at the Green Dome Tower. It's a

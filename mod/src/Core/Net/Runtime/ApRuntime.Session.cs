@@ -126,14 +126,14 @@ namespace BigWalkArchipelago.Core.Net
             PuzzleNeeds.Configure(
                 Connection.SlotData.LockPuzzleNeeds,
                 Connection.SlotData.PuzzleNeedKeys,
-                ApLocationIds.Base + Connection.SlotData.PuzzleNeedIdOffset);
+                ApLocationIds.Base + ApLocationIds.PuzzleNeedOffset);
             ZoneLocks.Configure(Connection.SlotData.ZoneLocks, Connection.SlotData.ZoneLockedGadgets);
             AbilityLocks.Configure(
                 Connection.SlotData.LockAbilities,
                 Connection.SlotData.LockRunning,
                 Connection.SlotData.RidesRequireSeat,
                 Connection.SlotData.AbilityKeys,
-                ApLocationIds.Base + Connection.SlotData.AbilityIdOffset);
+                ApLocationIds.Base + ApLocationIds.AbilityOffset);
             GauntletStairways.Configure(
                 Connection.SlotData.GauntletMode == "locked_stages",
                 Connection.SlotData.GauntletPuzzlesRequired,
@@ -149,7 +149,7 @@ namespace BigWalkArchipelago.Core.Net
                 Connection.SlotData.CabinFeverLongHelp, Connection.SlotData.CabinFeverLongHideTimer);
             TeleportButtons.Configure(
                 Connection.SlotData.TeleportButtons,
-                Connection.SlotData.TeleportIdOffset,
+                ApLocationIds.TeleportOffset,
                 Connection.SlotData.TeleportDestinations,
                 Connection.SlotData.TeleportBackToHub);
             Traps.Configure(Connection.SlotData);

@@ -102,7 +102,7 @@ class TestPuzzleNeedsEnabled(BigWalkTestBase):
         for position, need in enumerate(data.PUZZLE_NEEDS):
             self.assertEqual(
                 items.ITEM_NAME_TO_ID[need.item_name],
-                data.BASE_ID + slot_data["puzzle_need_id_offset"] + position)
+                data.BASE_ID + data.PUZZLE_NEED_ID_OFFSET + position)
 
     def test_slot_data(self) -> None:
         slot_data = self.world.fill_slot_data()
