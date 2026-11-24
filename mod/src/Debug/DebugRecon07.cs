@@ -113,7 +113,7 @@ namespace BigWalkArchipelago.Debug
             text.AppendLine($"# recon 0.7, map version {PlayerCountSwapper.playerCount} players, player at {origin}");
 
             text.AppendLine();
-            text.AppendLine("## R7 texts (kind, active, distance, position, path, text)");
+            text.AppendLine("## texts (kind, active, distance, position, path, text)");
             foreach (var t in UnityEngine.Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 if (t != null)
@@ -126,7 +126,7 @@ namespace BigWalkArchipelago.Debug
             }
 
             text.AppendLine();
-            text.AppendLine("## R7 boards, signs, notes by name (active, distance, position, path, components)");
+            text.AppendLine("## boards, signs, notes by name (active, distance, position, path, components)");
             foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 if (t == null)
@@ -146,7 +146,7 @@ namespace BigWalkArchipelago.Debug
             }
 
             text.AppendLine();
-            text.AppendLine("## U2 map flags (puzzle, flag state, active, check sent, location id)");
+            text.AppendLine("## map flags (puzzle, flag state, active, check sent, location id)");
             foreach (var flag in UnityEngine.Object.FindObjectsByType<GourdFlag>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 if (flag == null)
@@ -159,7 +159,7 @@ namespace BigWalkArchipelago.Debug
             }
 
             text.AppendLine();
-            text.AppendLine("## C2 gadget colours (kind, how many, distinct colour sets, first one's colours: PropertyBlockHelper path:property=#RGB, then renderer[on/off]:material)");
+            text.AppendLine("## gadget colours (kind, how many, distinct colour sets, first one's colours: PropertyBlockHelper path:property=#RGB, then renderer[on/off]:material)");
             var byKind = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
             foreach (var prop in UnityEngine.Object.FindObjectsByType<Prop>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
@@ -187,7 +187,7 @@ namespace BigWalkArchipelago.Debug
             }
 
             text.AppendLine();
-            text.AppendLine("## C2 firework launchers (path, colours, then the tree: depth, name, components, particle start colours)");
+            text.AppendLine("## firework launchers (path, colours, then the tree: depth, name, components, particle start colours)");
             foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 if (t == null || !t.name.StartsWith("FireworkLauncher", StringComparison.Ordinal))
@@ -197,7 +197,7 @@ namespace BigWalkArchipelago.Debug
             }
 
             text.AppendLine();
-            text.AppendLine("## U2 maps (path, active, position, rotation, lossy scale, worldScaleOffset, scale, flag prefabs, flags)");
+            text.AppendLine("## maps (path, active, position, rotation, lossy scale, worldScaleOffset, scale, flag prefabs, flags)");
             foreach (var map in UnityEngine.Object.FindObjectsByType<GourdMap>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 if (map == null)
