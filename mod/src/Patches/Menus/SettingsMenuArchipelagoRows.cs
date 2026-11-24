@@ -13,7 +13,6 @@ namespace BigWalkArchipelago.Patches.Menus
     internal static partial class SettingsMenuArchipelagoRows
     {
         private const string Tag = "[" + nameof(SettingsMenuArchipelagoRows) + "]";
-        private const string RowName = "Archipelago text size (AP)";
 
         // Point sizes; 22 is the .cfg's default.
         private static readonly (string label, int size)[] Sizes =
@@ -196,17 +195,6 @@ namespace BigWalkArchipelago.Patches.Menus
         private static bool Under(Transform t, Button button)
         {
             return button != null && t.IsChildOf(button.transform);
-        }
-
-        private static void TryRefresh(LocalizedText localized)
-        {
-            try
-            {
-                localized.Refresh();
-            }
-            catch (Exception)
-            {
-            }
         }
 
         private static void SetRaw(LocalizedText localized, string text)

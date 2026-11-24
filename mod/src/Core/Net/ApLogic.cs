@@ -44,8 +44,6 @@ namespace BigWalkArchipelago.Core.Net
         private readonly List<Location> _locations = new();
         private readonly Dictionary<string, Location> _byName = new();
 
-        internal int LocationCount => _locations.Count;
-
         internal string RegionOf(long id)
         {
             foreach (var location in _locations)

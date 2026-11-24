@@ -4,7 +4,7 @@ using UnityEngine;
 namespace BigWalkArchipelago.Core.Net
 {
     // Item and check sounds, the game's own clips. One per burst, so forty items are one sound.
-    internal static class ApSounds
+    internal static partial class ApSounds
     {
         // Both can be changed in the .cfg.
         private const string ReceivedDefault = "sfx_prop_cowbell_small_clang_random";
@@ -21,14 +21,6 @@ namespace BigWalkArchipelago.Core.Net
         private static readonly Dictionary<string, AudioAsset> Found = new();
         private static float _lastReceived = -100f;
         private static float _lastCheck = -100f;
-
-        // For the debug key: the next sound plays whatever just played.
-        internal static void ForgetBursts()
-        {
-            _lastReceived = -100f;
-            _lastCheck = -100f;
-            _lastDeathLinkSound = -100f;
-        }
 
         internal static bool PlayNamed(string clip)
         {

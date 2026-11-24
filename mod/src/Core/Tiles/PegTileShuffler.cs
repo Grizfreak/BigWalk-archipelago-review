@@ -303,26 +303,6 @@ namespace BigWalkArchipelago.Core.Tiles
             }
         }
 
-        private static bool PlayerNear(List<Prop> tiles)
-        {
-            var players = PlayerCharacter.allPlayerCharacters;
-            if (players == null)
-                return false;
-
-            var centre = Vector3.zero;
-            foreach (var tile in tiles)
-                centre += tile.transform.position;
-            centre /= tiles.Count;
-
-            foreach (var pc in players)
-            {
-                if (pc != null && (pc.transform.position - centre).sqrMagnitude < NearMetres * NearMetres)
-                    return true;
-            }
-
-            return false;
-        }
-
         private static bool IsHeld(Prop prop)
         {
             var players = PlayerCharacter.allPlayerCharacters;

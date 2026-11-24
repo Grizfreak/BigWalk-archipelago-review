@@ -6,7 +6,7 @@ using UnityEngine;
 namespace BigWalkArchipelago.Core.Doors
 {
     // Holds the Gauntlet stairways shut until their items arrive (`locked_stages`).
-    internal static class GauntletStairways
+    internal static partial class GauntletStairways
     {
         private const string KeyPrefix = "ap_gauntlet_";
         private const string GateName = "GourdTowerGateNetworking";
@@ -227,21 +227,6 @@ namespace BigWalkArchipelago.Core.Doors
             // Solved before the item, the wall opens now; solved after, the game opens it.
             if (!_puzzlesRequired || PuzzleDone(level))
                 OpenGate(WallByLevel[level], $"Stage {level + 1} wall");
-        }
-
-        internal static void DebugOpenLast()
-        {
-            Discover();
-            var gate = GateByLevel[Chambers.Length - 1];
-            if (gate == null)
-            {
-                Plugin.Log.LogInfo($"[{nameof(GauntletStairways)}] Debug: the last stairway is not in this world.");
-                return;
-            }
-
-            Plugin.Log.LogInfo($"[{nameof(GauntletStairways)}] Debug: asking the last stairway to open (state {gate.currentPeckContext.state}).");
-            gate.SetState(1);
-            Plugin.Log.LogInfo($"[{nameof(GauntletStairways)}] Debug: the last stairway is now at state {gate.currentPeckContext.state}.");
         }
 
         private static void OpenGate(TrackedPeckState gate, string what)

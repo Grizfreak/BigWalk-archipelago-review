@@ -66,12 +66,6 @@ namespace BigWalkArchipelago.Core.Net
             GoalLineIsWarning = false;
         }
 
-        // Called when the second ending's gourd comes loose; needs no world, only a socket.
-        internal static void ReportGoalIfReached()
-        {
-            CheckGoal();
-        }
-
         private static void CheckGoal()
         {
             if (_goalSent || !IsGoalReached())

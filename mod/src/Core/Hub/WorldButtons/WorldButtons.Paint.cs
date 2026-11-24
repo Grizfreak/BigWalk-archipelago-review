@@ -63,20 +63,6 @@ namespace BigWalkArchipelago.Core.Hub
             Plugin.Log.LogInfo($"[{nameof(WorldButtons)}] Plate '{plate.gameObject.name}' replaced by a {colour} slab.");
         }
 
-        // Made anew, a button flashes and loses the press it is in the middle of.
-        internal static void Recolour(int slot, string tint)
-        {
-            if (!Slots.TryGetValue(slot, out var button) || button.Root == null)
-                return;
-
-            button.Tint = tint;
-            foreach (var renderer in button.Root.GetComponentsInChildren<Renderer>(true))
-            {
-                if (renderer != null && renderer.gameObject.name == "AP button plate")
-                    Paint(renderer.gameObject, PlateColour(tint));
-            }
-        }
-
         internal static GameObject MakeSlab(string name, Vector3 position, Quaternion rotation, Vector3 size, Color colour)
         {
             var slab = GameObject.CreatePrimitive(PrimitiveType.Cube);
