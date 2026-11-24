@@ -5,15 +5,8 @@ namespace BigWalkArchipelago.Core.Net
     // Item and check sounds, the game's own clips. One per burst, so forty items are one sound.
     internal static partial class ApSounds
     {
-        // Both can be changed in the .cfg.
-        private const string ReceivedDefault = "sfx_prop_cowbell_small_clang_random";
-        private const string CheckDefault = "sfx_gourd_plinth_open_end_random";
-
-        private static string ReceivedClip => Clip(ModConfig.ReceivedSound.Value, ReceivedDefault);
-        private static string CheckClip => Clip(ModConfig.CheckSound.Value, CheckDefault);
-
-        private static string Clip(string configured, string fallback) =>
-            string.IsNullOrWhiteSpace(configured) ? fallback : configured.Trim();
+        private const string ReceivedClip = "sfx_prop_cowbell_small_clang_random";
+        private const string CheckClip = "sfx_gourd_plinth_open_end_random";
 
         private const float BurstSeconds = 15f;
 

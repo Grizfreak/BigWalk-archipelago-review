@@ -139,45 +139,7 @@ namespace BigWalkArchipelago.Core.Hub
             Templates[kind] = template;
             Plugin.Log.LogInfo(
                 $"[{nameof(WorldButtons)}] Template kept: '{found.name}' at {found.transform.position}.");
-            if (ModConfig.DebugModeEnabled.Value)
-                Describe(found);
             return template;
-        }
-
-        // Logs a prop's objects, components and switch targets, to learn it before copying it.
-        private static void Describe(GameObject prop)
-        {
-            try
-            {
-                var parent = prop.transform.parent;
-                Plugin.Log.LogInfo($"[{nameof(WorldButtons)}] '{prop.name}' under '{(parent != null ? parent.name : "-")}':");
-                if (parent != null)
-                {
-                    foreach (var component in parent.GetComponents<Component>())
-                        Plugin.Log.LogInfo($"[{nameof(WorldButtons)}]   parent has {component.GetIl2CppType().Name}");
-                }
-
-                foreach (var t in prop.GetComponentsInChildren<Transform>(true))
-                {
-                    var names = new List<string>();
-                    foreach (var component in t.GetComponents<Component>())
-                        names.Add(component.GetIl2CppType().Name);
-                    Plugin.Log.LogInfo($"[{nameof(WorldButtons)}]   {t.name}: {string.Join(", ", names)}");
-
-                    var peckSwitch = t.GetComponent<PeckSwitch>();
-                    if (peckSwitch != null)
-                    {
-                        var target = peckSwitch.trackedStateSystem;
-                        Plugin.Log.LogInfo(
-                            $"[{nameof(WorldButtons)}]     switch -> '{(target != null ? target.name + " under " + (target.transform.parent != null ? target.transform.parent.name : "-") : "<none>")}', "
-                            + $"mode {peckSwitch.stateMode}, specific {peckSwitch.specificState}, wrap {peckSwitch.wrapTotal}, up {(peckSwitch.upSwitch != null ? peckSwitch.upSwitch.name : "-")}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Plugin.Log.LogWarning($"[{nameof(WorldButtons)}] Could not describe '{prop.name}': {ex.Message}");
-            }
         }
 
         private static GameObject FindPushButton(Vector3 near, string kind = PushButton)

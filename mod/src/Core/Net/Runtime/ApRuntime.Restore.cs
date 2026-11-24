@@ -47,7 +47,7 @@ namespace BigWalkArchipelago.Core.Net
             if (_restoreTimer > 0f)
                 return;
 
-            _restoreTimer = Mathf.Max(0f, ModConfig.CosmeticGourdRestoreInterval.Value);
+            _restoreTimer = RestoreIntervalSeconds;
 
             // A failed spawn (hub not loaded yet) is not counted, so it is retried.
             if (!ItemApplier.ApplyGourdItem(toPlayer: false))
@@ -106,7 +106,7 @@ namespace BigWalkArchipelago.Core.Net
                 return;
             }
 
-            _gadgetRestoreTimer = Mathf.Max(0f, ModConfig.CosmeticGourdRestoreInterval.Value);
+            _gadgetRestoreTimer = RestoreIntervalSeconds;
 
             if (!ItemApplier.ApplyGadgetItem(next.Value, toPlayer: false))
             {

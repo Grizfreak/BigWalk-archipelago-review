@@ -21,6 +21,9 @@ namespace BigWalkArchipelago.Core.Net
         // How long to wait for the server's replay before an empty queue means "all done".
         private const float ReplayGraceSeconds = 3f;
 
+        // Restored gourds and gadgets drop one at a time, or they pile up.
+        private const float RestoreIntervalSeconds = 0.5f;
+
         // The client library has no reliable timeout of its own.
         private const float ConnectTimeoutSeconds = 15f;
 

@@ -26,8 +26,7 @@ On a guest, the host's settings are greyed ("Set by the host").
 ## Mod settings
 
 The mod writes `BepInEx/config/com.grizfreak.bigwalk.archipelago.cfg` on its
-first launch (the debug tools, off for players, keep theirs in a `.debug.cfg`
-beside it, written only when `Debug.Enabled` is on). Everything in it has a comment; the ones worth knowing are in
+first launch. Everything in it has a comment; the ones worth knowing are in
 the `[Archipelago]` section:
 
 - `Enabled`: turn the connection off entirely. The mod's other features stay
@@ -51,9 +50,6 @@ the `[Archipelago]` section:
 
 - `GentleEffects`, `DeathLinkEnabled`, `DeathLinkAmnesty`, `GourdName`, what Settings >
   Archipelago above writes; they can be edited by hand with the game closed.
-
-The `[Debug]` section is off by default and is developer tooling, not
-gameplay.
 
 ## Your own tiles
 

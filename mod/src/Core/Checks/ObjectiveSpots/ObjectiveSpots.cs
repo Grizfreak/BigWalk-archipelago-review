@@ -1,4 +1,3 @@
-using System.Globalization;
 using Mirror;
 using UnityEngine;
 
@@ -21,28 +20,10 @@ namespace BigWalkArchipelago.Core.Checks
 
         internal static bool IsSpot(string key) => key is "big_climb" or "big_party" or "big_doof" or "big_makeover";
 
-        private static Spot? Of(string key)
-        {
-            if (key != "big_climb")
-                return null;
+        // The Peak fireworks, in metres.
+        private static readonly Spot Climb = new() { Centre = new Vector3(94.5f, 179.6f, -329.1f), Radius = 25f };
 
-            var text = ModConfig.ClimbSpot.Value;
-            if (string.IsNullOrWhiteSpace(text))
-                return null;
-
-            var parts = text.Split(',');
-            if (parts.Length != 4)
-                return null;
-
-            var numbers = new float[4];
-            for (var i = 0; i < 4; i++)
-            {
-                if (!float.TryParse(parts[i].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out numbers[i]))
-                    return null;
-            }
-
-            return new Spot { Centre = new Vector3(numbers[0], numbers[1], numbers[2]), Radius = Mathf.Max(1f, numbers[3]) };
-        }
+        private static Spot? Of(string key) => key == "big_climb" ? Climb : null;
 
         // For the map tracker: where big_climb is.
         internal static Vector3? ClimbCentre() => Of("big_climb")?.Centre;

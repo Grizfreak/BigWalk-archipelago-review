@@ -21,6 +21,8 @@ unwinnable, which is why every player of a session should run the same build.
   Tracker and PopTracker packs still get the logic.
 - **The hint sign no longer suggests item names** while you write: ask with the name, as in the Text Client.
 - **Start items are decided before the fill**: the search that gave a second item away on very tight seeds is gone.
+- **Five settings gone from the .cfg** (`KeyColorProperty`, `GourdRestoreInterval`, `ClimbSpot`, `ReceivedSound`,
+  `CheckSound`): they now use their default. The release build no longer writes a debug file.
 - Every player of a session needs this version (protocol v27).
 
 ### Fixed

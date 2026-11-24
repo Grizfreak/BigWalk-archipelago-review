@@ -19,6 +19,7 @@ namespace BigWalkArchipelago.Core.Keys
         // Once per world: nothing the game does afterwards puts the original material back.
         private static bool _painted;
 
+        private const string TintProperty = "_TintColor";
         private static bool _propertyLogged;
 
         // A world reload rebuilds every renderer, so the paint goes on again.
@@ -32,10 +33,7 @@ namespace BigWalkArchipelago.Core.Keys
             if (_painted || !ModConfig.ColorBigKeys.Value)
                 return;
 
-            var properties = ParseProperties(ModConfig.KeyColorProperty.Value);
-            if (properties.Length == 0)
-                return;
-
+            var properties = new[] { TintProperty };
             var keys = GourdRegistry.LoadedBigKeys();
             var painted = 0;
             var seen = 0;
@@ -63,23 +61,6 @@ namespace BigWalkArchipelago.Core.Keys
                 + $"{string.Join(", ", properties)}. A property the shader does not declare is accepted "
                 + "silently and does nothing, so if they still look alike the line above names the ones "
                 + "it really has.");
-        }
-
-        private static string[] ParseProperties(string configured)
-        {
-            if (string.IsNullOrWhiteSpace(configured))
-                return Array.Empty<string>();
-
-            var parts = configured.Split(',');
-            var kept = new List<string>();
-            foreach (var part in parts)
-            {
-                var name = part.Trim();
-                if (name.Length > 0)
-                    kept.Add(name);
-            }
-
-            return kept.ToArray();
         }
 
         private static bool Paint(Prop prop, string[] properties, Color colour)
