@@ -3,19 +3,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Everything the radio feature rests on, in one dump.
-    //
-    // It was written to settle one question the binary could not answer,
-    // because the answer lives in serialized scene data: is
-    // `FmRadioManager.stationTrackGroups` ordered like the FmStation* block of
-    // SavableSystem? **It is not** — settled in game on 2026-09-21, six of the
-    // seven disagree. The enum-order fallback was removed and replaced by a
-    // dial position learned from the world and kept in the save.
-    //
-    // What it is for now: checking that learning. One line per dial slot with
-    // the station this save has learned owns it, one line per BroadcastStation
-    // found, and the ledger. A slot reading `<not learned>` while its tower is
-    // loaded means LearnDialPositions is not doing its job.
+    // Dumps the radio state: learned dial slots, every BroadcastStation and the ledger.
     internal static class DebugRadioLookup
     {
         internal static void Dump()
@@ -33,10 +21,7 @@ namespace BigWalkArchipelago.Debug
 
         private static void DumpDial()
         {
-            // Through RadioStations, never the property directly: it throws
-            // rather than returning null when there is no instance, and a
-            // diagnostic tool that takes the game down with it is worse than
-            // no tool at all.
+            // FmRadioManager.instance throws when there is no instance.
             if (!RadioStations.TryGetManager(out var manager))
             {
                 Plugin.Log.LogInfo($"[{nameof(DebugRadioLookup)}] No FmRadioManager in this world.");
@@ -56,10 +41,6 @@ namespace BigWalkArchipelago.Debug
                 var group = groups[i];
                 var groupName = group != null ? group.name : "<null>";
 
-                // Which station this save has learned sits here, if any. The
-                // enum order is deliberately NOT shown any more: it was wrong
-                // for six of the seven, and printing it next to the truth only
-                // invited the comparison to be made again.
                 var owner = "<not learned>";
                 foreach (var system in RadioStations.All)
                 {
@@ -82,19 +63,17 @@ namespace BigWalkArchipelago.Debug
             var stations = UnityEngine.Object.FindObjectsByType<BroadcastStation>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
 
-            // Said explicitly, including when it is zero: a tool that prints
-            // nothing when it finds nothing is indistinguishable from a tool
-            // that did not run (see the lessons in docs/NEXT-SESSION.md).
+            // Printed even when zero, so an empty result is not mistaken for no run.
             Plugin.Log.LogInfo(
                 $"[{nameof(DebugRadioLookup)}] BroadcastStation instances loaded: {stations.Length}"
                 + (stations.Length == 0 ? " (the towers stream in with the world; walk nearer one)" : string.Empty));
 
-            var localPlayer = DebugPlayerLookup.FindLocalPlayer();
+            var localPlayer = Core.LocalPlayer.Find();
             Vector3? playerPosition = localPlayer != null ? localPlayer.transform.position : (Vector3?)null;
             if (!playerPosition.HasValue)
             {
                 Plugin.Log.LogInfo(
-                    $"[{nameof(DebugRadioLookup)}] NO LOCAL PLAYER FOUND — the distances below are meaningless.");
+                    $"[{nameof(DebugRadioLookup)}] NO LOCAL PLAYER FOUND, the distances below are meaningless.");
             }
 
             foreach (var station in stations)
@@ -102,10 +81,7 @@ namespace BigWalkArchipelago.Debug
                 if (station == null)
                     continue;
 
-                // Distance, because presence says nothing: every station is
-                // loaded everywhere, so two dumps taken in two different zones
-                // came back identical (2026-09-21). Which station stands in a
-                // gated zone is a question about where it is.
+                // Every station is loaded everywhere, so distance is what tells zones apart.
                 var distance = playerPosition.HasValue
                     ? Vector3.Distance(station.transform.position, playerPosition.Value)
                     : -1f;

@@ -3,24 +3,12 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Action tool (not a diagnostic): directly forces the state of the
-    // TrackedPeckState instances a nearby PeckCombinator watches
-    // (rule.systems[] AND rule.block.systems[], cf.
-    // DebugPeckCombinatorLookup/F7) to their desiredState, instead of
-    // simulating button presses.
-    //
-    // Rationale (bell at the top of the Gauntlet, cf. big-walk-archipelago-
-    // notes.md): the "N-hold" buttons seem to require a continuous hold by 2
-    // players, not a simple tap — DebugPeckFire.Peck() (a discrete event) is
-    // not enough and, worse, re-pecking the ONLY button found in range (your
-    // own) toggles it instead of simulating the second player.
-    // TrackedPeckState.SetState(int) writes the state directly and
-    // short-circuits the entire press/hold mechanism.
+    // Writes a nearby combinator's watched states directly: N-hold buttons need two players.
     internal static class DebugPeckCombinatorForce
     {
         internal static void ForceNearby(float radius)
         {
-            var localPlayer = DebugPlayerLookup.FindLocalPlayer();
+            var localPlayer = Core.LocalPlayer.Find();
             if (localPlayer == null)
             {
                 Plugin.Log.LogInfo($"[{nameof(DebugPeckCombinatorForce)}] Local player not found.");
@@ -37,13 +25,7 @@ namespace BigWalkArchipelago.Debug
                 return;
             }
 
-            // Says what is actually around before filtering. Without this
-            // the method had a completely silent exit — every combinator out
-            // of range simply `continue`d and it returned having logged
-            // nothing at all, which is indistinguishable from "the key did
-            // nothing". That cost an hour on 2026-09-18, chasing a keyboard
-            // problem that did not exist: the tool worked, the puzzle's
-            // combinator was just further than the radius.
+            // Log what is around first, or an out-of-range combinator looks like a dead key.
             var nearestName = string.Empty;
             var nearestDistance = float.MaxValue;
             var inRange = 0;
@@ -75,7 +57,7 @@ namespace BigWalkArchipelago.Debug
                     continue;
 
                 inRange++;
-                Plugin.Log.LogInfo($"[{nameof(DebugPeckCombinatorForce)}] {combinator.gameObject.name} (PeckCombinator) — starting force.");
+                Plugin.Log.LogInfo($"[{nameof(DebugPeckCombinatorForce)}] {combinator.gameObject.name} (PeckCombinator), starting force.");
 
                 try
                 {
@@ -84,7 +66,7 @@ namespace BigWalkArchipelago.Debug
                 catch (Exception ex)
                 {
                     Plugin.Log.LogWarning(
-                        $"[{nameof(DebugPeckCombinatorForce)}] {combinator.gameObject.name} — exception while forcing, block skipped: {ex}");
+                        $"[{nameof(DebugPeckCombinatorForce)}] {combinator.gameObject.name}, exception while forcing, block skipped: {ex}");
                 }
             }
 
@@ -108,7 +90,7 @@ namespace BigWalkArchipelago.Debug
                 try
                 {
                     var rule = rules[i];
-                    Plugin.Log.LogInfo($"[{nameof(DebugPeckCombinatorForce)}]   rule[{i}] — target desiredState={rule.desiredState}");
+                    Plugin.Log.LogInfo($"[{nameof(DebugPeckCombinatorForce)}]   rule[{i}], target desiredState={rule.desiredState}");
 
                     ForceState(rule.systems, rule.desiredState);
 
@@ -118,7 +100,7 @@ namespace BigWalkArchipelago.Debug
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Log.LogWarning($"[{nameof(DebugPeckCombinatorForce)}]   rule[{i}] — exception, ignored: {ex.Message}");
+                    Plugin.Log.LogWarning($"[{nameof(DebugPeckCombinatorForce)}]   rule[{i}], exception, ignored: {ex.Message}");
                 }
             }
         }

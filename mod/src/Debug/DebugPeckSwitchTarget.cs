@@ -3,24 +3,12 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Pure diagnostic (no writes). Continuation of
-    // DebugTrackedPeckStateLookup: the dump filtered on
-    // savableSystem==SpawnHubGate found only one TrackedPeckState
-    // ("GateMainSystem"), but its savableSystem never shows up in the save
-    // file after a trigger confirmed in-game — so this is probably NOT the
-    // TrackedPeckState that is actually modified. PeckDevHelper.Trigger
-    // (decompiled via Ghidra, cf. big-walk-archipelago-notes.md) actually
-    // calls PeckSwitch.Peck() on the PeckSwitch attached to the same
-    // GameObject as the PeckDevHelper (e.g. "DevUnlock") — and it's the
-    // PeckSwitch.trackedStateSystem field (a reference assigned in the Unity
-    // editor, not necessarily the nearest TrackedPeckState) that receives
-    // the real SetState(). This tool inspects that reference directly to
-    // identify the right TrackedPeckState without guessing.
+    // Logs the TrackedPeckState a PeckSwitch really drives (its trackedStateSystem reference).
     internal static class DebugPeckSwitchTarget
     {
         internal static void DumpNearby(float radius)
         {
-            var localPlayer = DebugPlayerLookup.FindLocalPlayer();
+            var localPlayer = Core.LocalPlayer.Find();
             if (localPlayer == null)
             {
                 Plugin.Log.LogInfo($"[{nameof(DebugPeckSwitchTarget)}] Local player not found.");
@@ -50,7 +38,7 @@ namespace BigWalkArchipelago.Debug
                 if (target == null)
                 {
                     Plugin.Log.LogInfo(
-                        $"[{nameof(DebugPeckSwitchTarget)}]   {sw.gameObject.name} (PeckSwitch) — trackedStateSystem=<null> — specificState={sw.specificState}");
+                        $"[{nameof(DebugPeckSwitchTarget)}]   {sw.gameObject.name} (PeckSwitch), trackedStateSystem=<null>, specificState={sw.specificState}");
                     continue;
                 }
 
@@ -62,8 +50,8 @@ namespace BigWalkArchipelago.Debug
 
                 Plugin.Log.LogInfo(
                     $"[{nameof(DebugPeckSwitchTarget)}]   {sw.gameObject.name} (PeckSwitch, specificState={sw.specificState}) -> " +
-                    $"trackedStateSystem={target.gameObject.name} — savableSystem={savableSystem} — saveGuid={saveGuid} — " +
-                    $"actual key='{key}' — SaveManager[{key}]={currentValue}");
+                    $"trackedStateSystem={target.gameObject.name}, savableSystem={savableSystem}, saveGuid={saveGuid}, " +
+                    $"actual key='{key}', SaveManager[{key}]={currentValue}");
             }
         }
     }

@@ -6,31 +6,13 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The two objectives of the island's far corners (ROADMAP R5, 0.5, player 2026-10-12), both latched in the
-    // save, like the endings, and both noticed by the host, which sees everything:
-    //
-    //  - `big_climb`, the island's highest point: a player standing there. The place is the .cfg's
-    //    "x, y, z, radius" (metres), so it can be moved without a rebuild; the default is the Peak fireworks (the
-    //    highest launcher, y = 179.6). Alt + 1 writes where the player stands to BepInEx/objective-spots.txt.
-    //  - `big_party`, the party: not a place but an action (the player, 2026-10-12): a radio plugged into the big
-    //    speakers on the beach. The Speaker Stage has a dock for the radio (`FmRadioDockPropHome`, found in the
-    //    relevé F9 of 2026-10-12) and the speakers' own logic (`SpeakerStageLogic`, an unsaved state), so the
-    //    party is the radio sitting in the dock for a few seconds.
-    //  - `big_doof` (the player, 2026-10-20), the Doof Chamber, the music room in the tunnels: its five light
-    //    switches on at once (House, Ring, Purple, Reds, White Spots: toggles, the apworld's LIGHT_SWITCHES) and its
-    //    smoke machine's push button held, ten seconds, with the players there. The button is a BasicPushButton: its
-    //    PeckSwitchTrigger is pecked when it goes down, its UpSwitch when it is let go (the puzzle-needs dump).
-    //  - `big_makeover` (the player, 2026-10-20), the Secret Salon in the tunnels: a player painted there. The game
-    //    keeps a player's colours in three synced ids on PlayerNetworking (lookIdHead, lookIdTorso, lookIdLegs),
-    //    which the salon's brush changes; the mod never writes them (Big Paint only changes what is drawn, through
-    //    PlayerLooks.SetColor), so an id changing near the salon is a brush.
+    // The place and action objectives (big_climb, party, doof, makeover), noticed by the host.
     internal static class ObjectiveSpots
     {
         private const string Tag = "[" + nameof(ObjectiveSpots) + "]";
         private const string LatchPrefix = "ap_objective_";
 
-        // Where the save keeps an objective done. The party keeps the name it had until 1.0.2, big_fiesta, so a save that
-        // threw it then still has it done.
+        // The party keeps its pre-1.0.3 save name, big_fiesta, so older saves still have it done.
         private static string Latch(string key) => LatchPrefix + (key == "big_party" ? "big_fiesta" : key);
 
         private struct Spot
@@ -64,15 +46,13 @@ namespace BigWalkArchipelago.Core
             return new Spot { Centre = new Vector3(numbers[0], numbers[1], numbers[2]), Radius = Mathf.Max(1f, numbers[3]) };
         }
 
-        // U2 (Core/MapTracker): where big_climb is.
+        // For the map tracker: where big_climb is.
         internal static Vector3? ClimbCentre() => Of("big_climb")?.Centre;
 
-        // Whether this build knows where the place is.
         internal static bool Known(string key) => key is "big_party" or "big_doof" or "big_makeover" || Of(key) != null;
 
         internal static bool IsDone(string key) => SaveManager.GetIntValue(Latch(key), 0, false) != 0;
 
-        // Every couple of seconds (TeleportButtons.Sync), on the host.
         internal static void Tick()
         {
             if (!NetworkServer.active || !WorldManager.isReadyForEffects || !ApObjectives.Active)
@@ -121,7 +101,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The radio in the dock of the Speaker Stage, for how long (since when, in unscaled seconds).
+        // When the radio went into the Speaker Stage dock, in unscaled seconds.
         private const float PartySeconds = 10f;
         private const float ClimbSeconds = 10f;
         private static float _atTheTopSince = -1f;
@@ -132,10 +112,7 @@ namespace BigWalkArchipelago.Core
         // Whether the party's ten seconds are running: a radio in the dock and its music playing.
         private static bool _partyPlaying;
 
-        // THE COUNTDOWN (the player, 2026-10-20): the ten seconds were counted in silence, and nobody knew whether they
-        // ran. Cabin Fever's tick when they start and on each of the last three, on every machine (ApSounds); no text,
-        // and no sound when they stop. Every frame on the host (Traps' runner); while one runs, the place is looked at
-        // four times a second instead of every two, so the objective comes right after the last tick.
+        // Ticks at a count's start and its last three seconds; a running count is checked often.
         private static int _climbTicks;
         private static int _partyTicks;
         private static int _doofTicks;
@@ -202,17 +179,14 @@ namespace BigWalkArchipelago.Core
             if (_dockedSince < 0f)
                 _dockedSince = Time.unscaledTime;
 
-            // What the speakers' own logic says while a radio sits there, for the tests (it is not saved, so
-            // nothing else shows it): the state of `SpeakerStageLogic`.
+            // SpeakerStageLogic is not saved, so its state is logged for the tests.
             var parent = dock.transform.parent;
             var logic = parent != null ? parent.Find("SpeakerStageLogic") : null;
             var logicState = logic != null ? logic.GetComponent<TrackedPeckState>() : null;
             var radio = logic != null ? logic.Find("RadioSystem") : null;
             var radioState = radio != null ? radio.GetComponent<TrackedPeckState>() : null;
             var amplitude = SpeakersAmplitude(parent);
-            // The speakers' music only plays on a machine near them, so a host far from the stage hears silence while the
-            // guests dance (the player, 2026-10-12): the dial is read too. The radio system's state is the dial position
-            // plus one (measured: Bobby, position 0, is 1), and a station is a music once granted (when stations are items).
+            // The music only plays near the speakers, so a far host also reads the radio's dial.
             var playing = amplitude > 0.0005f || TunedOnAGrantedStation(radioState);
             var seen = $"logic {(logicState != null ? logicState.currentPeckContext.state.ToString() : "?")}, "
                        + $"radio system {(radioState != null ? radioState.currentPeckContext.state.ToString() : "?")}, "
@@ -224,9 +198,7 @@ namespace BigWalkArchipelago.Core
                 Plugin.Log.LogInfo($"{Tag} A radio ({dock.pinnedProp.name}) is in the Speaker Stage's dock: {seen}.");
             }
 
-            // A radio in the dock AND a music coming out of the speakers, ten seconds in a row (the player,
-            // 2026-10-12: a radio with a locked station, or none, is no party). The speakers' music players
-            // carry the amplitude of what plays.
+            // A radio with a locked station, or none, is no party.
             _partyPlaying = playing;
             if (!playing)
             {
@@ -278,10 +250,6 @@ namespace BigWalkArchipelago.Core
             return loudest;
         }
 
-        // ------------------------------------------------------------------
-        // big_doof: the Doof Chamber's five lights
-        // ------------------------------------------------------------------
-
         private const string DoofRoot = "LandmarksNonChallenge/DoofChamber/Positioner";
         private static readonly string[] DoofSwitches =
         {
@@ -296,12 +264,12 @@ namespace BigWalkArchipelago.Core
         private static float _doofSince = -1f;
         private static TrackedPeckState[] _doofStates;
 
-        // The smoke machine's push button, held or not, from its two switches' pecks (Patches/TrapPatches).
+        // The smoke machine's push button, held or not, from its two switches' pecks.
         private const string SmokeDown = DoofRoot + "/FXControls/BasicPushButton/PeckSwitchTrigger";
         private const string SmokeUp = SmokeDown + "/UpSwitch";
         private static bool _smokeHeld;
 
-        // From the PeckSwitch.Peck patches, every peck: only the two already found are compared, nothing is looked for.
+        // Every peck: only the two switches already found are compared, nothing is looked for.
         internal static void OnPeck(PeckSwitch peckSwitch)
         {
             if (peckSwitch == null || !NetworkServer.active)
@@ -318,7 +286,7 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} The Doof Chamber's smoke button is {(_smokeHeld ? "held" : "let go")}.");
         }
 
-        // U2 (Core/MapTracker): where the two rooms are, once loaded.
+        // For the map tracker: where the two rooms are, once loaded.
         internal static Vector3? DoofCentre() => Find(DoofRoot)?.position;
         internal static Vector3? SalonCentre() => Find(SalonRoot)?.position;
 
@@ -376,14 +344,10 @@ namespace BigWalkArchipelago.Core
             return Array.TrueForAll(_doofStates, state => state != null);
         }
 
-        // ------------------------------------------------------------------
-        // big_makeover: painted at the Secret Salon
-        // ------------------------------------------------------------------
-
         private const string SalonRoot = "LandmarksNonChallenge/Salon_Secret/Positioner";
         private const float SalonRadius = 20f;
 
-        // Each player's colours as last seen, by instance: a player first seen sets them, without counting.
+        // A look id changing near the salon is a brush: the mod never writes these ids.
         private static readonly System.Collections.Generic.Dictionary<int, (int head, int torso, int legs)> Looks = new();
 
         private static void CheckTheMakeover()
@@ -409,7 +373,7 @@ namespace BigWalkArchipelago.Core
                 if (Vector3.Distance(player.transform.position, salon.position) > SalonRadius)
                     continue;
 
-                // With `everyone_gathers`, every player painted there, each in turn (the player, 2026-10-20).
+                // With `everyone_gathers`, every player painted there, each in turn.
                 Painted.Add(id);
                 if (EveryoneGathers && !EveryonePainted(players))
                 {
@@ -438,8 +402,7 @@ namespace BigWalkArchipelago.Core
             return true;
         }
 
-        // A scene object by its path: looked for at most every ten seconds while it is not there, since the walk is
-        // over every Transform.
+        // Looked for at most every ten seconds while missing: the walk goes over every Transform.
         private static readonly System.Collections.Generic.Dictionary<string, Transform> Found = new();
         private static float _nextFind;
 
@@ -472,7 +435,7 @@ namespace BigWalkArchipelago.Core
             return known;
         }
 
-        // `everyone_gathers` (the player, 2026-10-12): every player in the place, else one is enough.
+        // `everyone_gathers`: every player in the place, else one is enough.
         private static bool EveryoneGathers => ApRuntime.SlotData != null && ApRuntime.SlotData.EveryoneGathers;
 
         private static bool Gathered(Spot spot) => Gathered(spot.Centre, spot.Radius);
@@ -500,7 +463,7 @@ namespace BigWalkArchipelago.Core
             return anyone;
         }
 
-        // How near the Speaker Stage's dock everyone must stand for the party, with `everyone_gathers`.
+        // How near the Speaker Stage's dock everyone stands for the party, with `everyone_gathers`.
         private const float PartyRadius = 30f;
 
         // Debug key (Alt + 2): forgets the two latches, to try them again.
@@ -523,7 +486,7 @@ namespace BigWalkArchipelago.Core
         // Debug key (Alt + 1): where the local player stands, written for the .cfg line of a place.
         internal static void Mark()
         {
-            var player = Debug.DebugPlayerLookup.FindLocalPlayer();
+            var player = LocalPlayer.Find();
             if (player == null)
                 return;
 

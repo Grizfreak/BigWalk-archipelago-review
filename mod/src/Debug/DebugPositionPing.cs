@@ -5,16 +5,12 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // One-shot "where am I" for labelling puzzles by what they actually
-    // need (a sound cue, a plate, a timer, a worn item...) against the
-    // island plot DebugPuzzleMapDump produces — player request, 2026-09-28:
-    // standing at a puzzle and reading its own coordinates off a map by eye
-    // is slower and less reliable than the game just saying which one this is.
+    // Logs which puzzle the player stands at, to label them against DebugPuzzleMapDump's plot.
     internal static class DebugPositionPing
     {
         internal static void Log()
         {
-            var player = DebugPlayerLookup.FindLocalPlayer();
+            var player = Core.LocalPlayer.Find();
             if (player == null)
             {
                 Plugin.Log.LogInfo($"[{nameof(DebugPositionPing)}] No local player found.");

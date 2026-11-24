@@ -10,17 +10,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // The 0.7 recon (player, 2026-10-13: recon before code). Ctrl + Shift + 8 writes
-    // `BepInEx/recon-0.7-<n>.txt`, four parts, one per roadmap item:
-    //   - R7 whiteboards: every text the scene holds (TMP_Text, the players' writable signs; a legacy TextMesh shows in the components) and every
-    //     object whose name says board, sign or note, with its components, to tell a text from a picture;
-    //   - R6b the Cabin Fever dial: the whole tree under each CabinFeverHouse, component by component, to find
-    //     what turns with the TimerSystem;
-    //   - C2: the colours each kind of gadget carries, and the firework launchers' trees;
-    //   - U2 the map: every map flag, its state, and whether its puzzle's check was sent, to see what the map
-    //     already shows on a seed.
-    // Ctrl + Shift + 9 goes to the next recon spot (the two Cabin Fever rooms, the hub's notice board, the spare
-    // sign) so the player can look at it. Pure diagnostic, no writes to the game.
+    // Scene dumps (Ctrl + Shift + 8) and a tour of the spots they cover (Ctrl + Shift + 9).
     internal class DebugRecon07 : MonoBehaviour
     {
         private const string Tag = "[" + nameof(DebugRecon07) + "]";
@@ -29,15 +19,12 @@ namespace BigWalkArchipelago.Debug
             new(KeyCode.Alpha8, KeyCode.LeftControl, KeyCode.LeftShift);
         private static readonly BepInEx.Unity.IL2CPP.Configuration.KeyboardShortcut NextSpotKey =
             new(KeyCode.Alpha9, KeyCode.LeftControl, KeyCode.LeftShift);
-        // R6b (Alt + 5: Windows keeps Ctrl + Shift + 0 for the keyboard layout): the Cabin Fever dial's animation shown or not, even while the wait
-        // is not running.
-        // U2: the map tracker shows every check (as `all`), or as the seed says.
+        // Alt keys: Windows keeps Ctrl + Shift + 0 for the keyboard layout.
         private static readonly BepInEx.Unity.IL2CPP.Configuration.KeyboardShortcut MapAllKey =
             new(KeyCode.Alpha6, KeyCode.LeftAlt);
         private static readonly BepInEx.Unity.IL2CPP.Configuration.KeyboardShortcut DialModeKey =
             new(KeyCode.Alpha5, KeyCode.LeftAlt);
 
-        // Paths (or path fragments) of the spots, found in the timer dump and the object census.
         private static readonly string[] SpotNames =
         {
             "CabinFever/Positioner/CabinFeverHouse",
@@ -47,10 +34,8 @@ namespace BigWalkArchipelago.Debug
             MapSpot,
         };
 
-        // U2: the spot of the first map (GourdMap) found, whatever its path.
         private const string MapSpot = "(the Map Room's map)";
 
-        // C2: the gadgets that might take the seed's colours (S7's kinds less the lamps, already painted).
         private static readonly string[] GadgetKinds =
         {
             "WalkieTalkieProp", "MegaphoneProp", "FmRadioProp", "BinocularsProp", "LaserProp", "TorchProp",
@@ -134,7 +119,7 @@ namespace BigWalkArchipelago.Debug
 
         private static void Dump()
         {
-            var player = DebugPlayerLookup.FindLocalPlayer();
+            var player = Core.LocalPlayer.Find();
             var origin = player != null ? player.transform.position : Vector3.zero;
             var text = new StringBuilder();
             text.AppendLine($"# recon 0.7, map version {PlayerCountSwapper.playerCount} players, player at {origin}");
@@ -239,7 +224,7 @@ namespace BigWalkArchipelago.Debug
                     Tree(text, map.flagPrefab.transform, 2);
                 }
 
-                // Each gourd's world position (the map's own data) beside its flag's place, to fit the conversion.
+                // World positions beside the flags' places, to fit the conversion.
                 var worldOf = new Dictionary<int, Vector3>();
                 if (map.positionData != null && map.positionData.gourdListings != null)
                 {
@@ -284,7 +269,7 @@ namespace BigWalkArchipelago.Debug
             var particles = t.GetComponent<ParticleSystem>();
             if (particles != null)
             {
-                // Some of the particle API is stripped from the game: a failure says so rather than ending the dump.
+                // Part of the particle API is stripped from the game: log the failure and go on.
                 try
                 {
                     colour = $"	start #{ColorUtility.ToHtmlStringRGB(particles.main.startColor.color)}";

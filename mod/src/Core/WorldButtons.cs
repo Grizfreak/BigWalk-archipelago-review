@@ -4,30 +4,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // Buttons the mod puts into the world (ROADMAP U4 and U10): a small green post with a
-    // button on top, that does something when the local player looks at it and clicks.
-    //
-    // A PLAIN COPY OF THE GAME'S BUTTON DOES NOT WORK. The first try copied a
-    // `BasicPushButton` as it was: the copy kept the original's `ShellReference`, the
-    // reference the game routes every press by, so pressing it reached the ORIGINAL and the
-    // player's arm reached for that one.
-    //
-    // WHAT THE GAME DOES INSTEAD FOR WHAT IT MAKES AT RUN TIME (decompiled 2026-10-03). A
-    // scene object is found by its index in its `SeaShell`'s list. Anything with `useTicket`
-    // is found by a `ticket` in `TicketOffice.tickets`, a plain dictionary:
-    // `PeckSwitch.OnEnable` calls `AddTicket`, which stores the object under whatever
-    // `ticket` it carries and never makes one up. So a copy made while switched off, given a
-    // fresh ticket, `useTicket` and an empty `shellReference`, is registered as a button of
-    // its own when it is switched on. The tickets come from a fixed table, so every machine
-    // gives the same one to the same button and nothing has to be sent.
-    //
-    // The press is heard through a Harmony patch on `SetState` (Patches/WorldButtonPatch),
-    // which also says who pressed, and the effect runs on that player's own machine: a
-    // teleport is the one the mod already uses to call the loopback guest over
-    // (`PlayerGrease.Teleport`), and a player's position belongs to its owner.
-    //
-    // If no push button can be copied, the old way is kept: the mod's own mesh copy, aimed
-    // at with the camera and clicked with the game's "use" input.
+    // Mod-made buttons: copies of the game's push button, given fresh tickets of their own.
     internal class WorldButtons : MonoBehaviour
     {
         // Constructor required by Il2CppInterop for any type injected into IL2CPP.
@@ -42,15 +19,13 @@ namespace BigWalkArchipelago.Core
         {
             internal int Slot;
 
-            // The tower whose colour the plate takes, when it is not the one of the icon.
+            // The tower whose colour the plate takes, when it is not the icon's.
             internal string Tint;
 
-            // True for a button whose effect belongs to the host's world (the resync, the gather
-            // buttons, the Cabin Fever help): a guest's press runs on the host, not on the guest.
+            // A guest's press runs on the host: the effect belongs to the host's world.
             internal bool HostSide;
 
-            // The game prop it is a copy of: a push button, or a light switch (which stays where it
-            // is put, on or off, and is pressed again to go back).
+            // A push button, or a light switch, which stays on or off until pressed again.
             internal string Template = PushButton;
             internal int LastState;
             internal string Label;
@@ -58,42 +33,33 @@ namespace BigWalkArchipelago.Core
             internal Action<PlayerCharacter> OnPress;
             internal GameObject Root;
 
-            // Where to aim: the middle of what is drawn, and how far from it the crosshair may
-            // be and still count. Measured from the renderers, not guessed, since the look
-            // differs between the game-button copy and the primitive fallback.
+            // Measured from the renderers: the game-button copy and the fallback differ in size.
             internal Vector3 Centre;
             internal float Radius = 0.55f;
             internal Bounds Bounds;
 
-            // True when this is a copy the game itself treats as a button, pressed through
-            // its own system; false for the fallback, which the mod aims and clicks itself.
+            // False for the fallback, which the mod aims and clicks itself.
             internal bool Native;
 
-            // The picture above the button, which also names the colour of its plate.
             internal string Icon;
         }
 
-        // Tickets of the buttons made here: a block clear of the game's own, which count up from
-        // the bottom, and a fixed stride per button so every machine agrees on every number.
+        // A ticket block clear of the game's own, with a fixed stride so every machine agrees.
         private const ushort FirstTicket = 0xE000;
         private const int TicketsPerButton = 8;
 
-        // The states of the native buttons, by instance id, and the button each belongs to.
         private static readonly Dictionary<int, Button> NativeStates = new Dictionary<int, Button>();
 
         internal static bool HasNative => NativeStates.Count > 0;
 
         private static readonly List<Button> Buttons = new List<Button>();
 
-        // The buttons by slot. A slot is a fixed place in the mod's table, so the tickets of its
-        // button (Core/WorldButtons, FirstTicket) are the same on every machine whatever the
-        // order buttons were made in, which differs: a button may appear on one machine first.
+        // By slot, so a button's tickets are the same on every machine whatever the creation order.
         private static readonly Dictionary<int, Button> Slots = new Dictionary<int, Button>();
 
         // False for a button whose world went away with it, so it gets made again.
         internal static bool Has(int slot) => Slots.TryGetValue(slot, out var button) && button.Root != null;
 
-        // Takes a button out of the world again, and forgets its states.
         internal static void Remove(int slot)
         {
             if (!Slots.TryGetValue(slot, out var button))
@@ -115,7 +81,7 @@ namespace BigWalkArchipelago.Core
                 NativeStates.Remove(id);
         }
 
-        // A world went away with all its objects: forget the buttons without touching them.
+        // The world went away with its objects: forget the buttons without touching them.
         internal static void Forget()
         {
             Slots.Clear();
@@ -127,8 +93,7 @@ namespace BigWalkArchipelago.Core
         private static Material _plateMaterial;
         private static Button _focused;
 
-        // Puts a button in the world. The look is made at once, from whichever game material
-        // can be found; a world reload destroys it, and the caller adds it again.
+        // A world reload destroys the button, and the caller adds it again.
         internal static Button Add(int slot, string label, Vector3 position, Quaternion rotation,
             Action<PlayerCharacter> onPress, string icon = null, string tint = null, bool hostSide = false,
             string template = PushButton)
@@ -147,18 +112,11 @@ namespace BigWalkArchipelago.Core
             return button;
         }
 
-        // The gap between the top of a button and the bottom of its icon, how big the icon is
-        // drawn next to the panel's own, and how far it is sunk into the wall.
         private const float IconGap = 0.06f;
         private const float IconScale = 0.6f;
         private const float IconSink = 0.10f;
 
-        // The icon of a tower above a button, copied from the Black Tower's panel of them
-        // (`EndingGateIndicator`): its dark bezel, its red light and the silhouette named by
-        // `tower` (red, green, blue, yellow, black or white), each rebuilt as a plain object with
-        // the same mesh, material, place and size and none of the game's components. The panel
-        // holds every silhouette and shows one, so any tower's can be had from any of its five.
-        // Nothing is wired to anything: it is a picture, as an indicator is to the eye.
+        // A picture rebuilt from the Black Tower's EndingGateIndicator meshes, no components.
         private static void AddIcon(Button button, string tower)
         {
             try
@@ -177,11 +135,7 @@ namespace BigWalkArchipelago.Core
                 icon.transform.localScale = Vector3.one * IconScale;
 
                 var made = 0;
-                // Nine pictures. The four towers by their colour. "black" is the Black Tower's own
-                // dark silhouette, and "gauntlet" a black sphere, the panel having no icon for it:
-                // all on the panel's light bezel (the player's choice), where black is not lost as it
-                // is on the dark one. "hub" is the beige silhouette (the panel's `tower_white`, beige
-                // of its own).
+                // All on the light bezel, where black is not lost.
                 var sphere = tower is "gauntlet" or "drawbridge" or "dome";
                 var beige = tower == "hub";
                 var silhouette = beige ? "white" : tower;
@@ -207,9 +161,7 @@ namespace BigWalkArchipelago.Core
                     var copy = part.AddComponent<MeshRenderer>();
                     copy.sharedMaterials = renderer.sharedMaterials;
 
-                    // The silhouettes' colour is not in their material: the game sets it on the panel
-                    // while it runs, so a copy comes out dark and the green and blue ones vanish on
-                    // the bezel. Each gets its own, and the black tower's is the beige the panel shows.
+                    // The game sets the silhouettes' colour at run time, so each copy gets its own.
                     if (name == bezel)
                         bezelCopy = copy;
 
@@ -232,9 +184,7 @@ namespace BigWalkArchipelago.Core
                 else if (sphere && bezelCopy != null)
                     AddSphere(icon, bezelCopy.bounds, button.Root.transform.forward, PlateColour(tower));
 
-                // Lifted by what it measures, not by a fixed amount: the icon is bigger than the
-                // button, and a fixed lift left the button inside the symbol. Walls are upright, so
-                // up is the world's.
+                // Lifted by its measured size: the icon is bigger than the button.
                 var drawn = false;
                 var iconBounds = new Bounds(icon.transform.position, Vector3.zero);
                 foreach (var renderer in icon.GetComponentsInChildren<Renderer>(true))
@@ -290,7 +240,6 @@ namespace BigWalkArchipelago.Core
             Block(0.24f, 0.015f, 0.02f, 0.09f, red);
         }
 
-        // A sphere in front of the bezel's middle, about two fifths of its width.
         private static void AddSphere(GameObject icon, Bounds bezel, Vector3 outward, Color colour)
         {
             var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -298,7 +247,7 @@ namespace BigWalkArchipelago.Core
             sphere.transform.SetParent(icon.transform, false);
             var width = Mathf.Max(bezel.size.x, bezel.size.z);
             sphere.transform.localScale = Vector3.one * (width * 0.42f / Mathf.Max(0.0001f, icon.transform.lossyScale.x));
-            // A little below the middle: centred it ran into the light at the top.
+            // A little below the middle: centred, it ran into the light at the top.
             sphere.transform.position = bezel.center + outward * (width * 0.04f) + Vector3.down * (width * 0.08f);
             Paint(sphere, colour);
         }
@@ -316,8 +265,6 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The inner object of one indicator of the panel, the one that holds the bezel, the light
-        // and the silhouettes as children.
         private static Transform FindIndicatorContainer()
         {
             foreach (var renderer in UnityEngine.Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
@@ -330,7 +277,7 @@ namespace BigWalkArchipelago.Core
             return null;
         }
 
-        // The aim box of a button: everything drawn but the post, which is not the button.
+        // Everything drawn but the post, which is not the button.
         private static void Measure(Button button)
         {
             var any = false;
@@ -349,7 +296,7 @@ namespace BigWalkArchipelago.Core
 
             button.Bounds = bounds;
             button.Centre = any ? bounds.center : button.Position + Vector3.up * 1f;
-            // A hand's width of slack around the drawn box, so a button is easy to aim at.
+            // Some slack around the drawn box, so a button is easy to aim at.
             button.Radius = Mathf.Max(0.45f, bounds.extents.magnitude + 0.2f);
         }
 
@@ -367,9 +314,7 @@ namespace BigWalkArchipelago.Core
             _focused = null;
         }
 
-        // The game's own teleport, on this machine's own player.
-        // A teleport from a button waits this long: the button's click plays where it stands, and
-        // a player sent away at once never heard it (2026-10-05).
+        // The delay lets the button's click be heard before the player is sent away.
         private const float TeleportDelay = 0.4f;
 
         private static PlayerCharacter _pendingPlayer;
@@ -423,13 +368,12 @@ namespace BigWalkArchipelago.Core
             if (Buttons.Count == 0 || !WorldManager.isReadyForEffects)
                 return;
 
-            var player = Debug.DebugPlayerLookup.FindLocalPlayer();
+            var player = LocalPlayer.Find();
             var camera = Camera.main;
             if (player == null || camera == null)
                 return;
 
-            // The button the crosshair is on, if any: the nearest one along the view ray
-            // whose centre passes within a hand's width of it, and not past arm's reach.
+            // The nearest button along the view ray, within a hand's width and arm's reach.
             var origin = camera.transform.position;
             var direction = camera.transform.forward;
             var bestAlong = float.MaxValue;
@@ -461,19 +405,14 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The game's own "use": the click. Its binding is the player's, whatever it is.
+        // The game's own use input, whatever the player bound it to.
         private static bool Pressed()
         {
             return Rewired.ReInput.isReady
                    && Rewired.ReInput.players.GetPlayer(0).GetButtonDown(RewiredConsts.Action.use);
         }
 
-        // The look of one of the game's own buttons, made of nothing of the game's but its
-        // meshes and materials: each renderer of a push button is rebuilt as a fresh object
-        // with the same mesh, material, place and size, and none of its components, so no
-        // network reference or press logic comes along. The first version used two
-        // primitives and was plainly ugly. Tinted green, so it is never taken for a real one.
-        // Falls back to the primitives where no push button is loaded.
+        // Only the game button's meshes and materials: no network reference or press logic.
         private static GameObject Build(Vector3 position, Quaternion rotation, int index, Button button)
         {
             var root = new GameObject("AP world button");
@@ -494,9 +433,7 @@ namespace BigWalkArchipelago.Core
             return BuildFromPrimitives(root);
         }
 
-        // A copy of a game push button that the game accepts as a button of its own. Made
-        // inside an inactive parent so nothing of it is registered while it still holds the
-        // original's references, then given a ticket of its own, then switched on.
+        // Built under an inactive parent so nothing registers with the original's references.
         private static bool TryBuildNative(GameObject root, int index, Button button)
         {
             var template = GetTemplate(button.Template);
@@ -512,11 +449,7 @@ namespace BigWalkArchipelago.Core
 
                 var ticket = FreeTicketBlock(index);
                 var firstTicket = ticket;
-                // A switch is found by its reference: a push button is pressed by the hand touching
-                // it, but a switch used from afar (the light switch) is sent to the host as its
-                // `shellReference` (PlayerActions.ActionUseWorldSwitch, decompiled 2026-10-05),
-                // which the host resolves by ticket when it has one. Left empty, the press went to
-                // some other switch: each copy refers to itself by its own ticket.
+                // A switch used from afar reaches the host by shellReference: point it at the copy.
                 foreach (var peckSwitch in clone.GetComponentsInChildren<PeckSwitch>(true))
                 {
                     peckSwitch.useTicket = true;
@@ -525,9 +458,7 @@ namespace BigWalkArchipelago.Core
                     ticket++;
                 }
 
-                // A light switch's state is saved under the original's identity (SaveIdentity): the
-                // copy would answer to the original's save and network entry, so presses on it went
-                // to the switch in the hub. The copy gets none, and no lamp of its own either.
+                // SaveIdentity would tie the copy to the original's save and network entry.
                 foreach (var identity in clone.GetComponentsInChildren<SaveIdentity>(true))
                     UnityEngine.Object.DestroyImmediate(identity);
 
@@ -539,9 +470,7 @@ namespace BigWalkArchipelago.Core
                 {
                     state.saveIdentity = null;
                     state.savableSystem = SavableSystem.NotSavable;
-                    // Its own ticket as well as a reference to it: OnEnable registers the state
-                    // under `ticket`, which the copy had from the original, so the registration
-                    // failed ("Duplicate ticket" in Player.log) and a press could not find it.
+                    // A fresh ticket too: the original's gave "Duplicate ticket" and lost presses.
                     state.ticket = (ushort)ticket;
                     state.shellReference = new SeaShell.ShellReference((ushort)ticket);
                     ticket++;
@@ -549,9 +478,7 @@ namespace BigWalkArchipelago.Core
                     own ??= state;
                 }
 
-                // A switch that drives a state outside the prop copied (the light switch drives
-                // the one beside it, not its own) would still drive the original: it is pointed at
-                // the copy's own state instead.
+                // A switch driving a state outside the copy would still drive the original's.
                 foreach (var peckSwitch in clone.GetComponentsInChildren<PeckSwitch>(true))
                 {
                     var target = peckSwitch.trackedStateSystem;
@@ -562,10 +489,7 @@ namespace BigWalkArchipelago.Core
                 clone.transform.SetParent(root.transform, false);
                 clone.transform.localPosition = Vector3.zero;
                 clone.transform.localRotation = Quaternion.identity;
-                // A push button's own plate is hidden (ReplacePlate), and the effect that changes its
-                // material while it is held down then failed on every press ("had error in effect"
-                // in Player.log) and lit up whatever shared that material. Taken off before the copy
-                // wakes up, so its state never counts it among its effects.
+                // The hidden plate's press effect threw on each press: removed before it wakes.
                 if (button.Template == PushButton)
                 {
                     foreach (var effect in clone.GetComponentsInChildren<PeckEffectMaterialProperty>(true))
@@ -594,9 +518,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The colour of a button's plate: the colour of the tower it stands for, so the button
-        // says where it goes before its picture is read. The Black Tower's is a dark grey and the
-        // Gauntlet's black, the hub's the beige of its silhouette; with no picture, green.
+        // The colour of the tower the button stands for; green without a picture.
         private static Color PlateColour(string icon)
         {
             switch (icon)
@@ -614,10 +536,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The game's plate is yellow in the mesh itself and a tint only multiplies it, so no blue
-        // can be had from it (the same wall the big keys met). It is hidden and a plain slab of the
-        // same size and place stands in front of where it was: nothing of the button's own works
-        // through the plate, so its interaction is untouched, and the knob stays the game's.
+        // The game's plate is yellow in the mesh, so a plain slab of the same size replaces it.
         private static void ReplacePlate(GameObject target, Color colour)
         {
             Renderer plate = null;
@@ -645,10 +564,7 @@ namespace BigWalkArchipelago.Core
             slab.transform.rotation = plate.transform.rotation;
             slab.transform.position = plate.transform.TransformPoint(filter.sharedMesh.bounds.center);
             slab.transform.localScale = Vector3.Scale(filter.sharedMesh.bounds.size, plate.transform.lossyScale);
-            // The game's own plate material, not whichever vertex-colour material the scene lists
-            // first, which changes from run to run and was sometimes one that glows.
-            // A copy of it: the game animates the button's material while it is held down, and
-            // every slab sharing it (the signs too) lit up with it (2026-10-05).
+            // A copy: the game animates the plate material on press, lighting all that share it.
             if (plate.sharedMaterial != null && _plateMaterial == null)
                 _plateMaterial = new Material(plate.sharedMaterial);
             if (_plateMaterial != null)
@@ -662,11 +578,7 @@ namespace BigWalkArchipelago.Core
         // The slots a table can have, so two slots never share a block of tickets.
         private const int MaxSlots = 40;
 
-        // The first ticket of a block of the button's own tickets that nothing in the game holds.
-        // The game's scene objects carry tickets too, and one of the blocks was one of theirs:
-        // a state of a button then resolved to a switch and every press threw. The next block of
-        // the same slot is taken instead, which is the same on every machine because the scene
-        // is, and never one of another slot's.
+        // Skips blocks a scene object already holds; the scene is the same on every machine.
         private static int FreeTicketBlock(int slot)
         {
             var office = LobbyNetworking.TicketOffice.instance;
@@ -697,7 +609,7 @@ namespace BigWalkArchipelago.Core
         private static HashSet<ushort> _sceneTickets;
         private static float _sceneTicketsAt = -1f;
 
-        // Switched-off objects enter the office only in OnEnable: a hidden button's looked free.
+        // Disabled objects only register in OnEnable, so a hidden button's ticket looked free.
         internal static HashSet<ushort> SceneTickets()
         {
             if (_sceneTickets != null && Time.unscaledTime - _sceneTicketsAt < 5f)
@@ -731,15 +643,13 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Called by Patches/WorldButtonPatch whenever a TrackedPeckState is set: when it is one
-        // of the native buttons', pressed, by the player of THIS machine, its effect runs here.
-        // Another machine's player runs it on their own machine, where the same press arrives.
+        // Runs a native button's effect when this machine's own player pressed it.
         internal static void OnState(TrackedPeckState state, PeckContext context)
         {
             if (!NativeStates.TryGetValue(state.GetInstanceID(), out var button))
                 return;
 
-            // A push button acts when it goes down; a light switch on every flip, either way.
+            // A push button acts when it goes down; a light switch on every flip.
             var flipped = context.state != button.LastState;
             button.LastState = context.state;
             if (button.Template == LightSwitch ? !flipped : context.state < 1)
@@ -749,8 +659,7 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo(
                 $"[{nameof(WorldButtons)}] '{button.Label}' pressed (state {context.state}) by "
                 + $"'{(who != null ? who.name : "<nobody>")}', local={(who != null && who.isLocalPlayer)}.");
-            // A guest's press reaches the host's copy of the button. What acts on the host's world
-            // runs here; what moves the player (a teleport) is sent to the guest's own machine.
+            // A teleport from a guest's press is sent back to the guest's own machine.
             if (who != null && !who.isLocalPlayer && Mirror.NetworkServer.active && button.HostSide)
             {
                 RunPress(button, who.GetComponent<PlayerCharacter>());
@@ -780,7 +689,7 @@ namespace BigWalkArchipelago.Core
         {
             try
             {
-                button.OnPress?.Invoke(presser != null ? presser : Debug.DebugPlayerLookup.FindLocalPlayer());
+                button.OnPress?.Invoke(presser != null ? presser : LocalPlayer.Find());
             }
             catch (Exception ex)
             {
@@ -788,7 +697,6 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The button sits on a post at about the height of a hand, as a mounted one does.
         private const float PostHeight = 1.0f;
 
         private static void AddPost(GameObject root)
@@ -837,9 +745,7 @@ namespace BigWalkArchipelago.Core
             return made > 0;
         }
 
-        // Where the template is looked for: the hub, whose buttons are the plain ones. A tower's own
-        // button is a different thing (its colour and parts are not the hub's), and a copy of it
-        // came out wholly green or wholly wrong.
+        // The hub's buttons are the plain ones; a tower's copy came out wrong.
         private static readonly Vector3 TemplateNear = new Vector3(-219.29f, 33.12f, -521.17f);
         private const float TemplateReach = 40f;
 
@@ -848,8 +754,7 @@ namespace BigWalkArchipelago.Core
 
         private static readonly Dictionary<string, GameObject> Templates = new Dictionary<string, GameObject>();
 
-        // The state of a light switch made here, to set it from the mod (its own sets are not
-        // presses: they carry no player).
+        // Sets from the mod are not presses: they carry no player.
         internal static TrackedPeckState StateOf(int slot)
         {
             if (!Slots.TryGetValue(slot, out var button) || button.Root == null)
@@ -864,10 +769,7 @@ namespace BigWalkArchipelago.Core
             return null;
         }
 
-        // The prop every native copy of a kind is made from, the same one everywhere: a
-        // switched-off copy kept for the whole session, so it survives the world that held the
-        // original (the hub's: a push button by the inventory zone, a light switch in its teaching
-        // area). It is only kept when the original is the hub's; otherwise it is used once.
+        // A disabled copy of the hub's original, kept for the session so it outlives that world.
         private static GameObject GetTemplate(string kind)
         {
             if (Templates.TryGetValue(kind, out var kept) && kept != null)
@@ -898,8 +800,7 @@ namespace BigWalkArchipelago.Core
             return template;
         }
 
-        // What a prop is made of, for the log: every object under it with its components, where
-        // each switch points and how, and the object above it. To learn a prop before copying it.
+        // Logs a prop's objects, components and switch targets, to learn it before copying it.
         private static void Describe(GameObject prop)
         {
             try
@@ -935,8 +836,6 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The nearest loaded prop of a kind (a push button by default), by the name of its root,
-        // that is switched on.
         private static GameObject FindPushButton(Vector3 near, string kind = PushButton)
         {
             GameObject best = null;
@@ -953,8 +852,7 @@ namespace BigWalkArchipelago.Core
                     if (t.name.StartsWith(kind, StringComparison.Ordinal))
                         root = t.gameObject;
 
-                    // One of this mod's own buttons: its parts are named like the game's, but
-                    // copying one would copy tickets already registered.
+                    // One of the mod's own buttons: copying it would copy registered tickets.
                     if (t.name.StartsWith("AP ", StringComparison.Ordinal))
                         ours = true;
                 }
@@ -973,8 +871,7 @@ namespace BigWalkArchipelago.Core
             return best;
         }
 
-        // Two primitives: a post and a flat green cap. No collider on either, so nothing can
-        // catch on them and nothing of the game's physics is involved.
+        // No colliders, so nothing catches on them.
         private static GameObject BuildFromPrimitives(GameObject root)
         {
 
@@ -995,8 +892,7 @@ namespace BigWalkArchipelago.Core
             return root;
         }
 
-        // Paints a button's plate again, in the colour of another tower, without making the button
-        // again: a button made anew flashes and loses the press it is in the middle of.
+        // Made anew, a button flashes and loses the press it is in the middle of.
         internal static void Recolour(int slot, string tint)
         {
             if (!Slots.TryGetValue(slot, out var button) || button.Root == null)
@@ -1010,8 +906,6 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // A plain slab in a colour, in the game's own material, with nothing to collide with: the
-        // signs of the resync stations (Core/ResyncStations).
         internal static GameObject MakeSlab(string name, Vector3 position, Quaternion rotation, Vector3 size, Color colour)
         {
             var slab = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -1036,8 +930,7 @@ namespace BigWalkArchipelago.Core
             if (material != null)
                 renderer.sharedMaterial = material;
 
-            // The game's vertex-colour shader multiplies this over the mesh's own colour,
-            // which a primitive has none of, so the tint is the colour that shows.
+            // The vertex-colour shader multiplies this over the mesh colour; a primitive has none.
             var block = new MaterialPropertyBlock();
             renderer.GetPropertyBlock(block);
             block.SetColor("_TintColor", colour);
@@ -1046,9 +939,7 @@ namespace BigWalkArchipelago.Core
             renderer.SetPropertyBlock(block);
         }
 
-        // A material the game renders with, since the engine's default one may not have
-        // been kept in the build and would come out pink. Found once, on any renderer that
-        // uses the game's vertex-colour shader.
+        // The engine's default material may be stripped from the build and render pink.
         private static Material FindGameMaterial()
         {
             if (_material != null)

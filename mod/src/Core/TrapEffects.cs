@@ -5,27 +5,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // What a trap or a bonus does, on THIS machine's own player (ROADMAP step 3). The host
-    // decides what fires and where a player goes (Core/Traps.cs); every machine, the host
-    // included, then plays the effect on its own player, because a player's hands, movement and
-    // position belong to that player's machine (the game is owner-authoritative for players).
-    //
-    // Everything here goes through the game's own code paths, read with Ghidra on 2026-10-05:
-    //
-    //   drop     PlayerActions.ActionDropPropOrPlayer, what letting go of the drop button calls.
-    //            It throws with the wind-up the arms show; ClearWindUp first makes it a plain drop.
-    //   throw    PlayerDecisions.SetWindUpStartTime(NetworkTime.time), what pressing the button
-    //            does; put back every frame if the player cancels it, and one second past a full
-    //            wind-up (PlayerTunings.maxWindUpDuration) ActionDropPropOrPlayer throws.
-    //   speed    PlayerTunings, a per-player copy: the forward speeds, scaled for a while.
-    //   jump     PlayerTunings.jumpForce (read by PlayerJumper.LocalFixedUpdate) and the cap on
-    //            upward velocity, scaled for a while.
-    //   sleep    asleep two seconds out of seven for a while (player, 2026-10-05): the game's own
-    //            sleep (PlayerSleeper.forceSleeping), and the same speeds and jump at 0 meanwhile.
-    //   night,   SkyManager.SetFixedTime, as DebugDaylight, stepped every frame: the clock
-    //   day      fast-forwards to midnight (noon), then ClearFixedTime and it runs on from there.
-    //   trip,    PlayerGrease.Teleport, the game's own player teleport, as the world buttons.
-    //   meeting
+    // Plays traps and bonuses on this machine's own player: the game is owner-authoritative.
     internal static class TrapEffects
     {
         internal const string Drop = "drop";
@@ -39,57 +19,44 @@ namespace BigWalkArchipelago.Core
         internal const string Sleep = "sleep";
         internal const string Load = "load";
 
-        // A DeathLink received (`death_link_effect: knockout`, players 2026-10-07): what is held
-        // dropped, the packs off (the host's half, Core/Traps), and dazed as after a big fall.
+        // DeathLink received: what is held is dropped and the player is dazed as after a big fall.
         internal const string Knockout = "knockout";
 
-        // The blindfold helmet on every unmasked player for the trap's duration (host only, Core/Traps).
+        // The blindfold helmet on every unmasked player for the trap's duration (host only).
         internal const string Mask = "mask";
 
-        // A flare in front of every player, in the Archipelago colours (Core/BigFlare).
+        // A flare in front of every player, in the Archipelago colours.
         internal const string Flare = "flare";
 
-        // A puzzle's confetti around every player, with its sound (Core/BigConfetti): filler, only a show.
+        // A puzzle's confetti and its sound around every player: filler, only a show.
         internal const string Confetti = "confetti";
 
-        // A clock in every player's hands, on the real time of their own computer (host only, Core/Traps).
+        // A clock in every player's hands, on their own computer's time (host only).
         internal const string BigTime = "time";
 
-        // Every player muted for a while (R9 "No Comms", player 2026-10-13: the player muted, not their radios). Each
-        // machine mutes its own player the way the game's mute does: the game's own state (PlayerNetworking.CmdSetMute,
-        // which shows the mute icon to everyone) and the voice chat's microphone (DissonanceComms.IsMuted), held every
-        // frame so the mute key cannot lift it, then put back as the player had it.
+        // Muted via CmdSetMute and DissonanceComms.IsMuted, held every frame against the mute key.
         internal const string Silence = "silence";
         private static float _silenceUntil = -1f;
         private static bool _silenceWasMuted;
         private static bool _silenceCommsWasMuted;
         private static Dissonance.DissonanceComms _comms;
 
-        // The ground slippery for a while. Each fixed step the game sets the velocity the controls ask for
-        // (PlayerMover.localControlsVelocity, in LocalFixedUpdate, decompiled 2026-10-13); while this lasts the
-        // velocity only drifts towards it (Patches/BigSlidePatch), so starting, stopping and turning slide. Each
-        // machine for its own player. (PlayerMover.defaultSmoothTime, tried first, changed nothing in game.)
+        // While on, BigSlidePatch lets the velocity drift towards what the controls ask for.
         internal const string Slide = "slide";
         private static float _slideUntil = -1f;
 
-        // How much of the asked-for velocity is taken each fixed step (50 a second); 0.04 was a little weak (player, 2026-10-13).
+        // Share of the asked-for velocity taken each fixed step (50 a second).
         internal const float SlideGrip = 0.025f;
 
         internal static bool SlideActive => _slideUntil >= 0f;
 
-        // Every player white for a while, as in the Silent Gauntlet, but only the colour: not its silence (R9, player
-        // 2026-10-07). The Gauntlet's white is `PlayerLooks.SetSpeechlessness`, which `PlayerSpeechless.Update` sets
-        // again every frame; while this lasts it is set to the full after it (Patches/BigGhostPatch), for every player
-        // on this machine, so everyone sees everyone white.
+        // The Silent Gauntlet's white only; BigGhostPatch sets it after PlayerSpeechless.Update.
         internal const string Ghost = "ghost";
         private static float _ghostUntil = -1f;
 
         internal static bool GhostActive => _ghostUntil >= 0f;
 
-        // Big Paint (T5's colour chaos, the trap table: "two players swap colours"): each player takes the next one's
-        // colours (head, torso, legs), in the players' network order, so every machine makes the same swap with nothing
-        // sent; two players swap, more go round. Set once, then swapped in whenever the game sets a colour
-        // (Patches/BigPaintPatch); each one's own put back at the end. Alone, nothing.
+        // Each player takes the next one's colours in netId order: every machine swaps alike.
         internal const string Paint = "paint";
         private static float _paintUntil = -1f;
         private static readonly List<(PlayerCharacter target, PlayerLookSet.LookColor head, PlayerLookSet.LookColor torso, PlayerLookSet.LookColor legs)> Painted = new();
@@ -124,13 +91,7 @@ namespace BigWalkArchipelago.Core
 
         internal static bool PaintActive => _paintUntil >= 0f;
 
-        // Big Goggles (the trap table: the field of view shrinks): the camera reads the player's setting from
-        // `PlayerCameraMinder.fovFromSettings`; while this lasts it is GogglesFactor of it, then the player's own back.
-        // Each machine for its own camera.
-        // Big Pixels (the trap table: the graphics lowered a while, then the player's own back): the game's URP asset
-        // renders at PixelsScale of the screen (0.1, the least it takes: player, 2026-10-13) and is blown up by its nearest pixel (UpscalingFilterSelection.Point),
-        // so the island turns to big square pixels; its own scale and filter back at the end. Each machine for its own
-        // screen; set again should the game's settings put theirs back meanwhile.
+        // URP render scale lowered, upscaled by nearest pixel; 0.1 is the lowest it takes.
         internal const string Pixels = "pixels";
         private const float PixelsScale = 0.1f;
         private static float _pixelsUntil = -1f;
@@ -194,9 +155,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Big Head (the trap table: the players' heads grow): on each machine the other players' heads (the common parent
-        // of their head's renderers: the head and the animated nose) grow HeadFactor times, eased in and out; the own
-        // head is left alone (it is not seen in first person, and the camera may hang from it).
+        // Other players' heads grow; the own head is left alone, the camera may hang from it.
         internal const string Head = "head";
         private const float HeadFactor = 2.5f;
         private const float HeadEase = 1f;
@@ -204,7 +163,7 @@ namespace BigWalkArchipelago.Core
         private static float _headUntil = -1f;
         private static readonly Dictionary<int, (Transform bone, Vector3 own, Vector3 ownPosition)> Heads = new();
 
-        // Raised as it grows, so it sits on the body rather than sinking into it (player, 2026-10-13): metres per unit of growth.
+        // Metres the head is raised per unit of growth, so it sits on the body instead of sinking.
         private const float HeadLift = 0.15f;
 
         private static Transform HeadBone(PlayerCharacter player)
@@ -272,8 +231,7 @@ namespace BigWalkArchipelago.Core
 
         private static float _headFactor = 1f;
 
-        // Every frame after the animation (TrapRunner.LateUpdate), which places the head again each frame: the lift,
-        // from where the animation put it.
+        // After the animation, which places the head again every frame.
         internal static void LateTick()
         {
             LateBrain();
@@ -305,13 +263,9 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} Big Head over.");
         }
 
-        // Big Brain (the trap table: the players' heads become a buoy light and glow): on each machine the other players'
-        // heads are hidden and a copy of the island's lamp (its body and its glowing halo, lit, with a light of its own)
-        // hangs where the head is (the head's bone, as Big Head's), BrainSize across; the own head is left alone. Kept
-        // hidden after the animation every frame (LateTick); the heads back and the lamps gone at the end.
+        // Other players' heads hidden and replaced by a copy of the island's buoy lamp.
         internal const string Brain = "brain";
         private const float BrainSize = 0.8f;
-        // A little higher than the head's centre (player, 2026-10-13).
         private const float BrainLift = 0.1f;
         private const float BrainShine = 1.8f;
         private static readonly Color BrainGlow = new(1f, 0.8f, 0.45f, 1f);
@@ -324,7 +278,7 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} Big Brain for {seconds}s.");
         }
 
-        // A lamp of the island to copy, a lit one first (player, 2026-10-13: lit makes more sense), its colours then.
+        // A lit lamp of the island to copy, if any.
         private static GameObject LampTemplate()
         {
             GameObject any = null;
@@ -342,7 +296,6 @@ namespace BigWalkArchipelago.Core
             return any;
         }
 
-        // A copy of the lamp's meshes (the body and the halo, even when the lamp is off), centred, BrainSize across.
         private static GameObject MakeBrain(Transform bone)
         {
             var template = LampTemplate();
@@ -377,11 +330,10 @@ namespace BigWalkArchipelago.Core
                 copy.sharedMaterials = renderer.sharedMaterials;
                 var block = new MaterialPropertyBlock();
                 renderer.GetPropertyBlock(block);
-                // The halo glowing whatever the template's state.
+                // The halo glows whatever the template's state.
                 if (renderer.name == "LobbyFlareMesh")
                     block.SetColor("_MainColor", BrainGlow);
-                // The body lit: its tint pushed past white so it shines (a lit lamp of the island could not be read,
-                // 2026-10-13: the copies stayed the dull unlit colour).
+                // Tint pushed past white so the body shines: a lit lamp's colours can't be read.
                 else
                     block.SetColor("_TintColor", block.GetColor("_TintColor") * BrainShine);
                 copy.SetPropertyBlock(block);
@@ -407,7 +359,7 @@ namespace BigWalkArchipelago.Core
             var size = Mathf.Max(extent.x, Mathf.Max(extent.y, extent.z));
             model.transform.localScale = Vector3.one * (size > 0.0001f ? BrainSize / size : 1f);
 
-            // Gentle effects (ModConfig.GentleEffects, player 2026-10-14): the lamp without its light on this screen.
+            // Gentle effects: no light from the lamp on this screen.
             if (!ModConfig.GentleEffects.Value)
             {
                 var light = lamp.AddComponent<Light>();
@@ -479,10 +431,7 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} Big Brain over.");
         }
 
-        // Big Arms (player, 2026-10-13: the ends of the arms, the hands, grow): every player's hands (the parts whose name
-        // says hand) grow ArmsFactor times, eased in and out. Seen on the other players only: the first-person hands are
-        // drawn in a way their size does not reach (tried in LateUpdate and after PlayerArms.UpdateScreenSpaceArms,
-        // 2026-10-13; the player: leave it so).
+        // Seen on the other players only: the first-person hands ignore their scale.
         internal const string Arms = "arms";
         private const float ArmsFactor = 2.5f;
         private const float ArmsEase = 1f;
@@ -546,8 +495,7 @@ namespace BigWalkArchipelago.Core
 
         private static float _armsFactor = 1f;
 
-        // After the game has placed the arms for the frame (the first-person ones are set again every frame, 2026-10-13:
-        // the own hands stayed small): the hands' size.
+        // After the game places the arms, since it sets them again every frame.
         private static void LateArms()
         {
             if (_armsUntil < 0f)
@@ -577,14 +525,11 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} Big Arms over.");
         }
 
-        // Big Smell (the trap table; player, 2026-10-13: the others pushed away, the gas greenish): every player gives off
-        // a green cloud, and on each machine the own player is pushed away from any other player nearer than SmellRadius
-        // (each machine moves only its own player, so everyone is pushed apart). The clouds gone at the end.
+        // Green cloud on every player; each machine pushes its own player away from the others.
         internal const string Smell = "smell";
         private const float SmellRadius = 5f;
         private const float SmellPush = 9f;
-        // Added to the velocity the controls ask for (Patches/BigSmellPatch), so the game's own movement keeps the
-        // player out of the walls (player, 2026-10-14: moving the body itself went through them).
+        // Added to the controls' velocity (BigSmellPatch); moving the body went through walls.
         internal static Vector3 SmellVelocity;
         private static float _smellUntil = -1f;
         private static readonly Dictionary<int, GameObject> Clouds = new();
@@ -595,7 +540,6 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} Big Smell for {seconds}s.");
         }
 
-        // The cloud (player, 2026-10-13: the flare as the particle system): the look of a flare gun shot's smoke.
         private static bool _smellLogged;
 
         private static ParticleSystem SmellTemplate()
@@ -608,9 +552,7 @@ namespace BigWalkArchipelago.Core
             return null;
         }
 
-        // A copy of the shot kept still, its own playing off: its smoke system (the smoke's look) only gets the puffs
-        // the mod emits itself, green, all around the player (2026-10-14: the shot's smoke comes from its flight, a
-        // copy hung on a player gave next to none).
+        // The shot's own playing is off: its smoke system only gets the green puffs emitted here.
         private static GameObject MakeCloud(PlayerCharacter player)
         {
             var template = SmellTemplate();
@@ -714,7 +656,7 @@ namespace BigWalkArchipelago.Core
             {
                 if (player == null || player == own)
                     continue;
-                // The bodies, not the characters' roots, which do not follow them (2026-10-14: the players drew together).
+                // The bodies, not the character roots, which do not follow them.
                 var away = BodyPosition(own) - BodyPosition(player);
                 away.y = 0f;
                 var distance = away.magnitude;
@@ -724,8 +666,7 @@ namespace BigWalkArchipelago.Core
                 push += direction * (1f - distance / SmellRadius);
             }
             push = Vector3.ClampMagnitude(push, 1f) * SmellPush;
-            // The controls' velocity is in the player's own frame, the way the camera faces (2026-10-14: facing the
-            // other player, the push drew in).
+            // The controls' velocity is in the player's own frame, the way the camera faces.
             var camera = Camera.main;
             if (camera != null)
                 push = Quaternion.Inverse(Quaternion.Euler(0f, camera.transform.eulerAngles.y, 0f)) * push;
@@ -754,14 +695,11 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} Big Smell over.");
         }
 
-        // Big Brother (player, 2026-10-13: every player small for a while, for real: body, camera and collisions; 2026-10-14:
-        // with a transition): on each machine every player's body (the transform of its Rigidbody, which carries the
-        // collider, the model and the head the camera hangs from) shrinks to BrotherFactor, eased in and out.
+        // Scales each Rigidbody transform, so the collider, model and camera shrink together.
         internal const string Brother = "brother";
         private const float BrotherFactor = 0.4f;
         private const float BrotherEase = 2f;
-        // The voices pitched up as the bodies shrink (player, 2026-10-14), through the game's own voice pitch
-        // (Patches/BigBrotherVoicePatch).
+        // Voices pitched up as the bodies shrink, through BigBrotherVoicePatch.
         private const float BrotherVoiceRaise = 1.5f;
         internal static float BrotherVoicePitch { get; private set; } = 1f;
         private static float _brotherStart = -1f;
@@ -827,13 +765,10 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} Big Brother over.");
         }
 
-        // Big Reset (the trap table's Big Slam, renamed by the player 2026-10-14): the nearest puzzle still holding its
-        // gourd put back as it starts, host only (Core/Traps.FireReset).
+        // The nearest puzzle still holding its gourd is reset (host only, Traps.FireReset).
         internal const string Reset = "reset";
 
-        // Big Break (player, 2026-10-14: chairs spawned and the players sat in them): the host puts a folding chair
-        // before every player (Core/Traps); each machine then sits its own player on the chair nearest the spot it
-        // was told, as soon as that chair has reached it (a guest gets the spawn a moment later).
+        // The host spawns a chair by each player; each machine seats its player once it is there.
         internal const string Break = "break";
         private const float BreakWait = 5f;
         private static Vector3 _breakAt;
@@ -848,7 +783,6 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} Big Break: a chair at {_breakAt}.");
         }
 
-        // The trap's chairs (clones, not the island's own) and their seats.
         private static List<PlayerPose> BreakSeats()
         {
             var seats = new List<PlayerPose>();
@@ -876,8 +810,7 @@ namespace BigWalkArchipelago.Core
             return seat;
         }
 
-        // Every machine sits its own player on its chair, and also the other players on theirs, as it sees them: the
-        // host sits everyone through the server (Core/Traps), but a guest did not show the others sat (2026-10-14).
+        // Each machine also seats the others as it sees them, or a guest would not show them sat.
         private static readonly HashSet<int> BreakSat = new();
 
         private static void StepBreak(float now)
@@ -911,7 +844,6 @@ namespace BigWalkArchipelago.Core
 
         internal const string Goggles = "goggles";
         private const float GogglesFactor = 0.45f;
-        // Eased in and out over this long (player, 2026-10-13).
         private const float GogglesEase = 1.5f;
         private static float _gogglesStart = -1f;
         private static float _gogglesUntil = -1f;
@@ -933,7 +865,6 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} Big Goggles: field of view {_gogglesOwnFov:F0} towards {_gogglesOwnFov * GogglesFactor:F0}.");
         }
 
-        // Every frame while it lasts: narrowing, held, then widening back; the player's own when it is over.
         private static void StepGoggles(float now)
         {
             // The player changed the setting meanwhile: that becomes their own.
@@ -967,18 +898,15 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} Big Goggles over: field of view {_gogglesOwnFov:F0}.");
         }
 
-        // Big Air (a player's idea, 2026-10-13): a timed tomato in the hands, as for Big Trip, and when it pops the
-        // player is thrown high up, their body pushed straight up for a while (HoldLaunch). Each machine
-        // for its own player; the host keeps DeathLink quiet for the fall (Core/Traps).
+        // A timed tomato in the hands; when it pops the player is thrown high (no DeathLink).
         internal const string Air = "air";
-        // Much higher (player, 2026-10-13): a push held ThrustSeconds at ThrustSpeed (the game caps a body near 60 m/s: the player asked for 4-5 s); never into a ceiling.
+        // The game caps a body near 60 m/s, so the push is held for a while instead.
         private const float ThrustSpeed = 60f;
         private const float ThrustSeconds = 5f;
         private const float CeilingRoom = 2f;
         private static bool _countdownLaunch;
 
-        // The colour Big Paint gives this part of this player, if any (Patches/BigPaintPatch swaps it in as the game
-        // sets it: held from outside every frame, the mouth flickered as the game set it again, 2026-10-13).
+        // Swapped in as the game sets it: setting it every frame from outside made it flicker.
 
         internal static bool TryPaintColour(PlayerLooks looks, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<PlayerLooks.LooksRenderer> part, out PlayerLookSet.LookColor colour)
         {
@@ -1014,9 +942,8 @@ namespace BigWalkArchipelago.Core
                 _paintUntil = -1f;
                 return;
             }
-            // Off first: the patch would swap the own colours put back below.
+            // Off first, or the patch would swap out the colours put back below.
             _paintUntil = -1f;
-            // Each player's own colours back, as they were before (player, 2026-10-13), then the game's own refresh.
             foreach (var (target, head, torso, legs) in OwnColours)
             {
                 try
@@ -1040,8 +967,7 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} Big Paint over.");
         }
 
-        // The game writes a player's whiteness only when it changes (2026-10-13: the white stayed): each player is
-        // given back their own (0 outside the Gauntlet) at the end.
+        // The game writes whiteness only when it changes, so each one's own is set back at the end.
         private static void EndGhost()
         {
             if (_ghostUntil < 0f)
@@ -1062,14 +988,13 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The boosts and the confetti, not a trap: they get the item sound, not the alert of a trap.
+        // Bonuses get the item sound, not the trap alert.
         internal static bool IsBonus(string key) => key == Day || key == Speed || key == Jump || key == Confetti;
 
         // Every effect this build plays, so a key from a newer apworld is refused by name.
         internal static readonly string[] Known = { Drop, Throw, Trip, Meeting, Night, Sleep, Load, Mask, Flare, BigTime, Silence, Slide, Ghost, Paint, Air, Goggles, Pixels, Head, Brain, Arms, Smell, Brother, Reset, Break, Day, Speed, Jump, Confetti, Knockout };
 
-        // Gentle effects (ModConfig.GentleEffects, the accessibility setting; player 2026-10-14): the traps that are hard
-        // to look at (Big Goggles' narrowing view, Big Pixels) are not shown on this machine's screen.
+        // Gentle effects: traps that are hard to look at are not shown on this screen.
         private static bool Gentle(string key)
         {
             if (!ModConfig.GentleEffects.Value)
@@ -1085,7 +1010,6 @@ namespace BigWalkArchipelago.Core
             return string.IsNullOrEmpty(key) ? "?" : "Big " + char.ToUpperInvariant(key[0]) + key.Substring(1);
         }
 
-        // How long past a full wind-up the throw goes: a second at most (player, 2026-10-05).
         private const float ThrowHoldSeconds = 1f;
         private const float SpeedFactor = 1.75f;
         private const float JumpFactor = 1.8f;
@@ -1094,13 +1018,11 @@ namespace BigWalkArchipelago.Core
 
         private const string Tag = "[" + nameof(TrapEffects) + "]";
 
-        // --- throw ---
         private static PlayerCharacter _throwPlayer;
         private static float _throwAt = -1f;
         private static double _throwWindUpStart;
         private static bool _cancelRefusedLogged;
 
-        // --- Big Speed, Big Jump, Big Sleep: the tunings, the player's own values, until when ---
         private static PlayerTunings _moveTunings;
         private static float[] _moveBase;
         private static float _speedUntil = -1f;
@@ -1109,18 +1031,15 @@ namespace BigWalkArchipelago.Core
         private static float _sleepStart;
         private static PlayerCharacter _sleeper;
 
-        // Big Speed, Big Jump or Big Sleep holds this machine's tunings (Patches/BigRunCompat).
+        // Big Speed, Big Jump or Big Sleep holds this machine's tunings (BigRunCompat).
         internal static bool MovementActive => _moveTunings != null;
 
-        // Big Sleep's rhythm (player, 2026-10-05): asleep and still this long, then awake this
-        // long, again and again for `trap_duration`.
         private const float AsleepSeconds = 2f;
         private const float AwakeSeconds = 5f;
 
         // Lasting effects received before this machine's player existed, and until when.
         private static readonly Dictionary<string, float> PendingMovement = new();
 
-        // --- night and day ---
         private const float FastForwardSeconds = 4f;
         private static bool _skyRunning;
         private static float _skyFrom;
@@ -1128,9 +1047,7 @@ namespace BigWalkArchipelago.Core
         private static float _skySpan;
         private static float _skyStart;
 
-        // --- the masks some puzzles put on the screen (PeckEffectMask: binoculars, telescope,
-        // blindfold), by instance, while on. Big Meeting and Big Trip leave a masked player alone:
-        // they may be in that puzzle, and moving them out or others in could strand someone. ---
+        // Puzzle screen masks (binoculars, telescope, blindfold); masked players are not moved.
         private static readonly HashSet<int> ActiveMasks = new();
 
         internal static bool LocalMasked => ActiveMasks.Count > 0;
@@ -1146,10 +1063,9 @@ namespace BigWalkArchipelago.Core
                 Plugin.Log.LogInfo($"{Tag} Screen mask {mask.maskType} {(active ? "on" : "off")} ('{mask.gameObject.name}'); {ActiveMasks.Count} on.");
         }
 
-        // Plays an effect on this machine's player. `destination` is for trip and meeting.
         internal static void Play(string key, int seconds, Vector3? destination, float yaw)
         {
-            var player = Debug.DebugPlayerLookup.FindLocalPlayer();
+            var player = LocalPlayer.Find();
             if (player == null)
             {
                 // A guest told on joining, before its player exists: kept for when it does.
@@ -1235,7 +1151,7 @@ namespace BigWalkArchipelago.Core
                             Plugin.Log.LogInfo($"{Tag} {DisplayName(key)}: no destination for this player (spared).");
                         break;
                     case Night:
-                        StartSky(MidnightHour); // the same hour for everyone (player, 2026-10-07: no softer dusk)
+                        StartSky(MidnightHour); // the same hour for everyone
                         break;
                     case Day:
                         StartSky(NoonHour);
@@ -1258,7 +1174,6 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Every frame: the throw that is due, and whatever has run its time.
         internal static void Tick()
         {
             var now = Time.unscaledTime;
@@ -1276,7 +1191,6 @@ namespace BigWalkArchipelago.Core
             if (_slideUntil >= 0f && now >= _slideUntil)
                 EndSlide();
 
-            // The game puts each player's own colour back on its next frame.
             if (_ghostUntil >= 0f && now >= _ghostUntil)
                 EndGhost();
 
@@ -1327,7 +1241,7 @@ namespace BigWalkArchipelago.Core
                 HoldLaunch();
         }
 
-        // The world is going away: everything put back now, while the objects still exist.
+        // The world is going away: everything is put back while the objects still exist.
         internal static void EndAll()
         {
             _throwAt = -1f;
@@ -1384,14 +1298,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // ------------------------------------------------------------------
-        // The wait before a teleport (player, 2026-10-05): three seconds, then the teleport. No
-        // text on screen and no sound (player: a beep made in Unity was not heard in the game).
-        // ------------------------------------------------------------------
-
-        // The tomato is set going 0.3 s after it is handed over and pops 3 s later
-        // (GadgetItemSpawner.TomatoSeconds); the teleport comes a second after the pop, so the pop
-        // is heard where the player stood (player, 2026-10-06).
+        // The teleport comes a second after the tomato pops, so the pop is heard where they stood.
         private const float CountdownSeconds = 0.3f + GadgetItemSpawner.TomatoSeconds + 1f;
         private static float _countdownEnd = -1f;
         private static string _countdownName;
@@ -1433,9 +1340,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The game holds a body's climb back (2026-10-13: 110 m/s went barely higher than 70), so the push is kept up a
-        // while, as a rocket: the speed set again every frame for up to ThrustSeconds, the height its time, and it
-        // stops CeilingRoom under a ceiling.
+        // The game holds a body's climb back, so the speed is set again every frame for a while.
         private static Rigidbody _launchBody;
         private static float _launchUntil = -1f;
 
@@ -1480,10 +1385,6 @@ namespace BigWalkArchipelago.Core
             _launchBody.velocity = new Vector3(velocity.x, ThrustSpeed, velocity.z);
         }
 
-        // ------------------------------------------------------------------
-        // Hands
-        // ------------------------------------------------------------------
-
         private static void StartSilence(PlayerCharacter player, int seconds)
         {
             if (_silenceUntil < 0f)
@@ -1503,7 +1404,7 @@ namespace BigWalkArchipelago.Core
         {
             try
             {
-                var player = Debug.DebugPlayerLookup.FindLocalPlayer();
+                var player = LocalPlayer.Find();
                 var networking = player != null ? player.GetComponent<PlayerNetworking>() : null;
                 if (networking != null && !networking.isMuted)
                     networking.CmdSetMute(true);
@@ -1525,7 +1426,7 @@ namespace BigWalkArchipelago.Core
             _silenceUntil = -1f;
             try
             {
-                var player = Debug.DebugPlayerLookup.FindLocalPlayer();
+                var player = LocalPlayer.Find();
                 var networking = player != null ? player.GetComponent<PlayerNetworking>() : null;
                 if (networking != null && networking.isMuted != _silenceWasMuted)
                     networking.CmdSetMute(_silenceWasMuted);
@@ -1584,8 +1485,7 @@ namespace BigWalkArchipelago.Core
             _throwAt = Time.unscaledTime + windUp + ThrowHoldSeconds;
         }
 
-        // The throw is forced (player, 2026-10-05): the game's cancel (right click) clears the
-        // wind-up, and every frame until the throw it is put back as it was.
+        // The game's cancel clears the wind-up, so it is put back every frame until the throw.
         private static void HoldWindUp()
         {
             var player = _throwPlayer;
@@ -1612,8 +1512,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Big Throw works whatever lock_abilities says (player, 2026-10-13): the Throwing lock lets the trap's own
-        // wind-up and throw through while this is set (Patches/AbilityLockPatches).
+        // Lets the trap's own throw through the Throwing lock (AbilityLockPatches).
         internal static bool TrapIsThrowing { get; private set; }
 
         private static void FinishThrow()
@@ -1628,7 +1527,6 @@ namespace BigWalkArchipelago.Core
                 if (player == null || player.hands == null)
                     return;
 
-                // Let go before the five seconds (or never picked up): the wind-up goes.
                 if (!player.hands.isHoldingSomething)
                 {
                     player.decisions?.ClearWindUp();
@@ -1649,15 +1547,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // ------------------------------------------------------------------
-        // Movement: Big Speed, Big Jump, Big Sleep
-        // ------------------------------------------------------------------
-
-        // All three change the same PlayerTunings, so none of them scales and puts back on its
-        // own: the player's own values are read once, and every frame while any is running the
-        // tunings are written as those values times what is running (asleep beats faster). An
-        // effect ending can then never leave a player faster, slower or stuck for good, whatever
-        // order they come and go in. A second one of a kind lengthens it, never stacks.
+        // All three write the same tunings from the base values, so none can leave them changed.
         private static void StartMovement(PlayerCharacter player, int seconds, string key)
         {
             var tunings = player.tunings;
@@ -1704,7 +1594,7 @@ namespace BigWalkArchipelago.Core
 
         private static void PlayPendingMovement(float now)
         {
-            var player = Debug.DebugPlayerLookup.FindLocalPlayer();
+            var player = LocalPlayer.Find();
             if (player == null)
                 return;
 
@@ -1760,7 +1650,6 @@ namespace BigWalkArchipelago.Core
 
             try
             {
-                // Asleep for AsleepSeconds out of every AsleepSeconds + AwakeSeconds of Big Sleep.
                 var frozen = _sleepUntil >= 0f
                              && (Time.unscaledTime - _sleepStart) % (AsleepSeconds + AwakeSeconds) < AsleepSeconds;
                 SetAsleep(frozen);
@@ -1776,8 +1665,7 @@ namespace BigWalkArchipelago.Core
                 t.jumpForce = b[7] * jump;
                 t.maxUpwardsVelocity = frozen ? b[8] : b[8] * jump;
 
-                // Asleep, the camera does not move either (player, 2026-10-05: looking round woke
-                // the walker up).
+                // The camera is frozen too: looking round woke the walker up.
                 t.mouseLookSpeed = frozen ? 0f : b[9];
                 t.stickLookSpeed = frozen ? 0f : b[10];
             }
@@ -1790,12 +1678,9 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The game's own sleep (PlayerSleeper.forceSleeping): the walker nods off, as when left
-        // alone, for the asleep part of Big Sleep.
         private static bool _asleep;
 
-        // Whether Big Sleep has this machine's walker asleep right now (Patches/TrapPatches: no
-        // crouching meanwhile either).
+        // Big Sleep has the walker asleep now; TrapPatches blocks crouching meanwhile.
         internal static bool Asleep => _asleep;
 
         private static void SetAsleep(bool asleep)
@@ -1810,15 +1695,11 @@ namespace BigWalkArchipelago.Core
                 {
                     _sleeper.sleeper.forceSleeping = asleep;
 
-                    // Nearly asleep at once, not after the game's slow nod-off, so the picture and
-                    // the stillness come together (player, 2026-10-05). Not all the way: the game
-                    // only moves the animation when the sleepiness changes from one frame to the
-                    // next, so set to its target it played the sound and never the animation.
+                    // Not fully: the game only animates when sleepiness changes between frames.
                     if (asleep)
                         _sleeper.sleeper.smoothSleepiness = Mathf.Max(_sleeper.sleeper.smoothSleepiness, 0.85f);
                     else
-                        // forceSleeping zeroed the idle clock: without a fresh action the game
-                        // would keep the walker asleep until a button is pressed.
+                        // forceSleeping zeroed the idle clock, which would keep the walker asleep.
                         _sleeper.sleeper.RecordAction();
                 }
             }
@@ -1860,13 +1741,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // ------------------------------------------------------------------
-        // Sky
-        // ------------------------------------------------------------------
-
-        // The clock fast-forwards to the hour (never backwards: it goes round to it), then runs on
-        // from there. Nothing is put back afterwards: the day has moved (player, 2026-10-05).
-        // A second one during the first starts again from wherever the sky has got to.
+        // The clock fast-forwards to the hour, never backwards, then runs on; nothing is put back.
         private static void StartSky(float hour)
         {
             _skyFrom = SkyManager.GetCurrentTime();

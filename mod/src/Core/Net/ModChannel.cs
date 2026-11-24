@@ -7,116 +7,58 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Net
 {
-    // The host telling its guests what only the host can know.
-    //
-    // Only the host runs an Archipelago client, so only the host ever learns
-    // that the slot is connected, what it is playing for, what was just sent
-    // or received — and which radio stations have been granted. Measured in
-    // co-op on 2026-09-23: a guest saw none of the overlay, and never heard a
-    // note of radio music, before or after the item arrived. Both need the
-    // host to say something, which is what this carries.
-    //
-    // HOW, and whose recipe it is. A custom Mirror message was long thought
-    // closed to this mod, because Il2CppInterop cannot marshal a delegate
-    // over a non-blittable struct and Mirror's typed messages are exactly
-    // that. The low-level route is not typed: NetworkClient.handlers and
-    // NetworkServer.handlers map a ushort to a NetworkMessageDelegate taking
-    // (NetworkConnection, NetworkReader, int), and a raw NetworkWriter goes
-    // out through NetworkConnection.Send. The Big TV mod does precisely this
-    // on the very same game build, which is where the recipe was read from
-    // (its member references, 2026-09-23), not guessed at.
-    //
-    // THE ONE RULE THAT SHAPES EVERYTHING BELOW. This build of Mirror
-    // disconnects a peer that receives a message id it has no handler for —
-    // "NetworkClient: failed to unpack and invoke message. Disconnecting."
-    // and the server's twin, both read out of global-metadata.dat. So neither
-    // side may ever send first to a peer that has not proven it runs this
-    // mod, or a player who kept the mod installed would be thrown out of
-    // every vanilla game they joined. Hence the handshake:
-    //
-    //   1. The host spawns a BEACON — an empty networked object under an
-    //      asset id of ours. An unknown spawn is not fatal (a guest without a
-    //      handler logs "Could not spawn assetId" and carries on, observed
-    //      2026-09-22), and ForceShown puts it past any interest management.
-    //   2. A guest whose mod builds the beacon now KNOWS the host runs the
-    //      mod, and only then says Hello.
-    //   3. The host only ever writes to a connection that said Hello.
-    //
-    // What goes across is a whole snapshot, once a second, rather than a
-    // stream of changes: a guest joining late, or one that missed a message,
-    // is caught up by the next one, and there is no state to fall out of
-    // step. It is a few hundred bytes.
+    // Raw Mirror messages from the host; an unknown id disconnects a peer, hence the beacon.
     internal class ModChannel : MonoBehaviour
     {
-        // Constructor required by Il2CppInterop for any type injected into IL2CPP.
+        // Required by Il2CppInterop for any injected type.
         public ModChannel(IntPtr ptr) : base(ptr)
         {
         }
 
-        // Clear of Big TV's 0xB17B, and checked against whatever else is
-        // registered before being claimed.
+        // Clear of Big TV's 0xB17B, and checked against other handlers before being claimed.
         internal const ushort MessageId = 0xB1A9;
 
-        // In the mod's own asset id block: clear of the cosmetic gourd
-        // (0xB16_9A00), the retired per-kind gadget ids (0xB16_9B01 to 0xB16_9B11)
-        // and the per-instance ones (0xB16_9C00 to 0xB16_9E1F).
+        // In the mod's own asset id block, clear of the gourd and gadget ids.
         internal const uint BeaconAssetId = 0xB16_9BFE;
 
-        // Both ends must speak the same version; a mismatch is logged once
-        // and ignored rather than half-read.
+        // A mismatch is logged once and ignored rather than half-read.
         private const byte ProtocolVersion = 26;
 
         private const byte KindHello = 1;
         private const byte KindSnapshot = 2;
 
-        // Debug only: the host calling the loopback guest to its side (see
-        // Debug/LoopbackGuest.cs). Only ever sent to a connection from this
-        // same PC that said hello, so no remote player receives it; a guest
-        // that does not know it ignores it, like any kind but a snapshot.
+        // Debug only: sent only to a loopback guest on this PC that said hello.
         private const byte KindSummon = 3;
 
-        // The host tells a guest that the guest pressed one of the mod's world buttons: the press
-        // reaches the host's copy of the button (the game is host-authoritative), but what the
-        // button does, a teleport, has to happen on the machine of the player it moves.
+        // The press reaches the host's button, but the teleport must happen on the guest's machine.
         private const byte KindPress = 4;
 
-        // The host tells a guest something for its feed (a press of its refused on the host).
         private const byte KindNotice = 5;
 
-        // The host tells a guest to play a trap or a bonus on its own player (Core/TrapEffects),
-        // with where to go for Big Trip and Big Meeting.
         private const byte KindEffect = 6;
 
-        // A guest tells the host whether a puzzle's mask is on its screen, which Big Trip and Big
-        // Meeting read (Core/Traps). The only kind a guest sends besides hello.
+        // The only kind a guest sends besides hello.
         private const byte KindStatus = 7;
 
-        // U2: the host tells the guests the map tracker's state of every check (Core/MapTracker).
         private const byte KindMap = 8;
 
-        // A chunk of a blob the host shares (BlobChannel): channel 0 tile sounds, 1 drawings.
         private const byte KindBlob = 9;
 
         private const float SnapshotIntervalSeconds = 1f;
 
-        // A guest stops showing the host's overlay once the host has been
-        // silent this long: whatever it last said is no longer true.
         private const float SnapshotStaleSeconds = 5f;
 
-        // --- host state ---
         private static readonly HashSet<int> Announced = new();
         private static GameObject _beacon;
         private static bool _serverHandlerRegistered;
         private float _nextSnapshot;
 
-        // --- guest state ---
         private static bool _clientHandlerRegistered;
         private static bool _beaconHandlerRegistered;
         private static bool _hostHasMod;
         private static bool _helloSent;
         private static bool _versionMismatchLogged;
 
-        // --- what a guest was last told ---
         internal sealed class MirroredLine
         {
             internal string Text;
@@ -132,22 +74,14 @@ namespace BigWalkArchipelago.Core.Net
         internal static readonly List<MirroredLine> MirroredLines = new();
         private static float _receivedAt = -1f;
 
-        // ------------------------------------------------------------------
-        // Builds that do not match (0.4.0, player 2026-10-09). A guest on another build of the mod
-        // ignores its host, and the host its guest, and until now only the log said so: the screen
-        // stayed empty. These lines are drawn by the overlay (ApStatusOverlay), in warning colour.
-        // ------------------------------------------------------------------
-
+        // A guest and host on different builds ignore each other; the overlay says so.
         private const float SilentGuestSeconds = 60f;
         private const float UnansweredHelloSeconds = 25f;
 
-        // Host: guests whose hello named another protocol, and guests with a player that never said
-        // hello at all (no mod, or a build too old to).
         private static readonly Dictionary<int, byte> MismatchedGuests = new();
         private static readonly Dictionary<int, float> FirstSeen = new();
         private static readonly HashSet<int> SilentGuests = new();
 
-        // Guest: the host spoke another protocol, or never answered our hello.
         private static bool _hostIsAnotherBuild;
         private static float _helloAt = -1f;
 
@@ -170,10 +104,7 @@ namespace BigWalkArchipelago.Core.Net
             return lines;
         }
 
-        // A guest as the host names them on screen: the player's own name (PlayerNetworking.
-        // moderationNameSanitized, their Steam or Epic pseudo; `username` is only an internal id,
-        // "127.0.0.1-1" on a loopback guest, measured 2026-10-09), else the connection's number.
-        // Never the platform id.
+        // The player's display name, else the connection number; never the platform id.
         internal static string PlayerLabel(int connectionId)
         {
             try
@@ -196,7 +127,6 @@ namespace BigWalkArchipelago.Core.Net
             return $"Player #{connectionId}";
         }
 
-        // Host, about once a second: who is on this session and has not said hello.
         private static float _nextGuestCheck;
 
         private static void TrackGuests()
@@ -213,7 +143,7 @@ namespace BigWalkArchipelago.Core.Net
                     continue;
                 live.Add(connection.connectionId);
 
-                // Only a connection with a player in the world counts: one still loading is not silent.
+                // Only a connection with a player in the world counts: a loading one is not silent.
                 if (connection.identity == null || Announced.Contains(connection.connectionId)
                     || MismatchedGuests.ContainsKey(connection.connectionId))
                     continue;
@@ -236,8 +166,6 @@ namespace BigWalkArchipelago.Core.Net
             SilentGuests.RemoveWhere(id => !live.Contains(id) || Announced.Contains(id));
         }
 
-        // True on a guest that has heard from its host recently enough to
-        // believe it. Never true on the host, which has the real thing.
         internal static bool HasFreshSnapshot =>
             !NetworkServer.active
             && _receivedAt >= 0f
@@ -262,10 +190,6 @@ namespace BigWalkArchipelago.Core.Net
                 Plugin.Log.LogWarning($"[{nameof(ModChannel)}] Tick failed, ignored: {ex.Message}");
             }
         }
-
-        // ------------------------------------------------------------------
-        // Host
-        // ------------------------------------------------------------------
 
         [HideFromIl2Cpp]
         private void TickHost()
@@ -343,9 +267,7 @@ namespace BigWalkArchipelago.Core.Net
 
             if (handlers.ContainsKey(MessageId))
             {
-                // Ours from a previous session is fine to replace; anybody
-                // else's is not ours to take, and taking it would break
-                // whatever owns it.
+                // Ours from a previous session may be replaced; anyone else's is not ours to take.
                 if (_serverHandlerRegistered)
                     handlers.Remove(MessageId);
                 else
@@ -371,9 +293,7 @@ namespace BigWalkArchipelago.Core.Net
                 var beacon = new GameObject("Big Walk Archipelago beacon (AP)");
                 var identity = beacon.AddComponent<NetworkIdentity>();
 
-                // Past any interest management: a guest standing far from
-                // wherever this lands must still see it, or it would never
-                // learn the host runs the mod.
+                // Past interest management, or a far guest would never learn the host runs the mod.
                 identity.visible = Visibility.ForceShown;
 
                 NetworkServer.Spawn(beacon, BeaconAssetId);
@@ -383,8 +303,7 @@ namespace BigWalkArchipelago.Core.Net
             }
             catch (Exception ex)
             {
-                // Not retried every frame: a beacon that cannot spawn will
-                // not spawn a frame later either.
+                // Not retried: a beacon that cannot spawn will not spawn a frame later either.
                 _beacon = new GameObject("Big Walk Archipelago beacon (failed)");
                 Plugin.Log.LogWarning($"[{nameof(ModChannel)}] Could not spawn the beacon: {ex.Message}");
             }
@@ -405,8 +324,7 @@ namespace BigWalkArchipelago.Core.Net
             Announced.RemoveWhere(id => !live.Contains(id));
         }
 
-        // After a guest says hello, the holds are said again twice, a few seconds apart: the first
-        // time its world is usually still filling in.
+        // Sent again twice after hello: the guest's world is usually still filling in.
         private static readonly float[] RepublishDelays = { 3f, 8f };
         private static readonly List<float> RepublishAt = new();
 
@@ -422,9 +340,7 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // Runs inside Mirror's dispatch: anything thrown here is a failed
-        // message, and a failed message disconnects the sender. Nothing may
-        // escape it.
+        // Runs inside Mirror's dispatch: a throw disconnects the sender, so nothing may escape.
         private static void OnServerMessage(NetworkConnection connection, NetworkReader reader, int channelId)
         {
             try
@@ -469,8 +385,6 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // Sends the snapshot now rather than at the next tick, for a change a guest should see at
-        // once (a resync station's sign).
         internal static void SendSnapshotNow()
         {
             if (NetworkServer.active)
@@ -596,7 +510,6 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // Tells the guest on this connection that its player pressed the button in this slot.
         internal static void SendPress(NetworkConnection connection, int slot)
         {
             if (connection == null || !Announced.Contains(connection.connectionId))
@@ -646,7 +559,6 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // Guest side; false when there is no host to tell yet.
         internal static bool SendStatus(bool masked)
         {
             if (!_helloSent || !_hostHasMod)
@@ -717,8 +629,6 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // Sends the summon to every loopback guest that said hello; returns
-        // how many got it.
         internal static int SendSummon(Vector3 position, Quaternion rotation)
         {
             var sent = 0;
@@ -729,7 +639,7 @@ namespace BigWalkArchipelago.Core.Net
 
                 try
                 {
-                    // With several guests, each a step further back, so they do not land in one another.
+                    // Several guests each a step further back, so they do not land in one another.
                     var spot = position + rotation * Vector3.back * (1.5f * sent);
                     var writer = new NetworkWriter();
                     NetworkWriterExtensions.WriteUShort(writer, MessageId);
@@ -752,9 +662,7 @@ namespace BigWalkArchipelago.Core.Net
             return sent;
         }
 
-        // A guest on this same PC: connection 0 is the host's own local
-        // client, and every other connection's address is the remote end
-        // (measured 2026-09-26: '127.0.0.1' for the loopback guest).
+        // Connection 0 is the host's own client; others carry the remote address.
         private static bool IsFromThisMachine(NetworkConnectionToClient connection)
         {
             if (connection.connectionId == NetworkConnection.LocalConnectionId)
@@ -765,10 +673,6 @@ namespace BigWalkArchipelago.Core.Net
                 address = address.MapToIPv4();
             return System.Net.IPAddress.IsLoopback(address);
         }
-
-        // ------------------------------------------------------------------
-        // Guest
-        // ------------------------------------------------------------------
 
         [HideFromIl2Cpp]
         private static void TickGuest()
@@ -865,9 +769,7 @@ namespace BigWalkArchipelago.Core.Net
                 UnityEngine.Object.Destroy(beacon);
         }
 
-        // Also called by the cosmetic spawn handlers: an asset id of ours can
-        // only come from a host running this mod, so any of them is proof
-        // enough, and a second route in case the beacon was ever missed.
+        // Any asset id of ours can only come from a host running this mod.
         internal static void NoteHostHasMod(string evidence)
         {
             if (_hostHasMod || NetworkServer.active)
@@ -1090,8 +992,7 @@ namespace BigWalkArchipelago.Core.Net
                 MirroredGoal = string.IsNullOrEmpty(goal) ? null : goal;
                 MirroredGoalIsWarning = goalWarning;
 
-                // A guest hears what the host hears (the player, 2026-10-12): a sound whose count moved plays here too (ApSounds holds
-                // the received and check ones to a burst, and every one to the player's own setting). Not on the first snapshot.
+                // A guest hears what the host hears, except on the first snapshot.
                 if (!first)
                 {
                     for (var sound = 0; sound < soundCounts.Length; sound++)
@@ -1150,7 +1051,9 @@ namespace BigWalkArchipelago.Core.Net
                 NetworkReaderExtensions.ReadFloat(reader));
             var yaw = NetworkReaderExtensions.ReadFloat(reader);
 
+#if DEBUG
             BigWalkArchipelago.Debug.LoopbackGuest.OnSummoned(position, Quaternion.Euler(0f, yaw, 0f));
+#endif
         }
     }
 }

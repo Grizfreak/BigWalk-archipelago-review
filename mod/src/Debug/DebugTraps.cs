@@ -7,15 +7,13 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Trying the traps and bonuses without waiting for their items (Ctrl + Keypad 0), seeing what
-    // they see (Ctrl + Keypad Enter), and marking the places Big Trip should know (Ctrl + Keypad .).
+    // Fires traps without their items (Ctrl+Keypad 0) and dumps what they act on.
     internal static class DebugTraps
     {
         private const string Tag = "[" + nameof(DebugTraps) + "]";
 
         private static readonly string[] Order =
         {
-            // The newest first, to try it at once.
             TrapEffects.Confetti, TrapEffects.Break, TrapEffects.Reset, TrapEffects.Brother, TrapEffects.Smell, TrapEffects.Arms, TrapEffects.Brain, TrapEffects.Head, TrapEffects.Mask, TrapEffects.Pixels, TrapEffects.Goggles, TrapEffects.Air, TrapEffects.Paint, TrapEffects.Ghost, TrapEffects.Silence, TrapEffects.Slide,
             TrapEffects.Drop, TrapEffects.Throw, TrapEffects.Trip, TrapEffects.Meeting,
             TrapEffects.Night, TrapEffects.Sleep, TrapEffects.Load, TrapEffects.Mask, TrapEffects.Flare, TrapEffects.Day, TrapEffects.Speed, TrapEffects.Jump,
@@ -35,7 +33,7 @@ namespace BigWalkArchipelago.Debug
             _next++;
             Plugin.Log.LogInfo($"{Tag} Firing {TrapEffects.DisplayName(key)} by hand.");
             Core.Net.ApNotices.Post($"Debug: {TrapEffects.DisplayName(key)}");
-            // By hand, Big Mask spares the host so it can watch the guest wear it (player, 2026-10-13).
+            // By hand, Big Mask spares the host so it can watch the guest wear it.
             Traps.DebugMaskSparesHost = key == TrapEffects.Mask;
             Traps.Fire(key);
             Traps.DebugMaskSparesHost = false;
@@ -49,11 +47,10 @@ namespace BigWalkArchipelago.Debug
             DumpNearbyHomes();
         }
 
-        // Every prop within 3 m of this player and where it is kept: for Big Load, to see where a
-        // pack's contents live (2026-10-06).
+        // Every prop within 3 m of the player and where it is kept, to see where packs live.
         private static void DumpNearbyHomes()
         {
-            var player = DebugPlayerLookup.FindLocalPlayer();
+            var player = Core.LocalPlayer.Find();
             if (player == null)
                 return;
 
@@ -79,9 +76,7 @@ namespace BigWalkArchipelago.Debug
             return string.Join("/", parts);
         }
 
-        // How a timed tomato is wired, for the trap tomatoes: the first one in a dispenser, then
-        // every trap clone still in the world. Every switch (what state it moves, how), every
-        // timer (what it listens to, for how long, what it pecks at the end), every state.
+        // How a timed tomato is wired: one in a dispenser, then every trap clone in the world.
         private static void DumpTomato()
         {
             var shown = 0;
@@ -136,7 +131,7 @@ namespace BigWalkArchipelago.Debug
 
         internal static void MarkTripSpot()
         {
-            var player = DebugPlayerLookup.FindLocalPlayer();
+            var player = Core.LocalPlayer.Find();
             if (player == null)
             {
                 Plugin.Log.LogInfo($"{Tag} No local player.");

@@ -7,24 +7,12 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The traps and bonuses (ROADMAP step 3) and DeathLink, on the host.
-    //
-    // Only the host talks to Archipelago, so only the host learns that a trap has arrived or a
-    // DeathLink has come in. It queues them, fires one every few seconds once the session has
-    // settled (a trap received while nobody played waits for the world, it is not lost), works
-    // out what each player gets (where Big Trip sends them, who Big Meeting gathers around) and
-    // tells every guest through the ModChannel; each machine then plays the effect on its own
-    // player (Core/TrapEffects.cs). Every trap and bonus hits every player of the session
-    // (player, 2026-10-05).
-    //
-    // DeathLink goes out from here too, as the slot's `death_link_triggers` say (a failed
-    // puzzle), after `death_link_tolerance` of them have been let go.
+    // Traps, bonuses and DeathLink: the host queues them and tells each machine what to play.
     internal static class Traps
     {
         private const string Tag = "[" + nameof(Traps) + "]";
 
-        // Between two effects fired from the queue, and how many may wait in it: a slot back after
-        // a long time away does not get twenty traps in a row.
+        // Spacing between queued effects, and a cap so a returning slot gets no burst of traps.
         private const float Spacing = 4f;
         private const int MaxPending = 10;
 
@@ -34,7 +22,6 @@ namespace BigWalkArchipelago.Core
         // DeathLink: never two sent closer than this, nor two from one player's falls.
         private const float DeathLinkCooldown = 10f;
 
-        // --- what the slot says ---
         private static Dictionary<long, string> _items = new();
         private static int _duration = 30;
         private static bool _spareGauntlet = true;
@@ -71,16 +58,14 @@ namespace BigWalkArchipelago.Core
             _deathLinkOnePlayer = slot.DeathLinkTarget == "one_player";
         }
 
-        // What the host's settings make of the slot's DeathLink (Settings > Archipelago, player
-        // 2026-10-06): off sends and takes none; the amnesty can stand in for the seed's.
+        // The host's Settings > Archipelago can turn DeathLink off or override the amnesty.
         internal static bool DeathLinkOn => ModConfig.DeathLinkEnabled.Value;
         internal static bool ReceivesDeathLink => _receivesDeathLink && DeathLinkOn;
         internal static bool SeedHasDeathLink => _sendsDeathLink || _receivesDeathLink;
         internal static int SeedAmnesty => _tolerance;
         internal static int Amnesty => ModConfig.DeathLinkAmnesty.Value >= 0 ? ModConfig.DeathLinkAmnesty.Value : _tolerance;
 
-        // At connection (ROADMAP U20): what the host's Settings change from the seed's, said once so
-        // nobody wonders why DeathLink does nothing.
+        // Says once what the host's Settings change from the seed's, so nobody wonders.
         internal static void AnnounceOverrides()
         {
             if (!SeedHasDeathLink)
@@ -97,35 +82,24 @@ namespace BigWalkArchipelago.Core
             return _items.TryGetValue(itemId - ApLocationIds.Base, out key);
         }
 
-        // ------------------------------------------------------------------
-        // The queue
-        // ------------------------------------------------------------------
-
         private static readonly Queue<string> Pending = new();
 
-        // Beside each pending effect: whether it hits one player only (a DeathLink received with
-        // `death_link_target: one_player`, players 2026-10-07). Not kept in the save: an effect
-        // still waiting when the game closed comes back for everyone.
+        // Whether each pending effect hits one player only (`death_link_target: one_player`).
         private static readonly Queue<bool> PendingSingle = new();
 
         private static bool _deathLinkOnePlayer;
 
-        // How many DeathLinks each player took this session, by their object's name: the next
-        // single one goes to the one with the fewest, ties at random.
+        // DeathLinks taken per player: the next single one goes to the one with the fewest.
         private static readonly Dictionary<string, int> DeathLinkHits = new();
 
         // During Fire: the one player it hits, or null for everyone.
         private static PlayerCharacter _onlyPlayer;
         private static float _nextFire;
 
-        // The queue is kept in the save too, as a count per effect, so traps still waiting when
-        // the game closes come back next session (the item cursor has already counted them).
+        // Pending effects are kept in the save, as the item cursor has already counted them.
         private const string PendingPrefix = "ap_trap_pending_";
 
-        // For this many seconds after the world is ready, counted again each time a player joins,
-        // a Big Trip or Big Meeting is dropped, not played (player, 2026-10-06): no teleport while
-        // players are still arriving, and none held back to land on them later. Every other
-        // effect goes as usual.
+        // After the world is ready or a player joins, Big Trip and Big Meeting are dropped.
         private const float JoinGrace = 20f;
         private static float _graceUntil;
         private static int _playersSeen;
@@ -209,9 +183,7 @@ namespace BigWalkArchipelago.Core
             ApplyDeathEffect($"received ({cause})", $"DeathLink from {cause}", $"DeathLink from {cause}");
         }
 
-        // What a death does here (`death_link_effect`, on `death_link_target`): when a DeathLink
-        // arrives, and, with `death_link_trap_on_send`, when this world sends one. Not a trap of the
-        // pool: never sent on as a TrapLink.
+        // `death_link_effect` on `death_link_target`; never sent on as a TrapLink.
         private static void ApplyDeathEffect(string journal, string why, string notice = null)
         {
             var single = _deathLinkOnePlayer;
@@ -227,9 +199,7 @@ namespace BigWalkArchipelago.Core
             Enqueue(key, why + (single ? ", one player" : string.Empty), single);
         }
 
-        // The traps that cannot hit one player: Big Meeting gathers everyone around one, and Big
-        // Night's clock is the whole session's (player, 2026-10-09). Left out of the roulette of a
-        // DeathLink that hits one player, and played on everyone should one come through anyway.
+        // Traps that cannot hit one player: left out of a one-player DeathLink's roulette.
         private static readonly string[] SessionWide = { TrapEffects.Meeting, TrapEffects.Night };
 
         private static string Roulette(string[] except = null)
@@ -256,10 +226,6 @@ namespace BigWalkArchipelago.Core
             return TrapEffects.Drop;
         }
 
-        // ------------------------------------------------------------------
-        // TrapLink (`trap_link`)
-        // ------------------------------------------------------------------
-
         // The traps of the pool, as opposed to the bonuses and the DeathLink knock-out.
         private static readonly string[] PoolTraps =
         {
@@ -267,9 +233,7 @@ namespace BigWalkArchipelago.Core
             TrapEffects.Sleep, TrapEffects.Load, TrapEffects.Mask, TrapEffects.Flare, TrapEffects.BigTime, TrapEffects.Silence, TrapEffects.Slide,
         };
 
-        // A trap of the pool that has just reached this world, for the other games. Only the
-        // host talks to the server, and only items count: a trap a DeathLink or a TrapLink made
-        // is not sent, so none loops.
+        // Only traps from items are sent, so a trap made by a DeathLink or TrapLink never loops.
         internal static void SendTrapLink(string key, string itemName)
         {
             if (!_trapLink || !NetworkServer.active || Array.IndexOf(PoolTraps, key) < 0)
@@ -278,9 +242,7 @@ namespace BigWalkArchipelago.Core
                 Plugin.Log.LogInfo($"{Tag} TrapLink sent: {itemName}.");
         }
 
-        // The words of other games' traps, by the Big Walk trap nearest in what it does: one that
-        // is not among them, or whose Big Walk trap is not in the DeathLink roulette (a hard one
-        // with `death_link_roulette_hard_traps` off), is drawn from the roulette.
+        // Other games' trap words, by the nearest Big Walk trap; no match draws from the roulette.
         private static readonly (string key, string[] words)[] TrapLinkWords =
         {
             (TrapEffects.Sleep, new[] { "freeze", "ice", "paraly", "stun", "sleep", "slow", "stop" }),
@@ -357,7 +319,7 @@ namespace BigWalkArchipelago.Core
             if (Pending.Count == 0 || !settled || !WorldManager.isReadyForEffects || Time.unscaledTime < _nextFire)
                 return;
 
-            if (Debug.DebugPlayerLookup.FindLocalPlayer() == null)
+            if (LocalPlayer.Find() == null)
                 return;
 
             var key = Pending.Dequeue();
@@ -450,12 +412,10 @@ namespace BigWalkArchipelago.Core
                     FireReset();
                     break;
                 case TrapEffects.Break:
-                    // A folding chair before each player, then each machine sits its own player on it
-                    // (TrapEffects.SitOnChair).
+                    // A folding chair before each player; each machine sits its own player on it.
                     foreach (var walker in Walkers())
                     {
-                        // On the ground where the player stands, upright and facing the way they look (2026-10-14:
-                        // dropped before them from chest height, the chairs fell over).
+                        // On the ground, upright: dropped from chest height, the chairs fell over.
                         var body = walker.Player.GetComponentInChildren<Rigidbody>();
                         var at = body != null ? body.position : walker.Position;
                         var yaw = body != null ? body.rotation.eulerAngles.y : walker.Yaw;
@@ -480,8 +440,7 @@ namespace BigWalkArchipelago.Core
                     }
                     break;
                 case TrapEffects.BigTime:
-                    // A clock for everyone, to keep (player, 2026-10-13): it goes to the hands, or at their
-                    // feet when they hold something.
+                    // A clock for everyone: in the hands, or at their feet when they hold one.
                     foreach (var walker in Walkers())
                     {
                         if (GadgetItemSpawner.SpawnFor(GadgetKind.Clock, walker.Player) != null)
@@ -490,8 +449,7 @@ namespace BigWalkArchipelago.Core
                     break;
                 case TrapEffects.Flare:
                 {
-                    // Every machine readies its colours (or its gentle clearing), then the host's
-                    // shots follow a moment later (Core/BigFlare).
+                    // Every machine readies its colours, then the host's shots follow.
                     var walkers = Walkers();
                     foreach (var walker in walkers)
                         Send(walker, key, null, 0f);
@@ -499,8 +457,7 @@ namespace BigWalkArchipelago.Core
                     break;
                 }
                 case TrapEffects.Air:
-                    // A tomato for everyone, then up in the air on every machine; the falls that follow are the mod's
-                    // and send no DeathLink.
+                    // A tomato for everyone, then up in the air; those falls send no DeathLink.
                     _knockoutUntil = Time.unscaledTime + GadgetItemSpawner.TomatoSeconds + AirQuiet;
                     foreach (var walker in Walkers())
                     {
@@ -509,8 +466,7 @@ namespace BigWalkArchipelago.Core
                     }
                     break;
                 case TrapEffects.Knockout:
-                    // The packs off on the host, then each machine drops and dazes its player. The
-                    // falls that follow are the mod's: none of them sends a DeathLink back.
+                    // Packs off on the host, then each machine drops its player: no DeathLink.
                     _knockoutUntil = Time.unscaledTime + KnockoutQuiet;
                     FireLoad();
                     foreach (var walker in Walkers())
@@ -525,16 +481,11 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Big Reset: the players in groups (each within ResetGroup of another of the group), and for each group the
-        // puzzle still holding its gourd nearest to it starts again: its room's door shut and opened (CycleDoor). Putting
-        // every state near back to its first value (tried first, 2026-10-14) let the gourds go, through their vices.
+        // Big Reset: per group of players, the nearest unsolved puzzle's door is shut and reopened.
         private const float ResetGroup = 25f;
         private const float ResetRadius = 40f;
 
-        // The puzzle's door (player, 2026-10-14: open and shut the puzzle rooms' doors): the LobbyDoor nearest the
-        // gourd, within ResetRadius, shut through its state (every machine follows, the game's own reset with it), then
-        // put back as it was ResetShutSeconds later; never the gourd's vice.
-        // Shut and opened again quickly (player, 2026-10-14: the state changed twice in a row).
+        // Resetting every nearby state freed the gourds through their vices: only the door cycles.
         private const float ResetShutSeconds = 0.4f;
 
         private static bool UnderGourdHolder(Transform t)
@@ -554,7 +505,7 @@ namespace BigWalkArchipelago.Core
             var nearest = ResetRadius;
             foreach (var candidate in UnityEngine.Object.FindObjectsByType<LobbyDoor>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
             {
-                // The gourd's vice is a LobbyDoor too (its victory switch: shut, it lets the gourd go, 2026-10-14).
+                // The gourd's vice is a LobbyDoor too: shut, it lets the gourd go.
                 if (candidate == null || candidate.peckSystem.peckSystem == null || UnderGourdHolder(candidate.transform))
                     continue;
                 var distance = Vector3.Distance(candidate.transform.position, gourd);
@@ -651,9 +602,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Big Break, host side: a moment after its chair is spawned, each player is sat on it by the server
-        // (PlayerNetworking.ServerEnterPoseAuto, whose pose every machine follows; 2026-10-14: the player's own action
-        // sat it on its own machine only).
+        // The server seats each player, as a player's own action seats them on their machine only.
         private const float BreakServerDelay = 0.6f;
         private static readonly List<(PlayerCharacter player, Prop chair, float at)> BreakSeats = new();
 
@@ -681,8 +630,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The effects that last, and until when, so that a player who joins while one runs gets it
-        // too, for the time left (player, 2026-10-05). The others happen once and are over.
+        // Effects that last, so a player who joins while one runs gets it for the time left.
         private static readonly string[] Lasting = { TrapEffects.Speed, TrapEffects.Jump, TrapEffects.Sleep, TrapEffects.Slide, TrapEffects.Silence };
         private static readonly Dictionary<string, float> ActiveUntil = new();
 
@@ -700,10 +648,6 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // ------------------------------------------------------------------
-        // Who is playing, and where
-        // ------------------------------------------------------------------
-
         private sealed class Walker
         {
             internal PlayerCharacter Player;
@@ -713,9 +657,7 @@ namespace BigWalkArchipelago.Core
             internal float Yaw;
         }
 
-        // Every player of the session with the connection it plays through: the host's own is
-        // connection 0, the local one. Read from the server's connections, which are what a
-        // message can be sent down.
+        // Every player with the connection it plays through; the host's own is connection 0.
         private static List<Walker> Walkers()
         {
             var all = AllWalkers();
@@ -747,11 +689,7 @@ namespace BigWalkArchipelago.Core
             return walkers;
         }
 
-        // Big Trip and Big Meeting: a timed tomato for each player about to be moved, set going at
-        // once; it pops when they go (player, 2026-10-06). Taken back out of the world a moment
-        // after it pops.
-        // At the pop the tomato leaves the hands; it leaves the world this much later, once its
-        // pop has been heard (the sound is on the tomato, and dies with it).
+        // The tomato leaves the world this long after its pop, as the sound dies with it.
         private const float TomatoLinger = 0.1f;
         private const float TomatoSoundSeconds = 1.5f;
         private static readonly List<KeyValuePair<Prop, float>> Tomatoes = new();
@@ -778,18 +716,13 @@ namespace BigWalkArchipelago.Core
             if (tomato == null)
                 return;
 
-            // Set going once it is in the hands, as a player's own tomato is (its tick is a sound
-            // on the tomato, which the hand-over a frame after the spawn would otherwise cut).
+            // Set going once in the hands: the hand-over after the spawn would cut its tick.
             var startAt = Time.unscaledTime + TomatoStartDelay;
             TomatoStarts.Add((tomato, walker.Player, startAt));
             Tomatoes.Add(new KeyValuePair<Prop, float>(tomato, startAt + GadgetItemSpawner.TomatoSeconds + TomatoLinger));
         }
 
-        // The tomato's own switch, as a player setting it going: its state goes up on the host and
-        // reaches every machine, whose timer then runs. With the tomato as the context's prop, as
-        // when a player picks one up: its tick and pop play at "the context's prop"
-        // (PeckTransformReference.ContextProp), and with an empty context they had nowhere to play
-        // (compared with a real tomato's verbose log, 2026-10-06).
+        // With the tomato as the context's prop, or its tick and pop have nowhere to play.
         private static void StartTomato(Prop tomato, PlayerCharacter player)
         {
             foreach (var peckSwitch in tomato.GetComponentsInChildren<PeckSwitch>(true))
@@ -887,10 +820,6 @@ namespace BigWalkArchipelago.Core
             return why != null;
         }
 
-        // ------------------------------------------------------------------
-        // Big Trip and Big Meeting
-        // ------------------------------------------------------------------
-
         private static void FireTrip(string key)
         {
             var walkers = Walkers();
@@ -973,10 +902,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // A place a player can stand beside `center` (player, 2026-10-05: never in a wall): seen
-        // from the centre with nothing in between, its floor within `maxRise` of the centre's
-        // height, room for a standing player, and not where another was just put. Twelve
-        // directions from `angle`, at the distance then further and nearer. Null if none.
+        // A standable spot in sight of `center`, its floor within `maxRise`; null if none.
         internal static Vector3? SafeLanding(Vector3 center, float radius, float angle, float maxRise, List<Vector3> taken)
         {
             var eye = center + Vector3.up * 1.2f;
@@ -1006,35 +932,16 @@ namespace BigWalkArchipelago.Core
             return null;
         }
 
-        // ------------------------------------------------------------------
-        // Big Load
-        // ------------------------------------------------------------------
-
         private static readonly string[] PackNames = { "BackpackProp", "HolsterProp", "GourdCartonProp" };
 
-        // Every pack a player wears (a backpack, a belt, a gourd carton pinned in one of the
-        // player's own homes) comes off and falls behind them, and whatever it holds falls out
-        // of it first (player, 2026-10-05). Host only, through the pins it owns, as the key
-        // custody frees a key from its stone (Prop.ServerSetUnpinned).
-        // ------------------------------------------------------------------
-        // Big Mask
-        // ------------------------------------------------------------------
-
-        // The blindfold puzzles' helmet (BlindfoldProp) pinned into each player's head home
-        // (`blindfoldPropHome`, on the head bone), as a player puts it on another: its own
-        // PeckEffectMask darkens the wearer's screen and the others see the helmet (measured
-        // 2026-10-07). A clone, locked to the head on every machine (blockRemovingFromHomes,
-        // GadgetItemSpawner), taken off and destroyed when the trap ends. A player whose screen
-        // already has a puzzle's mask, or whose head home holds something, is spared (player).
+        // A clone of the blindfold helmet, locked to each player's head home until the trap ends.
         private static readonly List<(Prop helmet, PropHome home, float until)> Helmets = new();
 
-        // A helmet taken off its head waits here before it leaves the world: the screens that wear
-        // it need to see it come off to lift its mask, and a guest's stayed blurred when it was
-        // destroyed in the same frame (player, 2026-10-09).
+        // Kept a moment once off, or a guest's screen stays blurred.
         private const float HelmetLinger = 1.5f;
         private static readonly List<(Prop helmet, float at)> RetiringHelmets = new();
 
-        // Debug (DebugTraps): Big Mask fired by hand spares the host, who can then watch the guest wear it.
+        // Debug: Big Mask fired by hand spares the host, who can then watch the guest wear it.
         internal static bool DebugMaskSparesHost;
 
         private static void FireMask()
@@ -1083,8 +990,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Host, every frame: a helmet knocked off its head goes back on; one whose time is up comes
-        // off and leaves the world.
+        // Host, every frame: a knocked-off helmet goes back on; one whose time is up leaves.
         private static void TickHelmets()
         {
             for (var i = Helmets.Count - 1; i >= 0; i--)
@@ -1158,9 +1064,7 @@ namespace BigWalkArchipelago.Core
                     if (pack == null || !Array.Exists(PackNames, n => pack.gameObject.name.StartsWith(n, StringComparison.Ordinal)))
                         continue;
 
-                    // What the pack holds: every prop kept in a home of that pack. The home's own
-                    // parentProp names the pack; its place in the hierarchy does not, since a worn
-                    // pack's Kernal is moved under the player's bones (measured 2026-10-06).
+                    // A worn pack's Kernal moves under the bones: the home's parentProp names it.
                     var spilled = 0;
                     foreach (var content in contents ??= AllProps())
                     {
@@ -1206,20 +1110,11 @@ namespace BigWalkArchipelago.Core
             return point + Vector3.up * 0.5f;
         }
 
-        // ------------------------------------------------------------------
-        // DeathLink out
-        // ------------------------------------------------------------------
-
-        // A failed puzzle calls Trigger (Core/PuzzleFailures). A big fall and falling asleep were
-        // built and dropped (player, 2026-10-05).
+        // A failed puzzle calls Trigger (Core/PuzzleFailures).
         private static int _missed;
         private static float _lastSent = -100f;
 
-        // A fall that knocks a player down (`big_fall`, players 2026-10-07; built first on
-        // 2026-10-05, 9d2ec1e). The game runs PlayerFaller.TriggerFall on the machine of the player
-        // who fell and ShowFall on the others (seen 2026-10-27), so the host sees its
-        // own falls through the first and its guests' through the second (Patches/TrapPatches).
-        // A knock-out the mod gave is not a fall: none counts for a few seconds after one.
+        // `big_fall`: the host sees its own falls in TriggerFall and guests' in ShowFall.
         private const float FallCooldown = 5f;
         private const float KnockoutQuiet = 8f;
         private const float AirQuiet = 15f;
@@ -1311,19 +1206,14 @@ namespace BigWalkArchipelago.Core
         }
     }
 
-    // The Silent Gauntlet's extent, from what its stages are built of: the box around every
-    // renderer under the `SilentGauntlet <n>Player` object, found once per world.
+    // The Silent Gauntlet's extent: boxes around the renderers under `SilentGauntlet <n>Player`.
     internal static class Gauntlet
     {
         private const string RootPrefix = "SilentGauntlet";
         private const float Margin = 6f;
         private const float MaxBoxSize = 200f;
 
-        // The Gauntlet is not one block: its parts are spread over the island (the 0.4 playtest
-        // measured one box of 1586 x 182 x 1577 m around everything under the root, and no single
-        // renderer was the cause). So a box per part: a branch whose renderers fit in MaxBoxSize
-        // is one box, a wider one is split into its children, and a lone renderer wider than that
-        // is dropped, named in the log.
+        // The Gauntlet's parts are spread over the island, so it gets a box per part.
         private static readonly System.Collections.Generic.List<Bounds> _boxes = new();
         private static bool _looked;
 
@@ -1346,8 +1236,7 @@ namespace BigWalkArchipelago.Core
             _looked = false;
         }
 
-        // A particle system's bounds sit at the world's origin until it has played (the confetti
-        // dispensers' "RewardConfettiParticle", 750 m from the Gauntlet): they are not part of it.
+        // A particle system's bounds sit at the origin until it has played: not part of it.
         private static bool IsParticle(Renderer renderer) =>
             renderer.GetIl2CppType().Name == "ParticleSystemRenderer";
 
@@ -1453,12 +1342,7 @@ namespace BigWalkArchipelago.Core
         }
     }
 
-    // Where Big Trip may send a player: only places the players have already reached, so the
-    // trip never skips a lock the logic counts on (a place reached is a place unlocked): the hub,
-    // the towers whose door has been opened (the teleport buttons' own record), the radio stations
-    // switched on, the puzzles whose check is made (beside their gourd's home, never a puzzle that
-    // puts a mask on the screen), the firework launchers fired and the packs picked up (player,
-    // 2026-10-05). Never the Gauntlet nor the chapel.
+    // Big Trip only sends players to places already reached, so it never skips a lock.
     internal static class TripSpots
     {
         internal struct Spot
@@ -1467,8 +1351,7 @@ namespace BigWalkArchipelago.Core
             internal Vector3 Point;
         }
 
-        // How far from a radio station (a launcher, a puzzle's gourd) a player lands, looked for
-        // around it.
+        // How far from a radio station (a launcher, a puzzle's gourd) a player lands.
         private const float StationDistance = 3.5f;
 
         // A puzzle with a screen mask this close to its gourd's home is a mask puzzle.
@@ -1556,9 +1439,7 @@ namespace BigWalkArchipelago.Core
             return spots;
         }
 
-        // Every puzzle whose check this save has made, beside its gourd's home (where the gourd
-        // sits once solved), but those with a screen mask near: the player could land in the
-        // puzzle, and a mask puzzle is one Big Trip must not drop anyone into.
+        // Solved puzzles, beside their gourd's home; never a mask puzzle.
         private static void AddPuzzles(List<Spot> spots)
         {
             var masks = new List<Vector3>();
@@ -1591,16 +1472,14 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // A patch of floor beside the station (the launcher, the gourd's home), near its own
-        // height, in the open and with room to stand (Traps.SafeLanding).
+        // A patch of floor beside the station, near its own height, with room to stand.
         private static Vector3? AroundStation(Vector3 station)
         {
             return Traps.SafeLanding(station, StationDistance, 0f, 2.5f, null);
         }
     }
 
-    // Plays the effects' clocks on every machine, fires the host's queue, watches for DeathLink
-    // triggers, and has guests tell the host whether a puzzle's mask is on their screen.
+    // Runs the effect clocks, the host's queue, DeathLink triggers and the guests' mask status.
     internal sealed class TrapRunner : MonoBehaviour
     {
         public TrapRunner(IntPtr ptr) : base(ptr)
@@ -1611,7 +1490,7 @@ namespace BigWalkArchipelago.Core
         private static float _nextStatus;
         private static bool _lastMaskedSent;
 
-        // After the animation has placed the bodies for the frame: what must win over it (Big Head's lift).
+        // After the animation has placed the bodies: what must win over it (Big Head's lift).
         private void LateUpdate()
         {
             try

@@ -8,30 +8,14 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // What the Silent Gauntlet is made of, for `gauntlet_mode` (0.1.3).
-    //
-    // The seven chambers are saved nowhere (`GauntletChamber0..6` never found
-    // written), so each stage's puzzle, its inner door and its collective door
-    // have to be told apart by their wiring: which TrackedPeckState a door
-    // listens to, which switch or combinator writes it. One press writes every
-    // piece of that wiring within a radius of the player to a tab-separated
-    // file, `BepInEx/gauntlet-dump-<n>.tsv`, and one log line says where.
-    //
-    // Pure diagnostic, no writes to the game. Meant to be pressed twice per
-    // stage — before and after the puzzle, then before and after the collective
-    // button — so two files can be compared on their `state` column: what
-    // changed is what that step drives.
-    //
-    // Every object is read inside its own try/catch and the file is written in
-    // one go at the end; F7 once froze the game near this area, so nothing
-    // here walks anything it does not have to.
+    // Writes the Silent Gauntlet's wiring near the player to a TSV, to diff before and after.
     internal static class DebugGauntletDump
     {
         private static int _count;
 
         internal static void Dump(float radius, string label)
         {
-            var player = DebugPlayerLookup.FindLocalPlayer();
+            var player = Core.LocalPlayer.Find();
             if (player == null)
             {
                 Plugin.Log.LogInfo($"[{nameof(DebugGauntletDump)}] Local player not found.");

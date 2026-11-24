@@ -1,48 +1,11 @@
 ﻿<#
 .SYNOPSIS
-    Builds the mod and produces the all-in-one zip to hand to another player:
-    BepInEx (IL2CPP) plus the plugin, to extract into the game folder.
-
-.DESCRIPTION
-    The zip holds exactly what a clean Steam installation is missing:
-
-      doorstop_config.ini, winhttp.dll, dotnet\      <- the BepInEx loader
-      BepInEx\core\, BepInEx\patchers\              <- BepInEx itself
-      BepInEx\plugins\BigWalkArchipelago\            <- the mod (3 DLLs)
-      BepInEx\licenses\                              <- every bundled license
-      README.txt, THIRD-PARTY-NOTICES.txt            <- instructions, credits
-
-    Deliberately NOT included:
-      - BepInEx\unity-libs\: Unity's own engine assemblies, which belong to
-        Unity Technologies and are not ours to redistribute. BepInEx
-        downloads them itself on the first launch (UnityBaseLibrariesSource
-        in BepInEx.cfg) - the dev install's copy even holds the archive it
-        fetched. Shipped until 2026-09-25, when preparing the first public
-        release turned up that they were in the zip at all;
-      - BepInEx\interop\ and BepInEx\cache\: generated on the first launch,
-        and tied to the exact game version installed on the target machine;
-      - BepInEx\config\: the mod's .cfg regenerates itself, and the one here
-        holds the developer's own Archipelago server address;
-      - the logs.
-
-    BepInEx is taken from the local installation of the game - the same build
-    the mod was tested against, 6.0.0-be.781 - rather than downloaded. That
-    is the only way to guarantee the other player the exact version that
-    works.
-
-.PARAMETER GameDir
-    The game installation to take BepInEx from.
-
-.PARAMETER Configuration
-    Build configuration (Debug by default: it is the one that gets tested).
-
-.PARAMETER OutDir
-    Where to drop the zip.
+    Builds the mod and the all-in-one zip (BepInEx plus the plugin) for another player.
 #>
 [CmdletBinding()]
 param(
     [string]$GameDir = 'F:\SteamLibrary\steamapps\common\Big Walk',
-    [string]$Configuration = 'Debug',
+    [string]$Configuration = 'Release',
     [string]$OutDir = (Join-Path $PSScriptRoot '..\dist')
 )
 
@@ -63,9 +26,7 @@ Write-Host '== Build ==' -ForegroundColor Cyan
 dotnet build $sln -c $Configuration
 if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 
-# The three DLLs to deploy. Leaving one out fails the load of the whole
-# mod, not just the connection (BepInEx resolves a plugin's dependencies
-# inside that plugin's own folder) - see mod/README.md.
+# Leaving out one of the three DLLs fails the whole mod: BepInEx resolves deps in its folder.
 $pluginDlls = @(
     'BigWalkArchipelago.dll',
     'Archipelago.MultiClient.Net.dll',
@@ -93,10 +54,7 @@ foreach ($sub in @('core', 'patchers')) {
     }
 }
 
-# Every license the package owes, and the index that says which is whose
-# (mod\packaging\THIRD-PARTY-NOTICES.txt). BepInEx, Doorstop and
-# Il2CppInterop are LGPL, and every other part asks for its license text to
-# travel with the binaries.
+# Every license the package owes, and the index of which is whose (THIRD-PARTY-NOTICES.txt).
 $packaging = Join-Path $repo 'mod\packaging'
 Copy-Item (Join-Path $packaging 'THIRD-PARTY-NOTICES.txt') $stage
 Copy-Item (Join-Path $packaging 'licenses') (Join-Path $stage 'BepInEx\licenses') -Recurse
@@ -170,10 +128,7 @@ $zip = Join-Path (Resolve-Path $OutDir) "BigWalkArchipelago-$version-$stamp.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
 
 Write-Host '== Compressing ==' -ForegroundColor Cyan
-# Not Compress-Archive: under Windows PowerShell 5.1 it writes entry names
-# with backslashes, which the zip format does not allow. Windows extracts
-# them anyway, but unzip on Linux (a Steam Deck, Proton) makes files
-# literally called "BepInEx\core\0Harmony.dll" in the game folder.
+# Not Compress-Archive: PS 5.1 writes backslashes in entry names, which Linux unzip keeps.
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 $stageRoot = (Resolve-Path $stage).Path.TrimEnd('\') + '\'
 $archive = [System.IO.Compression.ZipFile]::Open($zip, 'Create')

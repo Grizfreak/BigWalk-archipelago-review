@@ -4,18 +4,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Action tool (not a diagnostic). Pinning a cosmetic gourd into a real
-    // PropHome normally goes through the same manual interaction as a real
-    // gourd (peck/hold on the monument's "vice launch switch", cf.
-    // big-walk-archipelago-notes.md) — same pitfall as the "N-hold" bells
-    // already encountered (DebugPeckCombinatorForce): tedious to test alone,
-    // especially while alternating with reading the logs. This tool
-    // short-circuits the interaction: it finds the nearest cosmetic gourd
-    // (Core.ReceivedItemSpawner.IsCosmeticClone) and the nearest empty
-    // PropHome, and calls Prop.ServerSetPinned directly on it — this fires
-    // PropHome.onAnyChangeServer exactly like a real pin, so
-    // CosmeticMonumentFillTracker persists normally, with no special
-    // handling required.
+    // Pins the nearest cosmetic gourd into the nearest empty monument home, skipping the hold.
     internal static class DebugCosmeticPinForce
     {
         internal static void ForceNearby(float radius)
@@ -26,7 +15,7 @@ namespace BigWalkArchipelago.Debug
                 return;
             }
 
-            var localPlayer = DebugPlayerLookup.FindLocalPlayer();
+            var localPlayer = Core.LocalPlayer.Find();
             if (localPlayer == null)
             {
                 Plugin.Log.LogInfo($"[{nameof(DebugCosmeticPinForce)}] Local player not found.");
