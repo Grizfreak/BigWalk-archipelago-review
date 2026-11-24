@@ -71,7 +71,7 @@ is usually only visible in that machine's own log.
 
 ## For developers
 
-The world is built with `apworld/build.py` and the mod with `tools/package-mod.ps1`
+The world is built with Archipelago's own "Build APWorlds" and the mod with `tools/package-mod.ps1`
 (both documented in their own folder: [`apworld/README.md`](apworld/README.md),
 [`mod/README.md`](mod/README.md)).
 

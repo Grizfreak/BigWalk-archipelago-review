@@ -2,7 +2,7 @@
 [Bb]in/
 [Oo]bj/
 
-# Built by apworld/build.py, rebuilt with one command.
+# Built files.
 apworld/dist/
 
 # Throwaway seeds made by tools/testroom.py.

@@ -14,7 +14,6 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 PLAYERS = REPO / "tools" / "players"
 OUTPUT = REPO / "tools" / "out"
-APWORLD = REPO / "apworld" / "dist" / "bigwalk.apworld"
 
 DEFAULT_PORT = 38281
 
@@ -64,19 +63,14 @@ def run(command: list[str], cwd: Path) -> None:
         sys.exit(f"Command failed with exit code {result.returncode}.")
 
 
-def build_and_install_apworld(archipelago: Path) -> None:
-    run([sys.executable, str(REPO / "apworld" / "build.py")], cwd=REPO)
-
-    # A live worlds/ folder wins: installing on top would register the game twice.
+def check_apworld(archipelago: Path) -> None:
     linked = archipelago / "worlds" / "bigwalk"
-    if linked.exists():
-        print(f"using the linked world at {linked} (skipping the packaged copy)")
-        return
-
-    custom_worlds = archipelago / "custom_worlds"
-    custom_worlds.mkdir(exist_ok=True)
-    shutil.copy2(APWORLD, custom_worlds / APWORLD.name)
-    print(f"installed {APWORLD.name} -> {custom_worlds}")
+    packaged = archipelago / "custom_worlds" / "bigwalk.apworld"
+    for path in (linked, packaged):
+        if path.exists():
+            print(f"using the world at {path}")
+            return
+    sys.exit("No Big Walk world in this Archipelago: link or install it first (apworld/README.md).")
 
 
 def generate(archipelago: Path, yaml_name: str, seed: int | None) -> Path:
@@ -213,7 +207,7 @@ def main() -> None:
         print(f"resuming: {archive}")
         keep_admin_password(archipelago, archive.with_suffix(".apsave"))
     else:
-        build_and_install_apworld(archipelago)
+        check_apworld(archipelago)
         archive = generate(archipelago, args.yaml, args.seed)
         print(f"seed: {archive}")
 
