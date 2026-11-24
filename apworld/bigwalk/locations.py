@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from BaseClasses import Location
 
-from . import data, regions
+from . import checks, data, monuments, regions
 from .items import BigWalkItem
 from .options import CutKeySanity, GauntletMode, Goal, ObjectSanity
 
@@ -27,12 +27,14 @@ LOCATION_NAME_TO_ID: dict[str, int] = {
     **{pickup.location_name: data.pickup_location_id(i) for i, pickup in enumerate(data.PICKUPS)},
     **{firework.location_name: data.firework_location_id(i) for i, firework in enumerate(data.FIREWORKS)},
     **{pickup.location_name: data.flare_gun_location_id(i) for i, pickup in enumerate(data.FLARE_GUN_PICKUPS)},
-    **{data.tower_reached_location_name(tower): data.tower_reached_location_id(tower) for tower in data.reached_towers()},
+    **{data.tower_reached_location_name(tower): data.tower_reached_location_id(tower)
+       for tower in data.reached_towers()},
     **{obj.location_name: data.object_location_id(obj) for obj in data.ISLAND_OBJECTS},
     **{data.monument_full_location_name(tower): data.monument_full_location_id(tower) for tower in data.TOWERS},
     **{data.monument_key_location_name(tower): data.monument_key_location_id(tower) for tower in data.TOWERS},
     **{light.location_name: data.light_location_id(light) for light in data.LIGHTS},
-    **{data.object_kind_location_name(label): data.object_kind_location_id(i) for i, (_, label) in enumerate(data.OBJECT_KINDS)},
+    **{data.object_kind_location_name(label): data.object_kind_location_id(i)
+       for i, (_, label) in enumerate(data.OBJECT_KINDS)},
 }
 
 LOCATION_NAME_GROUPS: dict[str, set[str]] = {
@@ -102,19 +104,6 @@ def starting_zone_locations() -> list[str]:
     return names
 
 
-def tower_of_deposit(world: BigWalkWorld, amount: int) -> data.Tower | None:
-    """The tower the `amount`-th gourd lands in when monuments open in order, else None."""
-    if not world.tower_order:
-        return None
-    total = 0
-    for prop in world.tower_order:
-        tower = data.tower_by_prop(prop)
-        total += world.tower_slots(tower)
-        if amount <= total:
-            return tower
-    return data.tower_by_prop(world.tower_order[-1])
-
-
 def create_all_locations(world: BigWalkWorld) -> None:
     gated = gated_regions()
     if world.tower_order:
@@ -122,7 +111,7 @@ def create_all_locations(world: BigWalkWorld) -> None:
         for amount in range(1, data.MAX_MONUMENT_SLOTS + 1):
             name = data.deposit_location_name(amount)
             gated.pop(name, None)
-            if tower_of_deposit(world, amount).prop_name == "bigKeyIntro":
+            if world.tower_order[monuments.tower_count_needing(world, amount) - 1] == "bigKeyIntro":
                 gated[name] = regions.STARTING_ZONE
 
     def place(location_names: list[str]) -> None:
@@ -130,7 +119,7 @@ def create_all_locations(world: BigWalkWorld) -> None:
             region = world.get_region(gated.get(name, regions.OVERWORLD))
             region.add_locations({name: LOCATION_NAME_TO_ID[name]}, BigWalkLocation)
 
-    place([puzzle.location_name for puzzle in world.puzzles()])
+    place([puzzle.location_name for puzzle in checks.puzzles(world)])
 
     # Towers are all open: the gourd count in rules.py gates the deposits, not the region.
     place([tower.location_name for tower in world.towers])
@@ -160,27 +149,29 @@ def create_all_locations(world: BigWalkWorld) -> None:
         place([data.tower_reached_location_name(tower) for tower in data.reached_towers()])
 
     # Each light is also an event for big_lights, even when light_sanity gives it no check.
-    checks = {light.key for light in world.lights()}
-    for light in world.lights_counted():
+    light_checks = {light.key for light in checks.lights(world)}
+    for light in checks.lights_counted(world):
         region = world.get_region(OBJECT_ZONE_REGIONS.get(light.zone, regions.OVERWORLD))
-        if light.key in checks:
+        if light.key in light_checks:
             region.add_locations({light.location_name: LOCATION_NAME_TO_ID[light.location_name]}, BigWalkLocation)
         region.add_event(data.light_event_name(light), data.LIGHT_EVENT_ITEM_NAME,
                          location_type=BigWalkLocation, item_type=BigWalkItem)
 
     # Like its deposits, the tutorial monument's checks are in the starting zone if it fills first.
-    for name, tower in [*((data.monument_full_location_name(tower), tower) for tower in world.monuments_full()),
-                        *((data.monument_key_location_name(tower), tower) for tower in world.monument_keys())]:
-        in_tutorial = tower is data.TOWERS[0] and world.tutorial_monument_first()
+    full = [(data.monument_full_location_name(tower), tower) for tower in monuments.monuments_full(world)]
+    keys = [(data.monument_key_location_name(tower), tower) for tower in monuments.monument_keys(world)]
+    for name, tower in full + keys:
+        in_tutorial = tower is data.TOWERS[0] and monuments.tutorial_monument_first(world)
         region = regions.STARTING_ZONE if in_tutorial else regions.OVERWORLD
         world.get_region(region).add_locations({name: LOCATION_NAME_TO_ID[name]}, BigWalkLocation)
 
-    place(world.object_location_names())
+    place(checks.object_location_names(world))
     # big_objects counts events beside them: the logic cannot count reachable locations.
     if "big_objects" in world.objectives:
-        for name in world.object_location_names():
+        for name in checks.object_location_names(world):
             world.get_location(name).parent_region.add_event(
-                data.object_event_name(name), data.OBJECT_EVENT_ITEM_NAME, location_type=BigWalkLocation, item_type=BigWalkItem)
+                data.object_event_name(name), data.OBJECT_EVENT_ITEM_NAME,
+                location_type=BigWalkLocation, item_type=BigWalkItem)
 
     create_victory_event(world)
 

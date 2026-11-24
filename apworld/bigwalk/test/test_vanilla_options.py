@@ -2,7 +2,7 @@
 
 from BaseClasses import LocationProgressType
 
-from .. import data, items
+from .. import data, items, monuments
 from .bases import BigWalkTestBase
 
 
@@ -200,7 +200,7 @@ class TestLinearTowersInOrder(BigWalkTestBase):
     def test_a_later_monument_needs_the_ones_before(self) -> None:
         last = data.tower_by_prop(self.world.tower_order[-1])
         self.collect_all_but([data.GOURD_ITEM_NAME])
-        for _ in range(self.world.tower_slots(last)):
+        for _ in range(monuments.tower_slots(self.world, last)):
             self.collect(self.get_item_by_name(data.GOURD_ITEM_NAME))
         self.assertFalse(self.can_reach_location(data.monument_full_location_name(last)))
 
@@ -222,13 +222,13 @@ class TestLinearTowersOneDepositBox(BigWalkTestBase):
             item = self.multiworld.get_location(data.monument_key_location_name(tower), self.player).item
             self.assertEqual(item.name, data.key_item_name(tower))
             self.assertNotIn(data.key_item_name(tower), pool(self))
-            self.assertIn(self.world.key_gourds(tower), range(1, tower.slots + 1))
+            self.assertIn(monuments.key_gourds(self.world, tower), range(1, tower.slots + 1))
 
     def test_the_drawn_gourd_opens_it(self) -> None:
         red = data.tower_by_prop("bigKeyRedZone")
         name = data.monument_key_location_name(red)
         self.collect_all_but([data.GOURD_ITEM_NAME])
-        for _ in range(self.world.key_gourds(red) - 1):
+        for _ in range(monuments.key_gourds(self.world, red) - 1):
             self.collect(self.get_item_by_name(data.GOURD_ITEM_NAME))
         self.assertFalse(self.can_reach_location(name))
         self.collect(self.get_item_by_name(data.GOURD_ITEM_NAME))
@@ -238,7 +238,7 @@ class TestLinearTowersOneDepositBox(BigWalkTestBase):
         slot = self.world.fill_slot_data()
         self.assertEqual(slot["linear_towers"], "one_deposit_box")
         self.assertEqual(slot["monument_key_keys"], [t.prop_name for t in data.TOWERS])
-        self.assertEqual(slot["monument_key_gourds"], [self.world.key_gourds(t) for t in data.TOWERS])
+        self.assertEqual(slot["monument_key_gourds"], [monuments.key_gourds(self.world, t) for t in data.TOWERS])
         self.assertEqual(slot["monument_full_keys"], [])
 
 
@@ -260,10 +260,11 @@ class TestLinearTowersOneDepositBoxInOrder(BigWalkTestBase):
     def test_counted_after_the_monuments_before(self) -> None:
         # A later tower holding its key; a late Drawbridge's stays in the pool.
         order = self.world.tower_order
-        position = next(i for i in range(1, len(order)) if data.tower_by_prop(order[i]) in self.world.monument_keys())
+        with_key = monuments.monument_keys(self.world)
+        position = next(i for i in range(1, len(order)) if data.tower_by_prop(order[i]) in with_key)
         tower = data.tower_by_prop(order[position])
-        before = sum(self.world.tower_slots(data.tower_by_prop(prop)) for prop in order[:position])
-        rule_gourds = before + self.world.key_gourds(tower)
+        before = sum(monuments.tower_slots(self.world, data.tower_by_prop(prop)) for prop in order[:position])
+        rule_gourds = before + monuments.key_gourds(self.world, tower)
         name = data.monument_key_location_name(tower)
         self.collect_all_but([data.GOURD_ITEM_NAME])
         for _ in range(rule_gourds - 1):

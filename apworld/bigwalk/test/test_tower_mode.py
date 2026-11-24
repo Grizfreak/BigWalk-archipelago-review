@@ -2,7 +2,7 @@ import unittest
 
 from Options import OptionError
 
-from .. import data, regions
+from .. import data, monuments, regions
 from .bases import BigWalkTestBase, build_like_universal_tracker
 
 
@@ -116,15 +116,15 @@ class TestTheDomeGivesUpWhatIsMissing(BigWalkTestBase):
 
     def test_with_all_the_gourds_every_tower_keeps_its_slots(self) -> None:
         for tower in data.TOWERS:
-            self.assertEqual(tower.slots, self.world.tower_slots(tower))
+            self.assertEqual(tower.slots, monuments.tower_slots(self.world, tower))
 
     def test_with_fewer_gourds_only_the_dome_is_short(self) -> None:
         self.world.gourd_count = data.MAX_MONUMENT_SLOTS - 5
         for tower in data.TOWERS:
             if tower.prop_name == "bigKeyOverflow":
-                self.assertEqual(tower.slots - 5, self.world.tower_slots(tower))
+                self.assertEqual(tower.slots - 5, monuments.tower_slots(self.world, tower))
             else:
-                self.assertEqual(tower.slots, self.world.tower_slots(tower))
+                self.assertEqual(tower.slots, monuments.tower_slots(self.world, tower))
 
     def test_the_slot_data_carries_the_dome(self) -> None:
         self.assertEqual(15, self.world.fill_slot_data()["green_dome_slots"])
@@ -216,7 +216,7 @@ class TestATowerRoofWaitsForItsTurn(BigWalkTestBase):
     def test_the_roof_of_a_later_tower_needs_the_gourds_before_it(self) -> None:
         order = self.world.tower_order
         prop = next(prop for prop in order[1:] if any(f.tower == prop for f in data.FIREWORKS))
-        before = sum(self.world.tower_slots(data.tower_by_prop(p)) for p in order[:order.index(prop)])
+        before = sum(monuments.tower_slots(self.world, data.tower_by_prop(p)) for p in order[:order.index(prop)])
         roof = [next(f.location_name for f in data.FIREWORKS if f.tower == prop),
                 data.tower_reached_location_name(data.tower_by_prop(prop))]
         roof += [obj.location_name for obj in data.ISLAND_OBJECTS

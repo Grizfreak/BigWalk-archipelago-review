@@ -3,7 +3,7 @@
 from BaseClasses import LocationProgressType
 from Options import OptionError
 
-from .. import data, locations
+from .. import checks, data, locations
 from .bases import BigWalkTestBase
 
 
@@ -42,7 +42,7 @@ class TestBigLights(BigWalkTestBase):
     options = {"light_sanity": "lamps", "objectives": ["big_lights"], "lights_required": 25, "lock_puzzle_needs": False}
 
     def test_target_and_slot_data(self) -> None:
-        self.assertEqual(self.world.lights_target(), 21)  # 25 % of 83, rounded up
+        self.assertEqual(checks.lights_target(self.world), 21)  # 25 % of 83, rounded up
         slot = self.world.fill_slot_data()
         self.assertEqual(slot["lights_required_count"], 21)
         self.assertIn("big_lights", slot["objectives"])
@@ -55,7 +55,7 @@ class TestBigLightsWithoutLightSanity(BigWalkTestBase):
 
     def test_no_check_but_a_target(self) -> None:
         self.assertEqual(light_locations(self), set())
-        self.assertEqual(self.world.lights_target(), 42)  # 50 % of 83, rounded up
+        self.assertEqual(checks.lights_target(self.world), 42)  # 50 % of 83, rounded up
         slot = self.world.fill_slot_data()
         self.assertEqual(len(slot["lights_counted"]), 83)
         self.assertEqual(slot["light_sanity"], "off")
