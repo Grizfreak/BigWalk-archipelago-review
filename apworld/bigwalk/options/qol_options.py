@@ -58,8 +58,8 @@ class TeleportBackToHub(Toggle):
 
 class TrackerBoard(Toggle):
     """
-    The right sign of the hub's notice board counts the checks you can do now, in logic, against those not done
-    yet, and names a few of them: those a hint points to first, then those that hold a progression item. Mod only.
+    The right sign of the hub's notice board counts the checks not done yet, and names a few of those a hint
+    points to. For what you can do now, use a tracker (Universal Tracker, PopTracker). Mod only.
     """
 
     display_name = "Tracker Board"
@@ -71,14 +71,13 @@ class MapTracker(Choice):
     fireworks, radio stations, towers...), a small copy of its object on a pin, and leaves it once done. Mod only.
 
     - off: the game's map.
-    - in_logic: only the checks you can do now.
-    - all: every check not done, those out of logic greyed.
+    - all: every check not done, those a hint points to on a gold pin.
     """
 
     display_name = "Map Tracker"
     option_off = 0
-    option_in_logic = 1
     option_all = 2
+    alias_in_logic = 2
     default = 0
 
 

@@ -230,7 +230,7 @@ class BigWalkWorld(World):
             (usefulitempool if item.useful else filleritempool).append(item)
 
     def set_rule(self, spot: Location | Entrance, rule: Any) -> None:
-        """Also remembers the built rule, which logic_export sends to the mod as data."""
+        """Also remembers the built rule, which logic_export sends to trackers as data."""
         super().set_rule(spot, rule)
         if isinstance(rule, Rule):
             if not hasattr(self, "_built_rules"):
@@ -244,7 +244,7 @@ class BigWalkWorld(World):
             return found[1]
         if access_rule is Location.access_rule or access_rule is Entrance.access_rule:
             return None
-        raise TypeError("Big Walk: a rule set without the rule builder cannot travel to the mod")
+        raise TypeError("Big Walk: a rule set without the rule builder cannot travel to trackers")
 
     def create_item(self, name: str) -> items.BigWalkItem:
         return items.create_item(self, name)
@@ -285,7 +285,7 @@ class BigWalkWorld(World):
             "teleport_destinations": [key for key, _ in data.TELEPORT_DESTINATIONS],
             "teleport_id_offset": data.TELEPORT_ID_OFFSET,
 
-            # Always sent: outside trackers (PopTracker) evaluate it instead of porting the rules.
+            # Outside trackers (PopTracker) evaluate it instead of porting the rules.
             "logic": logic_export.export(self),
 
             # Cabin Fever waits, flat: mode, seconds, help, hide_timer.

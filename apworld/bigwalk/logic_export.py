@@ -1,4 +1,4 @@
-"""The world's rule-builder logic as data in slot_data, for the mod and outside trackers."""
+"""The world's rule-builder logic as data in slot_data, for outside trackers."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 def compact(rule: Rule) -> list[Any]:
-    """One rule as nested lists; any other rule kind is an error, the mod could not evaluate it."""
+    """One rule as nested lists; any other rule kind is an error."""
     if isinstance(rule, True_):
         return ["true"]
     if isinstance(rule, False_):
@@ -35,7 +35,7 @@ def compact(rule: Rule) -> list[Any]:
         return ["loc", rule.location_name]
     if isinstance(rule, CanReachRegion):
         return ["reg", rule.region_name]
-    raise TypeError(f"Big Walk: the mod cannot evaluate a {type(rule).__name__} rule")
+    raise TypeError(f"Big Walk: a tracker cannot evaluate a {type(rule).__name__} rule")
 
 
 def export(world: BigWalkWorld) -> dict[str, Any]:

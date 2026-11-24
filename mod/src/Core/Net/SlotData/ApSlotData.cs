@@ -80,13 +80,9 @@
         internal bool CabinFeverLongHelp { get; private set; }
         internal bool CabinFeverHideTimer { get; private set; }
 
-        // The tracker board and the logic it evaluates (null without the board).
         internal bool TrackerBoard { get; private set; }
         internal bool HintBoard { get; private set; } = true;
-        // "off", "in_logic" or "all".
-        internal string MapTrackerMode { get; private set; } = "off";
-        internal bool MapTracker => MapTrackerMode != "off";
-        internal ApLogic Logic { get; private set; }
+        internal bool MapTracker { get; private set; }
 
         internal bool CabinFeverLongHideTimer { get; private set; }
 

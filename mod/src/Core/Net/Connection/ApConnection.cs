@@ -24,14 +24,8 @@ namespace BigWalkArchipelago.Core.Net
         // Per attempt, captured by the handler: a dying session must not push into the new queue.
         private volatile ConcurrentQueue<ItemInfo> _incomingItems = new();
 
-        // Items received by name, for the logic; counted on the socket's thread under its own lock.
-        private volatile Dictionary<string, int> _receivedByName = new();
-
         // The hints the server knows that concern this slot, as it last sent them.
         private volatile Hint[] _hints = Array.Empty<Hint>();
-
-        // Locations of this slot that hold a progression item, scouted once at login.
-        private volatile HashSet<long> _progressionHere = new();
 
         private ArchipelagoSession _session;
 
@@ -115,13 +109,10 @@ namespace BigWalkArchipelago.Core.Net
 
                 var queue = new ConcurrentQueue<ItemInfo>();
                 _incomingItems = queue;
-                var received = new Dictionary<string, int>();
-                _receivedByName = received;
                 _hints = Array.Empty<Hint>();
-                _progressionHere = new HashSet<long>();
 
                 // Before login: the server sends the whole backlog once connected.
-                session.Items.ItemReceived += (ReceivedItemsHelper helper) => OnItemReceived(helper, queue, received);
+                session.Items.ItemReceived += (ReceivedItemsHelper helper) => OnItemReceived(helper, queue);
                 session.Socket.SocketClosed += OnSocketClosed;
                 session.Socket.ErrorReceived += OnErrorReceived;
 
@@ -198,17 +189,6 @@ namespace BigWalkArchipelago.Core.Net
                 catch (Exception ex)
                 {
                     Plugin.Log.LogWarning($"[{nameof(ApConnection)}] Could not follow the hints: {ex.Message}");
-                }
-
-                // Every location of this slot, quietly: only progression is kept.
-                try
-                {
-                    var ids = new List<long>(session.Locations.AllLocations).ToArray();
-                    session.Locations.ScoutLocationsAsync(HintCreationPolicy.None, ids).ContinueWith(OnScouted);
-                }
-                catch (Exception ex)
-                {
-                    Plugin.Log.LogWarning($"[{nameof(ApConnection)}] Could not scout the slot's locations: {ex.Message}");
                 }
 
                 _session = session;

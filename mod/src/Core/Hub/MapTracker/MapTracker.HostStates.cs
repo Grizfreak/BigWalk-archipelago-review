@@ -56,17 +56,12 @@ namespace BigWalkArchipelago.Core.Hub
         {
             if (!_hostKeysBuilt)
                 BuildHostKeys();
-            var logic = ApRuntime.SlotData?.Logic;
             var states = new Dictionary<string, byte>();
             foreach (var (key, id) in HostKeys)
             {
                 var done = TrackerState.Checked.Contains(id);
-                var inLogic = TrackerState.InLogic.Contains(id);
                 var hinted = TrackerState.Hinted.Contains(id);
-                var shown = !done && (inLogic || hinted || !OnlyInLogic);
-                var region = logic?.RegionOf(id);
-                var tunnel = region != null && region.IndexOf("Tunnel", StringComparison.OrdinalIgnoreCase) >= 0;
-                states[key] = (byte)((shown ? Visible : 0) | (inLogic ? 0 : GreyBit) | (hinted ? HintBit : 0) | (tunnel ? TunnelBit : 0));
+                states[key] = (byte)((done ? 0 : Visible) | (hinted ? HintBit : 0));
             }
 
             var objectives = new List<string>(ApObjectives.Keys);

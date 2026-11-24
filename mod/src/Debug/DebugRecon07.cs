@@ -15,8 +15,6 @@ namespace BigWalkArchipelago.Debug
         private static readonly BepInEx.Unity.IL2CPP.Configuration.KeyboardShortcut NextSpotKey =
             new(KeyCode.Alpha9, KeyCode.LeftControl, KeyCode.LeftShift);
         // Alt keys: Windows keeps Ctrl + Shift + 0 for the keyboard layout.
-        private static readonly BepInEx.Unity.IL2CPP.Configuration.KeyboardShortcut MapAllKey =
-            new(KeyCode.Alpha6, KeyCode.LeftAlt);
         private static readonly BepInEx.Unity.IL2CPP.Configuration.KeyboardShortcut DialModeKey =
             new(KeyCode.Alpha5, KeyCode.LeftAlt);
 
@@ -55,11 +53,6 @@ namespace BigWalkArchipelago.Debug
                     Dump();
                 if (NextSpotKey.IsDown())
                     NextSpot();
-                if (MapAllKey.IsDown())
-                {
-                    MapTracker.DebugShowAll = !MapTracker.DebugShowAll;
-                    ApNotices.Post($"Map tracker: {(MapTracker.DebugShowAll ? "every check" : "as the seed says")}");
-                }
                 if (DialModeKey.IsDown())
                 {
                     CabinFeverDial.Preview = !CabinFeverDial.Preview;

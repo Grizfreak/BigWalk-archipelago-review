@@ -25,11 +25,10 @@ namespace BigWalkArchipelago.Core.Hub
             internal readonly List<(Renderer renderer, MaterialPropertyBlock own, MaterialPropertyBlock grey)> Parts = new();
             internal bool Greyed;
             internal Renderer Stick;
-            internal Color StickColour;
             internal bool Hinted;
         }
 
-        // Hinted checks get a glowing gold stick, shown even out of logic.
+        // Hinted checks get a glowing gold stick.
         private static readonly Color Gold = new(1.6f, 1.2f, 0.25f, 1f);
         private static readonly Color Glow = new(2.2f, 2.2f, 2f, 1f);
         private static readonly HashSet<Renderer> Glowing = new();
@@ -39,7 +38,7 @@ namespace BigWalkArchipelago.Core.Hub
         private static readonly Dictionary<string, Marker> Markers = new();
         private static readonly HashSet<string> Built = new();
 
-        private const byte Visible = 1, GreyBit = 2, HintBit = 4, TunnelBit = 8, OpenBit = 16;
+        private const byte Visible = 1, GreyBit = 2, HintBit = 4, OpenBit = 16;
 
         private static readonly List<(string key, long id)> HostKeys = new();
         private static bool _hostKeysBuilt;
@@ -58,13 +57,7 @@ namespace BigWalkArchipelago.Core.Hub
         private const float StackStep = 0.03f;
         private const float SpreadStep = 0.09f;
         private static readonly Color StickColour = new(0.25f, 0.35f, 0.75f);
-        private static readonly Color BuriedStickColour = new(0.95f, 0.55f, 0.1f);
         private static readonly Color GreyTint = new(0.35f, 0.35f, 0.35f, 1f);
-
-        private static bool OnlyInLogic =>
-            !DebugShowAll && ApRuntime.SlotData != null && ApRuntime.SlotData.MapTrackerMode == "in_logic";
-
-        internal static bool DebugShowAll;
 
         private static bool On => IsGuest
             ? _mirrored != null

@@ -422,11 +422,14 @@ All off by default.
 - `hint_board` (on): the middle sign of the hub's notice board shows your hint
   points, what a hint costs, and the hints you asked for that aren't found yet.
   Write an item's name on it to ask for a hint (it costs points, like `!hint`).
-- `tracker_board`: the right sign counts the checks you can do now against those
-  left, and names a few, hinted ones first, then those with progression items.
+- `tracker_board`: the right sign counts the checks left, and names a few of the
+  hinted ones.
 - `map_tracker`: the big map in the Map Room shows the seed. Each check is a
-  little copy of its object on a pin, gone once done. `in_logic` shows only what
-  you can do now, `all` shows every check left, out of logic ones in grey.
+  little copy of its object on a pin, gone once done. Hinted checks stand on a
+  gold pin.
+
+None of these work out the logic: for what you can do now, use Universal Tracker
+or a PopTracker pack.
 
 Each check you send also shows a short line on the overlay: what it was, what
 it gave, and to whom.
