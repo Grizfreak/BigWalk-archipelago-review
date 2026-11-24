@@ -1,0 +1,53 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  apworld:
+    name: Archipelago ${{ matrix.archipelago }}, Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The oldest version the world supports, and the current one.
+          - {archipelago: "0.6.7", python: "3.12"}
+          - {archipelago: "main", python: "3.13"}
+    env:
+      AP_TEST_WORLDS: bigwalk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: bigwalk
+      - uses: actions/checkout@v4
+        with:
+          repository: ArchipelagoMW/Archipelago
+          ref: ${{ matrix.archipelago }}
+          path: archipelago
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install Archipelago with the world
+        working-directory: archipelago
+        run: |
+          cp -r ../bigwalk/apworld/bigwalk worlds/bigwalk
+          python -m pip install --upgrade pip
+          pip install -r ci-requirements.txt
+          python ModuleUpdate.py --yes --force --append "WebHostLib/requirements.txt"
+          python Launcher.py --update_settings
+      - name: The world's own tests
+        working-directory: archipelago
+        run: pytest worlds/bigwalk/test -n auto
+      - name: Archipelago's general and website tests
+        working-directory: archipelago
+        run: pytest test/general test/options test/webhost -n auto
+      - name: Build the apworld
+        # 0.6.7 has no way to build without opening a folder.
+        if: matrix.archipelago == 'main'
+        working-directory: archipelago
+        run: python Launcher.py "Build APWorlds" -- "Big Walk" --skip_open_folder
