@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
-namespace BigWalkArchipelago.Patches
+namespace BigWalkArchipelago.Patches.Menus
 {
     // Archipelago toggle and connection test on the hosting screen; a failed test never blocks.
     internal static partial class HostMenuArchipelagoControls

@@ -47,35 +47,35 @@ namespace BigWalkArchipelago
 
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll();
-            Patches.PlayerCountProceedLog.TryApply(_harmony);
-            Patches.BigRunCompat.TryApply(_harmony);
-            Patches.AudioBehaviourGuard.TryApply(_harmony);
-            Core.ErrorFloodWatch.Install();
+            PlayerCountProceedLog.TryApply(_harmony);
+            BigRunCompat.TryApply(_harmony);
+            AudioBehaviourGuard.TryApply(_harmony);
+            ErrorFloodWatch.Install();
 #if DEBUG
             Debug.PerfProbe.TryApply(_harmony);
 #endif
 
             AddComponent<Core.Net.ApRuntime>();
             AddComponent<Core.Net.ApStatusOverlay>();
-            AddComponent<Core.ArchDoorUnlocker>();
-            AddComponent<Core.GauntletStairwayEnforcer>();
-            AddComponent<Core.VariantGourdMapUnlocker>();
-            AddComponent<Core.SecondEndingSphereUnlocker>();
-            AddComponent<Core.CosmeticMonumentFillTracker>();
-            AddComponent<Core.CosmeticGourdSpawnHandler>();
-            AddComponent<Core.VanillaGadgetRemover>();
-            AddComponent<Core.GadgetSpawnHandler>();
-            AddComponent<Core.StaleHeldPropReleaser>();
-            AddComponent<Core.PuzzleGourdRetirer>();
-            AddComponent<Core.PuzzleNeedHider>();
-            AddComponent<Core.AbilityLockEnforcer>();
-            AddComponent<Core.WorldButtons>();
-            AddComponent<Core.TeleportButtonRunner>();
-            AddComponent<Core.PegTileSpawnHandler>();
-            AddComponent<Core.KeyColourPainter>();
+            AddComponent<ArchDoorUnlocker>();
+            AddComponent<GauntletStairwayEnforcer>();
+            AddComponent<VariantGourdMapUnlocker>();
+            AddComponent<SecondEndingSphereUnlocker>();
+            AddComponent<CosmeticMonumentFillTracker>();
+            AddComponent<CosmeticGourdSpawnHandler>();
+            AddComponent<VanillaGadgetRemover>();
+            AddComponent<GadgetSpawnHandler>();
+            AddComponent<StaleHeldPropReleaser>();
+            AddComponent<PuzzleGourdRetirer>();
+            AddComponent<PuzzleNeedHider>();
+            AddComponent<AbilityLockEnforcer>();
+            AddComponent<WorldButtons>();
+            AddComponent<TeleportButtonRunner>();
+            AddComponent<PegTileSpawnHandler>();
+            AddComponent<KeyColourPainter>();
             AddComponent<Core.Net.ModChannel>();
-            AddComponent<Core.TrapRunner>();
-            AddComponent<Core.ModVersionLabel>();
+            AddComponent<TrapRunner>();
+            AddComponent<ModVersionLabel>();
 
 #if DEBUG
             if (ModConfig.DebugModeEnabled.Value)

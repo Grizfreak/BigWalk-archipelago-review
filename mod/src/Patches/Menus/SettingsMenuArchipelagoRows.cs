@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
-namespace BigWalkArchipelago.Patches
+namespace BigWalkArchipelago.Patches.Menus
 {
     // Rows copied from the game's own; their SettingsRow script is removed so no setting changes.
     [HarmonyPatch(typeof(SettingsMenu), nameof(SettingsMenu.Start))]

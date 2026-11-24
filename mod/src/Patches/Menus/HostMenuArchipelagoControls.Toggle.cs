@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
-namespace BigWalkArchipelago.Patches
+namespace BigWalkArchipelago.Patches.Menus
 {
     // The toggle and what follows it: host field, test button, slot name lock.
     internal static partial class HostMenuArchipelagoControls

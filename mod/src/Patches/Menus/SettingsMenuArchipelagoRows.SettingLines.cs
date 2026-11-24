@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
-namespace BigWalkArchipelago.Patches
+namespace BigWalkArchipelago.Patches.Menus
 {
     // Each setting line: what it shows and what its arrows change.
     internal static partial class SettingsMenuArchipelagoRows

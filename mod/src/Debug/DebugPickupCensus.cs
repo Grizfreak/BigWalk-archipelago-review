@@ -274,7 +274,7 @@ namespace BigWalkArchipelago.Debug
             var spot = spots[_nextSpot % spots.Count];
             _nextSpot++;
             var landing = Traps.Ground(spot.Value + Vector3.back * 2f);
-            BigWalkArchipelago.Core.WorldButtons.TeleportTo(player, landing, Quaternion.identity);
+            WorldButtons.TeleportTo(player, landing, Quaternion.identity);
             Plugin.Log.LogInfo($"{Tag} Teleported to {spot.Key} ({_nextSpot}/{spots.Count}) at {spot.Value.ToString("F1")}.");
             Core.Net.ApNotices.Post($"Teleport {_nextSpot}/{spots.Count}: {spot.Key.Split(' ')[0]}");
         }
