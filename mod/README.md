@@ -33,3 +33,19 @@ and produces the player zip (BepInEx included).
 
 Launch the game through Steam: running the executable directly does not always
 load BepInEx.
+
+## In-game tests
+
+`tests/ingame/scenarios.json` lists what is played before a release, on two machines with the same zip. Each
+scenario names the mod folders it covers and the log lines that prove it.
+
+```
+python tests/ingame/check.py verify
+python tests/ingame/check.py record --version <version> --host <logs> --guest <logs>
+python tests/ingame/check.py release <zip>
+```
+
+`verify` runs on GitHub: it fails when a scenario names a log line the mod no longer writes, or when a folder has no
+scenario. `record` ticks what the logs of the host and the guest prove; tick the lines "by eye" in
+`tests/ingame/results/<version>.md`. `release` refuses a zip whose own build was not fully ticked. The game starts a
+new log each time: keep a copy of each one.

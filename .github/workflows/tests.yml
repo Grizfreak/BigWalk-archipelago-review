@@ -56,3 +56,10 @@ jobs:
         if: matrix.archipelago == 'main'
         working-directory: archipelago
         run: python Launcher.py "Build APWorlds" -- "Big Walk" --skip_open_folder
+
+  ingame:
+    name: In-game scenarios in step with the mod
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tests/ingame/check.py verify

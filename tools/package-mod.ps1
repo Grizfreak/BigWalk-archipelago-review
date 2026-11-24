@@ -147,3 +147,4 @@ Remove-Item $stage -Recurse -Force
 $size = [math]::Round((Get-Item $zip).Length / 1MB, 1)
 Write-Host ''
 Write-Host "Package ready: $zip ($size MB)" -ForegroundColor Green
+Write-Host "Before publishing it: python tests/ingame/check.py release $zip"
