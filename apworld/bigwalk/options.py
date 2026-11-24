@@ -462,11 +462,10 @@ class FlareGunSanity(Choice):
 
 class GourdName(FreeText):
     """
-    Renames the gourds for the run (24 characters max), everywhere: clients, hints, spoiler, overlay.
-    The Gourd Carton follows: "<name> Carton".
+    What Big Walk calls the gourds on screen for the run (24 characters max): the item feed, the goal
+    line and the hub board, on every player's screen. The Gourd Carton follows: "<name> Carton".
+    Archipelago, the text client and the other games keep calling the item "Gourd".
     Letters, digits and spaces, with ' - _ . , ! ? & + : ; ( ) @; anything else is dropped.
-    All Big Walk slots must use the same name, and it can't be another item's or group's name;
-    otherwise it stays "Gourd".
     """
 
     display_name = "Gourd Name"

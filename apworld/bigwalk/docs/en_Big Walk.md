@@ -597,18 +597,12 @@ and the games belong to their owners. Want to add your own? See
 
 ### Gourd name
 
-`gourd_name` renames the gourds for the run, up to 24 characters:
-`gourd_name: Plumbus du Destin`. Every game in the multiworld, the Text Client,
-Universal Tracker, the spoiler log and the overlay use that name, and
-`!hint Plumbus du Destin` finds them (`!hint Gourd` still works). The Gourd
-Carton becomes the **Plumbus du Destin Carton**, and `!hint Gourd Carton`,
-`!hint Gourd Carrier` and `!hint Plumbus du Destin Carrier` find it. Only the
-names change. Locations keep theirs (Gourd Deposit 10, Gourd Carton Pickup).
-
-The name applies to the whole game, not one slot. Every Big Walk slot in the
-multiworld has to ask for the same name, or they all keep "Gourd". A name
-already used by another Big Walk item or item group (Backpack, Traps...) also
-falls back to "Gourd".
+`gourd_name` changes what Big Walk calls the gourds on screen, up to 24
+characters: `gourd_name: Plumbus du Destin`. The item feed, the goal line and the
+hub board say that name on every player's screen, and the Gourd Carton becomes
+the **Plumbus du Destin Carton**. Archipelago itself keeps the item's real name:
+the server, the Text Client, the other games, Universal Tracker and the spoiler
+log say "Gourd", and `!hint Gourd` finds them.
 
 ## In-game settings
 
@@ -626,8 +620,7 @@ the list, from the main menu or the pause menu. These are saved in the mod's
 
 Guests see the host's settings greyed out ("Set by the host") with the host's
 values. This gourd name only exists in the mod. The server, the Text Client and
-other games still say "Gourd", because item names are fixed in the apworld. Use
-the `gourd_name` option to rename them everywhere.
+other games still say "Gourd", because item names are fixed in the apworld.
 
 ## Which items can be in another player's world?
 

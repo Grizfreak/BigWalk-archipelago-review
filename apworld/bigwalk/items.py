@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from BaseClasses import Item, ItemClassification
 from Options import OptionError
 
-from . import data, gourd_name
+from . import data
 from . import options as bigwalk_options
 
 if TYPE_CHECKING:
@@ -73,7 +73,7 @@ ITEM_NAME_GROUPS: dict[str, set[str]] = {
     "Traps": set(TRAP_ITEM_NAMES),
     "Hard Traps": {trap.item_name for trap in data.TRAPS if trap.hard},
     "Bonuses": set(BONUS_ITEM_NAMES),
-    # What players call it; with gourd_name, "<name> Carrier" as well.
+    # What players call the carton.
     "Gourd Carrier": {data.GOURD_CARTON_ITEM_NAME},
 }
 
@@ -88,18 +88,6 @@ def island_object_limits(world: BigWalkWorld) -> dict[str, int]:
 
 class BigWalkItem(Item):
     game = "Big Walk"
-
-    def __repr__(self) -> str:
-        # Spoiler log: show gourd_name (and the carton after it), keep item.name for the rules.
-        text = super().__repr__()
-        region = self.location.parent_region if self.location else None
-        if (self.name not in (data.GOURD_ITEM_NAME, data.GOURD_CARTON_ITEM_NAME)
-                or region is None or region.multiworld is None):
-            return text
-        world = region.multiworld.worlds.get(self.player)
-        name = getattr(world, "gourd_name", data.GOURD_ITEM_NAME)
-        shown = name if self.name == data.GOURD_ITEM_NAME else gourd_name.carton_name(name)
-        return shown + text[len(self.name):]
 
 
 def classification_for(name: str, require_arch_doors: bool = False) -> ItemClassification:

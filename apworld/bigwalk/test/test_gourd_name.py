@@ -1,19 +1,13 @@
-"""gourd_name."""
+"""gourd_name: a name only the mod shows; Archipelago keeps "Gourd"."""
 
 from unittest import TestCase
 
 import worlds
-from worlds.AutoWorld import data_package_checksum
 
-from .. import data, gourd_name, items
+from .. import data, gourd_name
 from .bases import BigWalkTestBase
 
 NAME = "Plumbus du Destin"
-
-
-def embedded_multidata() -> dict:
-    # Main.py embeds the shared package object itself.
-    return {"datapackage": {"Big Walk": worlds.network_data_package["games"]["Big Walk"]}}
 
 
 class TestDefault(BigWalkTestBase):
@@ -23,83 +17,26 @@ class TestDefault(BigWalkTestBase):
         self.assertEqual(self.world.gourd_name, data.GOURD_ITEM_NAME)
         self.assertEqual(self.world.fill_slot_data()["gourd_name"], data.GOURD_ITEM_NAME)
 
-    def test_the_data_package_is_left_alone(self) -> None:
-        multidata = embedded_multidata()
-        package = multidata["datapackage"]["Big Walk"]
-        self.world.modify_multidata(multidata)
-        self.assertIs(multidata["datapackage"]["Big Walk"], package)
-
 
 class TestRenamed(BigWalkTestBase):
     options = {"gourd_name": NAME}
-
-    def test_the_world_keeps_the_real_name(self) -> None:
-        self.assertEqual(self.world.gourd_name, NAME)
-        self.assertEqual(len(self.get_items_by_name(data.GOURD_ITEM_NAME)), data.MAX_MONUMENT_SLOTS)
-        self.assertEqual(self.world.fill_slot_data()["gourd_name"], NAME)
-
-    def test_the_data_package_gets_a_renamed_copy(self) -> None:
-        original = worlds.network_data_package["games"]["Big Walk"]
-        before = dict(original["item_name_to_id"])
-        multidata = embedded_multidata()
-        self.world.modify_multidata(multidata)
-        package = multidata["datapackage"]["Big Walk"]
-
-        gourd_id = items.ITEM_NAME_TO_ID[data.GOURD_ITEM_NAME]
-        self.assertEqual(package["item_name_to_id"][NAME], gourd_id)
-        self.assertNotIn(data.GOURD_ITEM_NAME, package["item_name_to_id"])
-        self.assertEqual(len(package["item_name_to_id"]), len(before))
-        self.assertEqual(package["item_name_groups"][data.GOURD_ITEM_NAME], [NAME])
-        self.assertIn(NAME, package["item_name_groups"]["Everything"])
-        # The carton follows, with its aliases.
-        carton = f"{NAME} Carton"
-        self.assertEqual(package["item_name_to_id"][carton], items.ITEM_NAME_TO_ID[data.GOURD_CARTON_ITEM_NAME])
-        self.assertNotIn(data.GOURD_CARTON_ITEM_NAME, package["item_name_to_id"])
-        for alias in (data.GOURD_CARTON_ITEM_NAME, "Gourd Carrier", f"{NAME} Carrier"):
-            self.assertEqual(package["item_name_groups"][alias], [carton], alias)
-        self.assertEqual(list(package["item_name_groups"]), sorted(package["item_name_groups"]))
-        # archipelago.gg recomputes it on upload.
-        unchecked = {key: value for key, value in package.items() if key != "checksum"}
-        self.assertEqual(package["checksum"], data_package_checksum(unchecked))
-        self.assertNotEqual(package["checksum"], original["checksum"])
-        # The shared package must stay untouched.
-        self.assertIs(worlds.network_data_package["games"]["Big Walk"], original)
-        self.assertEqual(original["item_name_to_id"], before)
-
-    def test_a_second_slot_finds_it_done(self) -> None:
-        multidata = embedded_multidata()
-        self.world.modify_multidata(multidata)
-        renamed = multidata["datapackage"]["Big Walk"]
-        self.world.modify_multidata(multidata)
-        self.assertIs(multidata["datapackage"]["Big Walk"], renamed)
-
-    def test_the_spoiler_says_the_new_name(self) -> None:
-        gourd = self.world.create_item(data.GOURD_ITEM_NAME)
-        gourd.location = self.multiworld.get_location("Drawbridge Key Deposit", self.player)
-        self.assertEqual(repr(gourd), NAME)
-        self.assertEqual(gourd.name, data.GOURD_ITEM_NAME)
-        backpack = self.world.create_item("Backpack")
-        backpack.location = gourd.location
-        self.assertEqual(repr(backpack), "Backpack")
-        carton = self.world.create_item(data.GOURD_CARTON_ITEM_NAME)
-        carton.location = gourd.location
-        self.assertEqual(repr(carton), f"{NAME} Carton")
-        self.assertEqual(carton.name, data.GOURD_CARTON_ITEM_NAME)
-
-
-class TestRefused(BigWalkTestBase):
-    options = {"gourd_name": "backpack"}
     run_default_tests = False
 
-    def test_a_name_of_the_game_is_refused(self) -> None:
-        self.assertEqual(self.world.gourd_name, data.GOURD_ITEM_NAME)
+    def test_only_slot_data_carries_the_name(self) -> None:
+        self.assertEqual(self.world.gourd_name, NAME)
+        self.assertEqual(self.world.fill_slot_data()["gourd_name"], NAME)
+        self.assertEqual(len(self.get_items_by_name(data.GOURD_ITEM_NAME)), data.MAX_MONUMENT_SLOTS)
+
+    def test_the_data_package_keeps_gourd(self) -> None:
+        package = worlds.network_data_package["games"]["Big Walk"]
+        self.assertIn(data.GOURD_ITEM_NAME, package["item_name_to_id"])
+        self.assertNotIn(NAME, package["item_name_to_id"])
+        self.assertIs(type(self.world).modify_multidata, worlds.AutoWorld.World.modify_multidata)
 
 
 class TestCleaning(TestCase):
-    taken = (*items.ITEM_NAME_TO_ID, *items.ITEM_NAME_GROUPS)
-
     def clean(self, wanted: str) -> str:
-        return gourd_name.clean(wanted, self.taken, "Tester")
+        return gourd_name.clean(wanted, "Tester")
 
     def test_trimmed(self) -> None:
         self.assertEqual(self.clean("  Big   Boid "), "Big Boid")
@@ -111,38 +48,16 @@ class TestCleaning(TestCase):
         for wanted in ("", "   ", "gourd", "GOURD"):
             self.assertEqual(self.clean(wanted), data.GOURD_ITEM_NAME, wanted)
 
-    def test_items_and_groups_are_taken(self) -> None:
-        for wanted in ("Backpack", "traps", "Gourd Carton", "Gourd Carrier"):
-            self.assertEqual(self.clean(wanted), data.GOURD_ITEM_NAME, wanted)
-
-    def test_the_cartons_names_must_be_free_too(self) -> None:
-        # "Big" gives "Big Carton" and "Big Carrier", both free; a taken one refuses the name.
-        self.assertEqual(gourd_name.clean("Big", ("Big Carton",), "Tester"), data.GOURD_ITEM_NAME)
-        self.assertEqual(gourd_name.clean("Big", ("big carrier",), "Tester"), data.GOURD_ITEM_NAME)
-        self.assertEqual(self.clean("Big"), "Big")
-
-    def test_the_community_names_are_free(self) -> None:
-        for wanted in ("Boid", "PLUMBUS", "Jelly Baby"):
+    def test_any_other_name_is_free(self) -> None:
+        for wanted in ("Boid", "PLUMBUS", "Jelly Baby", "Backpack", "Victory"):
             self.assertEqual(self.clean(wanted), wanted)
-
-
-class TestShared(TestCase):
-    def test_one_name_for_all(self) -> None:
-        self.assertEqual(gourd_name.shared({"A": NAME, "B": NAME}), NAME)
-
-    def test_disagreeing_slots_keep_gourd(self) -> None:
-        self.assertEqual(gourd_name.shared({"A": NAME, "B": "Boyo"}), data.GOURD_ITEM_NAME)
-        self.assertEqual(gourd_name.shared({"A": NAME, "B": data.GOURD_ITEM_NAME}), data.GOURD_ITEM_NAME)
-
-    def test_no_slot(self) -> None:
-        self.assertEqual(gourd_name.shared({}), data.GOURD_ITEM_NAME)
 
 
 class TestCharactersAreFiltered(TestCase):
     """What a name may not hold is dropped, and what it may hold is left alone."""
 
     def clean(self, wanted: str) -> str:
-        return gourd_name.clean(wanted, (), "Tester")
+        return gourd_name.clean(wanted, "Tester")
 
     def test_letters_digits_accents_and_the_signs_are_kept(self) -> None:
         for name in ("Plumbus du Destin", "Gourde éàç", "Prout's", "Prout-2", "Prout, Prout", "Prout!", "R2.D2 (ok)", "南瓜"):
@@ -175,9 +90,6 @@ class TestCharactersAreFiltered(TestCase):
         self.assertEqual("Fraktur", self.clean("𝕱𝖗𝖆𝖐𝖙𝖚𝖗"))
         self.assertEqual("abc", self.clean("ⓐⓑⓒ"))
         self.assertEqual("ABC", self.clean("ＡＢＣ"))
-
-    def test_victory_is_refused(self) -> None:
-        self.assertEqual(data.GOURD_ITEM_NAME, self.clean("Victory"))
 
     def test_the_cut_comes_after_the_filter(self) -> None:
         wanted = "<<<" + "x" * 30

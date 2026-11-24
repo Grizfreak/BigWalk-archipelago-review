@@ -6,18 +6,15 @@ import logging
 import random
 from collections import Counter
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TextIO
+from typing import Any, TextIO
 
-from BaseClasses import CollectionState, Entrance, Item, Location, LocationProgressType, MultiWorld
+from BaseClasses import CollectionState, Entrance, Item, Location, LocationProgressType
 from Options import OptionError
 from rule_builder.rules import Rule
 from worlds.AutoWorld import World
 
 from . import data, gourd_name, items, locations, logic_export, regions, rules, tiles, web_world
 from . import options as bigwalk_options
-
-if TYPE_CHECKING:
-    from NetUtils import MultiData
 
 WORLD_VERSION = "1.0.15"
 """Kept in step with archipelago.json; sent in slot_data so the mod can check it."""
@@ -173,6 +170,8 @@ class BigWalkWorld(World):
 
     def generate_early(self) -> None:
         self._take_options_from_tracker()
+        # Only the mod shows this name; the item stays "Gourd" for Archipelago.
+        self.gourd_name = gourd_name.clean(self.options.gourd_name.value, self.player_name)
 
         # `linear_keys` puts the Tunnels on the Yellow key's deposit: no doors to shuffle then.
         if self.options.linear_keys and self.options.tunnel_sanity:
@@ -218,28 +217,9 @@ class BigWalkWorld(World):
         if self.options.zone_locks_local:
             self.options.local_items.value |= {lock.item_name for lock in self.zone_locks()}
 
-    @classmethod
-    def stage_generate_early(cls, multiworld: MultiWorld) -> None:
-        # The data package is per game, so one name for all Big Walk slots.
-        worlds = [multiworld.worlds[player] for player in multiworld.get_game_players(cls.game)]
-        taken = (*cls.item_name_to_id, *cls.item_name_groups)
-        name = gourd_name.shared({
-            world.player_name: gourd_name.clean(world.options.gourd_name.value, taken, world.player_name)
-            for world in worlds
-        })
-        for world in worlds:
-            world.gourd_name = name
-
-    def modify_multidata(self, multidata: MultiData) -> None:
-        package = multidata["datapackage"].get(self.game)
-        if self.gourd_name == data.GOURD_ITEM_NAME or package is None:
-            return
-        if data.GOURD_ITEM_NAME in package["item_name_to_id"]:
-            multidata["datapackage"][self.game] = gourd_name.renamed_package(package, self.gourd_name)
-
     def write_spoiler_header(self, spoiler_handle: TextIO) -> None:
-        if self.gourd_name != self.options.gourd_name.value:
-            spoiler_handle.write(f"{'Gourds called:':33}{self.gourd_name}\n")
+        if self.gourd_name != data.GOURD_ITEM_NAME:
+            spoiler_handle.write(f"{'Gourds shown in game as:':33}{self.gourd_name}\n")
         if self.options.random_objectives.value:
             spoiler_handle.write(f"{'Objectives drawn:':33}{', '.join(self.objective_keys())}\n")
         if self.peg_tiles != tiles.VANILLA_TILES:
