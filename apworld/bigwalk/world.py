@@ -78,6 +78,28 @@ TRACKER_OPTIONS = {
 }
 """slot_data field -> option: everything a re-generation needs to rebuild the same world."""
 
+# Options sent to the mod under their own name: toggles as bools, sets as sorted lists.
+SLOT_OPTIONS = (
+    "lock_endings_until_objectives", "keys_required", "first_tower_open", "everyone_gathers", "towers_required",
+    "tower_sanity", "radio_stations_required", "start_with_arch_doors_open", "require_arch_doors",
+    "gauntlet_puzzles_required", "lock_gauntlet_needs", "teleport_back_to_hub", "open_black_tower",
+    "tower_resync_stations", "tracker_board", "hint_board", "guests_can_resync", "firework_sanity",
+    "lights_required", "zone_locks", "tunnel_sanity", "fast_golf", "objects_required", "body_required",
+    "random_colors", "trap_link", "trap_duration", "traps_spare_the_gauntlet", "death_link_triggers",
+    "death_link_amnesty", "death_link_trap_on_send", "lock_puzzle_needs", "start_with_puzzle_needs",
+    "start_with_random_puzzle_need", "rides_require_seat", "start_with_abilities", "linear_keys",
+    "linear_arch_doors", "linear_puzzles", "start_with_drawbridge_open", "start_with_map_room_open",
+    "monument_sanity",
+)
+
+# Choices sent to the mod as their option key.
+SLOT_CHOICES = (
+    "tower_mode", "gauntlet_mode", "gauntlet_stage_items", "teleport_buttons", "tile_thief", "map_tracker",
+    "object_sanity", "light_sanity", "death_link", "death_link_target", "death_link_effect", "lock_abilities",
+    "include_big_game_puzzles", "cut_key_sanity", "linear_towers",
+)
+
+
 class BigWalkWorld(World):
     """
     Big Walk is a co-op walking game: two or more players wander a large
@@ -778,27 +800,20 @@ class BigWalkWorld(World):
 
     def fill_slot_data(self) -> Mapping[str, Any]:
         return {
-            "world_version": WORLD_VERSION,
-
+            **self.options.as_dict(*SLOT_OPTIONS, toggles_as_bools=True),
             # Choices travel as frozen strings, so reordering or renaming one never breaks the mod.
+            **{name: getattr(self.options, name).current_key for name in SLOT_CHOICES},
+            "world_version": WORLD_VERSION,
+            # The pre-rename goal names, so an older mod still reads a new seed.
             "goal": bigwalk_options.GOAL_ON_THE_WIRE[self._goal_for_older_mods()],
             "objectives": list(self.objective_keys()) if self.objectives else [],
             "lock_endings": bool(self.objectives and self.options.lock_endings_until_objectives),
-            # For Universal Tracker: lock_endings is false without objectives.
-            "lock_endings_until_objectives": bool(self.options.lock_endings_until_objectives),
-            "keys_required": self.options.keys_required.value,
-            "tower_mode": self.options.tower_mode.current_key,
             "tower_order": list(self.tower_order),
             "green_dome_slots": self.tower_slots(data.tower_by_prop("bigKeyOverflow")),
-            "first_tower_open": bool(self.options.first_tower_open),
-            "everyone_gathers": bool(self.options.everyone_gathers),
             "monument_item_id": data.progressive_monument_id(),
-            "towers_required": self.options.towers_required.value,
-            "tower_sanity": bool(self.options.tower_sanity),
             "tower_reached_keys": [tower.prop_name for tower in data.reached_towers()] if self.options.tower_sanity else [],
             "tower_reached_id_offset": data.TOWER_REACHED_ID_OFFSET,
             "tower_reach_hints": self._tower_reach_hints(),
-            "radio_stations_required": self.options.radio_stations_required.value,
             "deposit_goal_amount": self.deposit_goal,
             "deposit_locations": bigwalk_options.GOURD_SANITY_ON_THE_WIRE[
                 self.options.gourd_sanity.current_key],
@@ -807,38 +822,21 @@ class BigWalkWorld(World):
             "radio_station_items": bool(self.options.shuffle_radio_music),
 
             # `SavableSystem` names of the doors held closed until their item arrives.
-            "start_with_arch_doors_open": sorted(self.options.start_with_arch_doors_open.value),
             "locked_arch_doors": [door.system_name for door in self.locked_arch_doors],
-            "require_arch_doors": bool(self.options.require_arch_doors),
             "arch_door_id_offset": data.ARCH_DOOR_ID_OFFSET,
 
             # `gauntlet_stage_systems` is in the order of the stage items.
-            "gauntlet_mode": self.options.gauntlet_mode.current_key,
-            "gauntlet_stage_items": self.options.gauntlet_stage_items.current_key,
-            "gauntlet_puzzles_required": bool(self.options.gauntlet_puzzles_required),
-            "lock_gauntlet_needs": bool(self.options.lock_gauntlet_needs),
             "gauntlet_stage_systems": [stage.system_name for stage in data.GAUNTLET_STAGES],
             "gauntlet_id_offset": data.GAUNTLET_ID_OFFSET,
 
             # Teleport destinations in the order of their item ids.
-            "teleport_buttons": self.options.teleport_buttons.current_key,
             "teleport_destinations": [key for key, _ in data.TELEPORT_DESTINATIONS],
             "teleport_id_offset": data.TELEPORT_ID_OFFSET,
-            "teleport_back_to_hub": bool(self.options.teleport_back_to_hub),
 
-            "open_black_tower": bool(self.options.open_black_tower),
-            "tile_thief": self.options.tile_thief.current_key,
-
-            "tower_resync_stations": bool(self.options.tower_resync_stations),
-
-            "tracker_board": bool(self.options.tracker_board),
-            "hint_board": bool(self.options.hint_board),
             # For the hint sign's suggestions while a player writes on it.
             "hint_items": self._hint_items(),
-            "map_tracker": self.options.map_tracker.current_key,
             # Always sent: outside trackers (PopTracker) evaluate it instead of porting the rules.
             "logic": logic_export.export(self),
-            "guests_can_resync": bool(self.options.guests_can_resync),
 
             # Cabin Fever waits, flat: mode, seconds, help, hide_timer.
             **{
@@ -852,13 +850,11 @@ class BigWalkWorld(World):
             else bool(self.options.pack_sanity),
             "pickup_guids": [pickup.guid for pickup in data.PICKUPS],
             "pickup_id_offset": data.PICKUP_ID_OFFSET,
-            "firework_sanity": bool(self.options.firework_sanity),
             "firework_keys": [firework.key for firework in data.FIREWORKS],
             "firework_id_offset": data.FIREWORK_ID_OFFSET,
             "flare_gun_sanity": bool(self.options.flare_gun_sanity),
             "flare_gun_guids": [pickup.guid for pickup in data.FLARE_GUN_PICKUPS],
             "flare_gun_id_offset": data.FLARE_GUN_ID_OFFSET,
-            "object_sanity": self.options.object_sanity.current_key,
             "object_guids": [obj.guid for obj in data.ISLAND_OBJECTS],
             "object_id_offset": data.OBJECT_ID_OFFSET,
             "object_kinds": [kind for kind, _ in data.OBJECT_KINDS],
@@ -867,78 +863,42 @@ class BigWalkWorld(World):
             "object_sanity_kinds": [kind for kind, _ in data.OBJECT_KINDS if self.object_kind_counted(kind)],
             "object_sanity_kind_keys": sorted(self.options.object_sanity_kinds.value),
             # Light keys in id order: a lamp by guid, a switch by its state's path.
-            "light_sanity": self.options.light_sanity.current_key,
             "light_keys": [light.key for light in data.LIGHTS],
             "light_id_offset": data.LIGHT_ID_OFFSET,
-            "lights_required": self.options.lights_required.value,
             "lights_required_count": self.lights_target(),
             "lights_counted": [light.key for light in self.lights_counted()],
             # Gadgets each zone item keeps off the map; lamps and switches are only out of logic.
-            "zone_locks": bool(self.options.zone_locks),
             "zone_locked_gadgets": {
                 str(data.zone_lock_item_id(lock)): [
                     obj.guid for obj in data.ISLAND_OBJECTS
                     if obj.kind not in data.LAMP_KINDS and self.object_kind_counted(obj.kind)
                     and data.zone_lock_for(obj.guid, obj.zone, False) == lock]
                 for lock in self.zone_locks() if not lock.lamps},
-            "tunnel_sanity": bool(self.options.tunnel_sanity),
             "tunnel_doors": {
                 str(data.tunnel_door_item_id(door)): list(door.gates)
                 for door in data.TUNNEL_DOORS if self.options.tunnel_sanity},
-            # The mod takes the golf ball's (the cannonball's) "too heavy" off.
-            "fast_golf": bool(self.options.fast_golf),
-            "objects_required": self.options.objects_required.value,
             "objects_required_count": self.objects_target(),
-            "body_required": self.options.body_required.value,
             "body_required_count": self.body_target(),
 
             # Indices into the mod's palette; empty keeps the game's own colors.
-            "random_colors": bool(self.options.random_colors),
             "color_palette": self.color_palette,
             # The drawing each basic tile shows, PegTileA1 to PegTileA9.
             "peg_tiles": list(self.peg_tiles),
             "peg_drawings": [f"{place}={name}" for place, name in sorted(self.peg_drawings.items())],
-            "trap_link": bool(self.options.trap_link),
 
             "effect_items": {
                 str(effect.offset): effect.key for effect in (*data.TRAPS, *data.BONUSES)},
-            "trap_duration": self.options.trap_duration.value,
-            "traps_spare_the_gauntlet": bool(self.options.traps_spare_the_gauntlet),
 
-            "death_link": self.options.death_link.current_key,
-            "death_link_triggers": sorted(self.options.death_link_triggers.value),
-            "death_link_amnesty": self.options.death_link_amnesty.value,
-            "death_link_trap_on_send": bool(self.options.death_link_trap_on_send),
-            "death_link_target": self.options.death_link_target.current_key,
-            "death_link_effect": self.options.death_link_effect.current_key,
             "death_link_roulette": self._death_link_roulette(),
-
-            "lock_puzzle_needs": bool(self.options.lock_puzzle_needs),
-            "start_with_puzzle_needs": sorted(self.options.start_with_puzzle_needs.value),
-            "start_with_random_puzzle_need": bool(self.options.start_with_random_puzzle_need),
 
             # Need keys in the order of their item ids.
             "puzzle_need_keys": [need.key for need in data.PUZZLE_NEEDS],
             "puzzle_need_id_offset": data.PUZZLE_NEED_ID_OFFSET,
 
-            "lock_abilities": self.options.lock_abilities.current_key,
             "ability_keys": [ability.key for ability in data.ABILITIES],
             "ability_id_offset": data.ABILITY_ID_OFFSET,
             "lock_running": bool(self.options.lock_running),
-            "rides_require_seat": bool(self.options.rides_require_seat),
-            "start_with_abilities": sorted(self.options.start_with_abilities.value),
 
-            # Of these, only the purple puzzles change what the mod does.
-            "include_big_game_puzzles": self.options.include_big_game_puzzles.current_key,
-            "cut_key_sanity": self.options.cut_key_sanity.current_key,
-            "linear_keys": bool(self.options.linear_keys),
-            "linear_arch_doors": bool(self.options.linear_arch_doors),
-            "linear_puzzles": bool(self.options.linear_puzzles),
-            # For the tracker only: the server hands these doors over as start items either way.
-            "start_with_drawbridge_open": bool(self.options.start_with_drawbridge_open),
-            "start_with_map_room_open": bool(self.options.start_with_map_room_open),
-            "monument_sanity": bool(self.options.monument_sanity),
-            "linear_towers": self.options.linear_towers.current_key,
             "monument_full_keys": [tower.prop_name for tower in self.monuments_full()],
             "monument_full_id_offset": data.MONUMENT_FULL_ID_OFFSET,
             # Each monument key is sent once its monument holds the gourds at the same position.
