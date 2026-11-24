@@ -23,7 +23,6 @@ CUT_STRIDE = 10
 
 GOURD_ITEM_NAME = "Gourd"
 GOURD_CARTON_ITEM_NAME = "Gourd Carton"
-"""Renamed after the gourds by `gourd_name`: "<name> Carton"."""
 
 # Puzzles (SaveablePropName.gourdXxx); dev-only values and gourdSecretZoneVice are left out.
 

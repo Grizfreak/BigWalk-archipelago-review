@@ -6,6 +6,14 @@ an older apworld plays with a newer mod (ids never change); the other way
 round, an older mod ignores what it does not know and can make a seed
 unwinnable, which is why every player of a session should run the same build.
 
+## Unreleased
+
+### Changed
+
+- **`gourd_name` only renames the gourds in Big Walk**: the item feed, the goal line and the hub board show the
+  name, as before. The apworld no longer rewrites the data package, so the server, the Text Client, the other
+  games and the spoiler log say "Gourd", and two Big Walk slots may now pick different names.
+
 ## 1.0.15
 
 ### Moving from 1.0.14 to 1.0.15
