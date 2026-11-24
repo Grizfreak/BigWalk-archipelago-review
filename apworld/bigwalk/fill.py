@@ -1,4 +1,4 @@
-"""pre_fill: local items and the room at the start."""
+"""Room at the start of the world, and the items of the `local` options."""
 
 from __future__ import annotations
 
@@ -7,85 +7,44 @@ from typing import TYPE_CHECKING
 
 from BaseClasses import CollectionState, Item, LocationProgressType
 
-from . import data, locations
+from . import checks, data
 from . import options as bigwalk_options
 
 if TYPE_CHECKING:
     from .world import BigWalkWorld
 
 
-def pre_fill(world: BigWalkWorld) -> None:
-    # Local items first: they may take the starting zone's places, which Legs must then see.
-    _place_local_items(world, "Objects", world.options.object_sanity_items.value, "object_sanity_items")
-    _place_local_items(world, "Lights", world.options.light_sanity_items.value, "light_sanity_items")
-    _make_room_at_the_start(world)
-    _open_the_way_one_step_at_a_time(world)
-
-
-def _open_the_way_one_step_at_a_time(world: BigWalkWorld) -> None:
-    """Where two items are needed with one free location, the player starts with one of them."""
-    mine = [item for item in world.multiworld.itempool if item.player == world.player and item.advancement]
-    if not mine:
-        return
-    own = world.multiworld.get_locations(world.player)
-    state = CollectionState(world.multiworld)
-    state.sweep_for_advancements(own)
-    used = 0
-
-    def reach(with_state: CollectionState) -> set[str]:
-        return {loc.name for loc in world.multiworld.get_unfilled_locations(world.player)
-                if loc.progress_type != LocationProgressType.EXCLUDED and loc.can_reach(with_state)}
-
-    def opens(names: tuple[str, ...], now: set[str]) -> int:
-        trial = state.copy()
-        for name in names:
-            trial.collect(world.create_item(name), True)
-        trial.sweep_for_advancements(own)
-        return len(reach(trial) - now)
-
-    for _ in range(len(mine)):
-        now = reach(state)
-        free = len(now) - used
-        names = sorted({item.name for item in mine})
-        if not names:
-            return
-        singles = [(opens((name,), now), name) for name in names]
-        best = max(singles)
-        if best[0] > 0:
-            chosen: tuple[str, ...] = (best[1],)
-        else:
-            pairs = [(opens((a, b), now), (a, b)) for i, a in enumerate(names) for b in names[i:]
-                     if a != b or sum(1 for item in mine if item.name == a) > 1]
-            pairs = [pair for pair in pairs if pair[0] > 0]
-            if not pairs:
-                return
-            chosen = max(pairs)[1]
-        if free < len(chosen):
-            item = next(item for item in mine if item.name == chosen[0])
-            logging.warning(f"Big Walk ({world.player_name}): {' and '.join(chosen)} needed with room for "
-                            f"{max(free, 0)}; starting with {item.name}.")
-            mine.remove(item)
-            world.multiworld.itempool[:] = [other for other in world.multiworld.itempool if other is not item]
-            local_early = world.multiworld.local_early_items[world.player]
-            if local_early.get(item.name):
-                local_early[item.name] -= 1
-                if not local_early[item.name]:
-                    del local_early[item.name]
-            world.push_precollected(item)
-            world.multiworld.itempool.append(world.create_filler())
-            state.collect(item, True)
-            state.sweep_for_advancements(own)
+def set_local_items_aside(world: BigWalkWorld, pool: list[Item]) -> list[Item]:
+    """Keeps back the junk pre_fill places on the checks of the `local` options; returns the rest."""
+    world.local_placements = []
+    # Universal Tracker never reaches pre_fill.
+    if getattr(world.multiworld, "generation_is_fake", False):
+        return pool
+    groups = (("object_sanity_items", checks.object_location_names(world)),
+              ("light_sanity_items", [light.location_name for light in checks.lights(world)]))
+    # Archipelago takes these out of the itempool, so they must be in it.
+    asked_for = set(world.options.start_inventory_from_pool.value)
+    asked_for.update(name for block in world.options.plando_items.value for name in block.items)
+    for option, names in groups:
+        if getattr(world.options, option).value != bigwalk_options.ObjectSanityItems.option_local:
             continue
-        for name in chosen:
-            item = next(item for item in mine if item.name == name)
-            mine.remove(item)
-            state.collect(item, True)
-            used += 1
-        state.sweep_for_advancements(own)
+        own = [item for item in pool if not item.advancement and item.name not in asked_for]
+        world.random.shuffle(own)
+        if len(own) < len(names):
+            logging.warning(f"Big Walk ({world.player_name}): {option} local: only {len(own)} items of this "
+                            f"world for {len(names)} checks; the others may hold anything.")
+        own = own[:len(names)]
+        world.local_placements.append((names, own))
+        # By identity: items compare equal by name and player.
+        kept = {id(item) for item in own}
+        pool = [item for item in pool if id(item) not in kept]
+    return pool
 
 
-def _make_room_at_the_start(world: BigWalkWorld) -> None:
+def make_room_at_the_start(world: BigWalkWorld) -> None:
     """When the starting zone cannot hold its early items, the player starts with some."""
+    if getattr(world.multiworld, "generation_is_fake", False):
+        return
     local_early = world.multiworld.local_early_items[world.player]
     mine = [item for item in world.multiworld.itempool if item.player == world.player]
     if any(item.name == data.LEGS_ITEM_NAME for item in mine):
@@ -104,8 +63,10 @@ def _make_room_at_the_start(world: BigWalkWorld) -> None:
     state = CollectionState(world.multiworld)
     state.sweep_for_advancements(locations=[loc for loc in world.multiworld.get_filled_locations(world.player)
                                             if loc.address is None])
+    closed = {name for names, _ in world.local_placements for name in names} | world.options.exclude_locations.value
     room = sum(1 for loc in world.multiworld.get_unfilled_locations(world.player)
-               if loc.progress_type != LocationProgressType.EXCLUDED and loc.can_reach(state))
+               if loc.name not in closed and loc.progress_type != LocationProgressType.EXCLUDED
+               and loc.can_reach(state))
     if room < sum(local_early.values()):
         for name in [name for name in local_early if all(item.name != name for item in needed)]:
             del local_early[name]
@@ -121,20 +82,14 @@ def _make_room_at_the_start(world: BigWalkWorld) -> None:
         world.multiworld.itempool.append(world.create_filler())  # the location it leaves
 
 
-def _place_local_items(world: BigWalkWorld, group: str, contents: int, option: str) -> None:
-    """Fills these checks with this world's non-progression items before the main fill."""
-    if contents != bigwalk_options.ObjectSanityItems.option_local:
-        return
-    names = locations.LOCATION_NAME_GROUPS[group]
-    spots = [loc for loc in world.multiworld.get_unfilled_locations(world.player) if loc.name in names]
-    own = [item for item in world.multiworld.itempool if item.player == world.player and not item.advancement]
-    world.random.shuffle(own)
-    if len(own) < len(spots):
-        logging.warning(f"Big Walk ({world.player_name}): {option} local: only {len(own)} items of this "
-                        f"world for {len(spots)} checks; the others may hold anything.")
-    placed = set()
-    for location, item in zip(spots, own):
-        location.place_locked_item(item)
-        placed.add(id(item))
-    # By identity: items compare equal by name and player, so remove() may take another copy.
-    world.multiworld.itempool[:] = [item for item in world.multiworld.itempool if id(item) not in placed]
+def place_local_items(world: BigWalkWorld) -> None:
+    """Places the items set aside for the `local` options, where plando left room."""
+    for names, own in world.local_placements:
+        free = [location for location in world.multiworld.get_unfilled_locations(world.player)
+                if location.name in names]
+        for location, item in zip(free, own):
+            location.place_locked_item(item)
+
+
+def local_items_left(world: BigWalkWorld) -> list[Item]:
+    return [item for _, own in world.local_placements for item in own if item.location is None]

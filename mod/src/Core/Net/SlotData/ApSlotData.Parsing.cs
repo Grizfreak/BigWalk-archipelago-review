@@ -134,8 +134,6 @@ namespace BigWalkArchipelago.Core.Net
             data.TrackerBoard = GetBool(raw, "tracker_board", false);
             data.HintBoard = GetBool(raw, "hint_board", true);
             data.MapTrackerMode = GetString(raw, "map_tracker", "off");
-            foreach (var pair in GetMap(raw, "hint_items"))
-                data.HintItems[pair.Key] = pair.Value.Number;
             if ((data.TrackerBoard || data.MapTracker) && raw.TryGetValue("logic", out var logic) && logic is Newtonsoft.Json.Linq.JObject logicObject)
                 data.Logic = ApLogic.From(logicObject);
             data.CabinFeverLongHideTimer = GetBool(raw, "cabin_fever_long_hide_timer", false);

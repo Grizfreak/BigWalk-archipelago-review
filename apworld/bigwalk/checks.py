@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from typing import TYPE_CHECKING
 
 from . import data
@@ -16,14 +15,6 @@ def objective_keys(world: BigWalkWorld) -> tuple[str, ...]:
     """The objectives and the Goal, in the frozen order."""
     listed = world.objectives | {world.options.goal.current_key}
     return tuple(key for key in bigwalk_options.OBJECTIVE_KEYS if key in listed)
-
-
-def hint_items(world: BigWalkWorld) -> dict[str, int]:
-    """Items `!hint` can find, by name and count; start items are left out."""
-    placed = [location.item for location in world.multiworld.get_locations() if location.item is not None]
-    counts = Counter(item.name for item in {id(item): item for item in [*world.multiworld.itempool, *placed]}.values()
-                     if item.player == world.player and item.code is not None)
-    return dict(sorted(counts.items()))
 
 
 def death_link_roulette(world: BigWalkWorld) -> dict[str, int]:

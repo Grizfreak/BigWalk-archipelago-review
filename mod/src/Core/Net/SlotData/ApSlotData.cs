@@ -88,8 +88,6 @@
         internal bool MapTracker => MapTrackerMode != "off";
         internal ApLogic Logic { get; private set; }
 
-        // This slot's items and how many of each, for the hint sign's suggestions.
-        internal Dictionary<string, int> HintItems { get; private set; } = new();
         internal bool CabinFeverLongHideTimer { get; private set; }
 
         // Off by default: an older apworld has no need items, so the objects would stay hidden.

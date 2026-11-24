@@ -131,7 +131,7 @@ namespace BigWalkArchipelago
                 "Archipelago",
                 "GuestsCanAskHints",
                 false,
-                "On the host: whether the guests may ask for a hint at the hub's hint board (they then get the item names' suggestions too). Also in the game's Settings > Archipelago. Off, the board stays on its hook for them and only the host asks; a hint costs the slot's points either way.");
+                "On the host: whether the guests may ask for a hint at the hub's hint board. Also in the game's Settings > Archipelago. Off, the board stays on its hook for them and only the host asks; a hint costs the slot's points either way.");
 
             TilePool = file.Bind(
                 "Archipelago",

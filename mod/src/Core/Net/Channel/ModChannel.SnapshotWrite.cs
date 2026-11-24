@@ -93,7 +93,6 @@ namespace BigWalkArchipelago.Core.Net
                 NetworkWriterExtensions.WriteBool(writer, AbilityLocks.Enabled);
                 NetworkWriterExtensions.WriteUShort(writer, AbilityLocks.HostMask());
                 writer.WriteByte(HintBoards.HostFlags());
-                NetworkWriterExtensions.WriteString(writer, HintBoards.HostNames());
                 var zoneLocked = new List<string>(ZoneLocks.HostLocked);
                 writer.WriteByte((byte)Math.Min(zoneLocked.Count, byte.MaxValue));
                 for (var i = 0; i < zoneLocked.Count && i < byte.MaxValue; i++)

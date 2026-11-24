@@ -64,14 +64,6 @@ namespace BigWalkArchipelago.Core.Net
 
             y = DrawLine(message, statusIsWarning ? WarningColor : InfoColor, fontSize, y);
 
-            // While the hint sign is written on: the matching item names (Tab takes the first).
-            if (HintBoards.Suggestions.Count > 0)
-            {
-                y = DrawLine("Hint for (Tab):", InfoColor, fontSize, y);
-                foreach (var suggestion in HintBoards.Suggestions)
-                    y = DrawLine("  " + suggestion, ProgressColor, fontSize, y);
-            }
-
             var secondary = Mathf.Max(8, Mathf.RoundToInt(fontSize * SecondaryScale));
 
             if (!string.IsNullOrEmpty(goal))

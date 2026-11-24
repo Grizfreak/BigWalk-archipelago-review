@@ -113,14 +113,3 @@ class TestEverythingLocked(LogicExportChecks, BigWalkTestBase):
         "gauntlet_mode": "locked_stages",
         "start_with_arch_doors_open": [],
     }
-
-
-class TestHintItemNames(BigWalkTestBase):
-    options = {"start_with_drawbridge_open": True}
-    run_default_tests = False
-
-    def test_placed_items_only(self) -> None:
-        counts = self.world.fill_slot_data()["hint_items"]
-        self.assertNotIn("Drawbridge", counts)
-        self.assertEqual(counts["Map Room"], 1)
-        self.assertEqual(counts["Gourd"], len([item for item in self.multiworld.itempool if item.name == "Gourd"]))

@@ -79,7 +79,6 @@ class TestLockedStages(BigWalkTestBase):
         slot_data = self.world.fill_slot_data()
         self.assertEqual(slot_data["gauntlet_mode"], "locked_stages")
         self.assertEqual(slot_data["gauntlet_id_offset"], data.GAUNTLET_ID_OFFSET)
-        self.assertEqual(slot_data["gauntlet_stage_systems"], [f"GauntletChamber{n}" for n in range(7)])
 
 
 class TestTheStagesStayLocal(BigWalkTestBase):
