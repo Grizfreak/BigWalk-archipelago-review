@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""
-A DeathLink stand-in for the test room: plays "the other game" of the multiworld.
-
-    python tools/deathlink.py listen              # prints every DeathLink the room passes on
-    python tools/deathlink.py send                # sends one, as if another game had died
-    python tools/deathlink.py send --cause "fell off a bike"
-    python tools/deathlink.py admin "/send BWTraps Big Drop"   # a server command (testroom.py's room)
-    python tools/deathlink.py traplink --cause "Ice Trap"       # a TrapLink, as another game's trap
-
-It joins as a text-only client on a slot of the room (`--slot`, BWWatch by default:
-tools/players/traps-0-4-0.yaml has it) with the DeathLink tag, so it hears what Big Walk
-sends and Big Walk hears what it sends. Needs the `websockets` package (Archipelago's own).
-"""
+"""A DeathLink stand-in for the test room: plays another game of the multiworld."""
 
 from __future__ import annotations
 

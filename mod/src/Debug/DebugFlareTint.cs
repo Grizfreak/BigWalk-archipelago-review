@@ -3,12 +3,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // C1 experiment for the flare guns (player, 2026-10-06). A gun's body and barrel are coloured
-    // by PropertyBlockHelpers (_TintColor, submesh 0; submesh 1 is the grip's accent, left alone);
-    // its shot by Core/FlareColours. Each Ctrl+F7 paints every gun and its shot with the next
-    // colour of the buoys' palette; then "rainbow": a white gun whose shots take the palette in
-    // turn, the same on every machine (Mirror's network clock, Core/FlareColours.RainbowNow);
-    // then the guns' shots back to red.
+    // Ctrl+F7 cycles the flare guns and shots through the buoy palette, then rainbow, then red.
     internal static class DebugFlareTint
     {
         private const string Tag = "[" + nameof(DebugFlareTint) + "]";
@@ -37,7 +32,7 @@ namespace BigWalkArchipelago.Debug
                     if (settings == null || settings.Length == 0)
                         continue;
 
-                    // An element of an IL2CPP struct array comes back as a copy (ReceivedItemSpawner).
+                    // An element of an IL2CPP struct array comes back as a copy.
                     var setting = settings[0];
                     setting.color = body;
                     settings[0] = setting;
@@ -62,8 +57,6 @@ namespace BigWalkArchipelago.Debug
                     : $"{Tag} Colour {_step + 1}/{palette.Length}: {palette[_step].name} on {guns} gun(s) and {shots} shot(s).");
         }
 
-        // Every frame (DebugHotkeys): in rainbow mode, the white guns' shots take the colour of
-        // the moment, once per step.
         private static Color _shown;
 
         internal static void Tick()

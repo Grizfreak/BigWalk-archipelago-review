@@ -29,8 +29,7 @@ class TestBigCollectionGoal(BigWalkTestBase):
     run_default_tests = False
 
     def test_victory_needs_gourds_not_keys(self) -> None:
-        # A deposit goal must be winnable without ever opening the ending, so
-        # every big key in the world should be irrelevant to it.
+        # A deposit goal never opens the ending, so no big key may matter to it.
         for tower in data.TOWERS:
             self.collect_by_name(tower.item_name)
         self.assertFalse(self.can_reach_location("Victory"))
@@ -66,9 +65,6 @@ class TestBigGameGoal(BigWalkTestBase):
         self.assertTrue(self.can_reach_location("Victory"))
 
     def test_victory_does_not_need_the_black_monolith_key(self) -> None:
-        # Deliberate, and the assumption most likely to be wrong: in vanilla
-        # this zone is sealed until the game has been finished once, and the
-        # mod removes that seal from the first session. If an in-game test
-        # ever shows otherwise, this is the test that should fail first.
+        # In vanilla this zone is sealed until the game is finished once; the mod lifts that.
         self.collect_by_name(data.GREEN_DOME.item_name)
         self.assertTrue(self.can_reach_location("Victory"))

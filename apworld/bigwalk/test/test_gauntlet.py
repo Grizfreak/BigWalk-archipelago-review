@@ -1,8 +1,4 @@
-"""
-`gauntlet_mode: locked_stages` makes the Silent Gauntlet seven checks and seven
-items: a stage's puzzle is a check, and the stairway out of the stage is an item.
-`vanilla` leaves it exactly as it was.
-"""
+"""`gauntlet_mode`: `locked_stages` makes each stage's puzzle a check and its stairway an item."""
 
 from .. import data, items, locations, regions
 from .bases import BigWalkTestBase, build_like_universal_tracker, world_shape
@@ -147,7 +143,7 @@ class TestTheTrackerSeesTheMode(BigWalkTestBase):
 
 
 class TestPuzzlesSkippable(BigWalkTestBase):
-    """Without `gauntlet_puzzles_required` an item opens its stage whole, so a puzzle needs only itself."""
+    """Without `gauntlet_puzzles_required` an item opens its stage whole."""
 
     options = {"gauntlet_mode": "locked_stages", "gauntlet_stage_items": "individual", "gauntlet_puzzles_required": False, "lock_puzzle_needs": True}
     run_default_tests = False
@@ -164,7 +160,7 @@ class TestPuzzlesSkippable(BigWalkTestBase):
         self.assertTrue(self.can_reach_location(last.location_name))
 
     def test_a_stage_still_needs_every_stairway_below_it(self) -> None:
-        """Skipping puzzles never skips the way there: stage 4 is shut while any of 1, 2 or 3 is missing."""
+        """Skipping puzzles never skips the way: stage 4 is shut while 1, 2 or 3 is missing."""
         fourth = data.GAUNTLET_STAGES[3]
         own = sorted(need.item_name for need in data.gauntlet_needs_of(fourth))
         for missing in data.GAUNTLET_STAGES[:3]:
@@ -197,10 +193,7 @@ class TestPuzzlesRequiredByDefault(BigWalkTestBase):
 
 
 class TestAnotherGoalStillGetsTheStages(BigWalkTestBase):
-    """
-    With a goal that is not the Gauntlet, `locked_stages` still adds its seven
-    checks and items, behind the chapel, and the goal asks for none of them.
-    """
+    """With another goal, `locked_stages` still adds its checks and items, needed by none."""
 
     options = {"gauntlet_mode": "locked_stages", "gauntlet_stage_items": "individual", "goal": "big_collection"}
     run_default_tests = False
@@ -221,7 +214,7 @@ class TestAnotherGoalStillGetsTheStages(BigWalkTestBase):
 
 
 class TestGauntletPartsKeptOnTheMap(BigWalkTestBase):
-    """`lock_gauntlet_needs` off: a stage asks for no part, though puzzle needs are locked elsewhere."""
+    """`lock_gauntlet_needs` off: a stage asks for no part, though puzzle needs are locked."""
 
     options = {"gauntlet_mode": "locked_stages", "gauntlet_stage_items": "individual", "lock_puzzle_needs": True, "lock_gauntlet_needs": False}
     run_default_tests = False
@@ -260,7 +253,7 @@ class TestGauntletPartsAreItemsByDefault(BigWalkTestBase):
 
 
 class TestVanillaWithPuzzleNeeds(BigWalkTestBase):
-    """In `vanilla` the Big Goodbye goal still asks for the Gauntlet's parts, the game's own stages being solved."""
+    """In `vanilla` the Big Goodbye goal still asks for the Gauntlet's parts."""
 
     options = {"lock_puzzle_needs": True}
     run_default_tests = False

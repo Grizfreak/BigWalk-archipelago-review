@@ -5,9 +5,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // What the trackers show (U2 the Map Room's map, player 2026-10-13), worked out on the host every few seconds: the
-    // locations of this slot checked, those in logic now (the seed's logic, Net/ApLogic, with the items received), and
-    // those an open hint points to. Empty when not connected or the seed sends no logic.
+    // What the trackers show, worked out on the host: checked, in logic and hinted locations.
     internal static class TrackerState
     {
         private const float RecountSeconds = 3f;

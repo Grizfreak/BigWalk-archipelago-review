@@ -5,13 +5,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The five hand props used as Archipelago filler items, in the order
-    // data.py's FILLER_ITEMS lists them (ApLocationIds.TryResolveGadgetItem
-    // depends on that order matching). Chosen from the Debug.DumpPropsKey
-    // inventory (mod/reverse-engineering-notes.md, "props as items") for
-    // being plain, ordinary objects nobody would miss narratively — unlike
-    // the flare gun's Blue/Green/Yellow variants or a walkie-talkie, which
-    // stay in the world doing whatever they already do.
+    // Hand props used as filler items, in data.py's FILLER_ITEMS order (TryResolveGadgetItem).
     internal enum GadgetKind
     {
         Megaphone,
@@ -32,54 +26,23 @@ namespace BigWalkArchipelago.Core
         FlareGunGreen,
         FlareGunYellow,
 
-        // Not an item: the timed tomato Big Trip and Big Meeting hand out as their countdown
-        // (Core/Traps). Last, so no other kind's asset ids or tickets move.
+        // Not an item: the Big Trip and Big Meeting tomato. Last, so no asset id or ticket moves.
         Pomodoro,
 
-        // The Rainbow Flare Gun (item 9_018, player 2026-10-07): a FlareGunProp clone, painted white,
-        // whose shots run through every colour (Core/ColourPainter). Last again, for the same reason.
+        // A white FlareGunProp clone whose shots cycle every colour. Last, for the same reason.
         RainbowFlareGun,
 
-        // Not an item: the blindfold helmet Big Mask puts on every player (Core/Traps), cloned
-        // from the blindfold puzzles' BlindfoldProp. Last, as the tomato.
+        // Not an item: Big Mask's blindfold helmet. Last, as the tomato.
         Blindfold,
 
-        // Not an item: the clock Big Time hands every player (Core/Traps), cloned from the train stops'
-        // ClockProp, its hands on the real time (Patches/BigTimeClockPatch). Last, as the tomato.
+        // Not an item: Big Time's clock, its hands on the real time. Last, as the tomato.
         Clock,
 
-        // Not an item: the folding chair Big Break sits every player on (Core/Traps), cloned from the island's.
+        // Not an item: Big Break's folding chair. Last, as the tomato.
         Chair,
     }
 
-    // Generic sibling of ReceivedItemSpawner for the island's own hand props
-    // (megaphone, walkie-talkie, backpack, belt/holster, flare gun), used as
-    // Archipelago filler items (player request, 2026-09-22: "the items in
-    // the game, like backpacks, belts, megaphone, talkie walkie"). Same
-    // clone-and-network-spawn technique as a cosmetic gourd, generalized to
-    // a plain Prop instead of a RewardGourd — none of these carry a
-    // gourdState or a puzzle-coloured look, so that half of the gourd
-    // machinery (ApplyCosmeticColor, propsToMakeSavable) does not apply.
-    //
-    // Unlike a gourd, the VANILLA instances of these props are also taken
-    // out of the map (HideVanillaInstances, driven by VanillaGadgetRemover)
-    // — player decision, 2026-09-22: a filler item must not also be
-    // findable lying around for free. That makes the template a one-shot
-    // capture taken locally on each machine BEFORE the hiding
-    // (CaptureTemplates), rather than "whatever is loaded right now" like
-    // ReceivedItemSpawner.FindTemplate — once the real instances are out of
-    // the way there is nothing left in the world to clone from.
-    //
-    // THAT HIDING IS LOCAL, AND IT IS THE WHOLE POINT (2026-09-22, measured
-    // in co-op). It used to be a host-side NetworkServer.Destroy, chosen
-    // because SetActive(false) is not replicated — and it replicated far too
-    // well. A guest joins a world whose props the host destroyed on its own
-    // world load, so the guest's CaptureTemplates finds nothing at all, and
-    // the first gadget the host is sent arrives at a client that cannot
-    // build it. The guest's log proved it by its single success: exactly one
-    // template captured, the Lamp, which is the one kind KeptInWorld spares.
-    // Each machine now hides its own copies for itself, which needs no
-    // replication at all.
+    // Clones the island's hand props as filler items; each machine hides its own vanilla copies.
     internal static class GadgetItemSpawner
     {
         private static readonly Dictionary<GadgetKind, string> PrefabNames = new()
@@ -94,28 +57,12 @@ namespace BigWalkArchipelago.Core
             { GadgetKind.Compass, "CompassProp" },
             { GadgetKind.FoldingMap, "FoldingMapProp" },
             { GadgetKind.Radio, "FmRadioProp" },
-            // The two-sided carton players carry gourds in (player
-            // description, 2026-09-22: "the special 2 sided backpack for
-            // gourds") — confirmed via Ctrl+J (DebugPropLookup): 1 instance,
-            // 'GoesInBackpack'. Distinct from FmRadioManager/RadioStations,
-            // which are the tower broadcast system and unrelated to this
-            // portable prop.
             { GadgetKind.GourdCarton, "GourdCartonProp" },
             { GadgetKind.Torch, "TorchProp" },
-            // What the player calls "lamp" (2026-09-22): the only prop a
-            // widened Ctrl+J (lamp/ray/torch/light name hints) ever turned
-            // up besides TorchProp. Left in the world — see RemoveFromWorld
-            // below — a marine buoy light is scenery worth keeping lit.
+            // Left in the world (KeptInWorld): a buoy light is scenery worth keeping lit.
             { GadgetKind.Lamp, "BuoyLight" },
-            // The player's "ray-x gun" (2026-09-22): identified via the new
-            // Ctrl+H (DebugHeldItemLookup) rather than guessed, since it
-            // never showed up in any name-hint dump — "ray-x" was the
-            // player's own reading of "X-ray", not a gun at all.
             { GadgetKind.XrayGoggles, "XrayGogglesProp" },
-            // The three colour variants of the flare gun (player request,
-            // 2026-09-22: "could we have also other flare guns in the
-            // pool?") — distinct prefabs, not a colour-block variant of
-            // the base FlareGunProp, per the earlier prop inventory.
+            // Distinct prefabs, not a colour variant of the base FlareGunProp.
             { GadgetKind.FlareGunBlue, "FlareGunPropBlue" },
             { GadgetKind.FlareGunGreen, "FlareGunPropGreen" },
             { GadgetKind.FlareGunYellow, "FlareGunPropYellow" },
@@ -128,27 +75,7 @@ namespace BigWalkArchipelago.Core
             { GadgetKind.Chair, "foldingChair" },
         };
 
-        // Kinds whose vanilla instances stay in the world instead of being
-        // destroyed by RemoveVanillaInstances. Lamp only, by player decision
-        // (2026-09-22) — every other gadget here follows the default (every
-        // other filler item must not also be findable for free, see the
-        // type comment above), Lamp is the one exception.
-        // Other vanilla props a kind may take its look from, beside its own
-        // PrefabNames entry.
-        //
-        // MEASURED 2026-09-25 with the Ctrl+M lamp census: the island's round
-        // lamps are three prefabs, not one — 65 BuoyLight and 3 BuoyRedProp,
-        // whose light is #FF9980 (red), and 44 BuoyProp, whose light is
-        // #FFB766 (the yellow one). All three share one material with a white
-        // tint, so the colour is baked into the mesh and the light, and a
-        // lamp can only look yellow if it is cloned from a BuoyProp. The
-        // capture used to match BuoyLight alone, which is why five lamps drawn
-        // at random all came out red: every one of the 32 templates was.
-        //
-        // Only where the look is taken from. The clone is still named after
-        // PrefabNames, so everything that recognises a received lamp by name
-        // keeps recognising it; and the Lamp is a kind the island keeps, so
-        // none of these is ever hidden.
+        // Round lamps are three prefabs; only BuoyProp has a yellow light, so it lends its look.
         private static readonly Dictionary<GadgetKind, string[]> AlternatePrefabNames = new()
         {
             { GadgetKind.Lamp, new[] { "BuoyProp", "BuoyRedProp" } },
@@ -178,25 +105,17 @@ namespace BigWalkArchipelago.Core
             // The puzzles' tomatoes stay where they are: a clone is a trap's, never one of theirs.
             GadgetKind.Pomodoro,
 
-            // The blindfold puzzles' helmets too, for the same reason (Big Mask).
+            // The blindfold puzzles' helmets too, for the same reason.
             GadgetKind.Blindfold,
 
-            // The train stops' clocks, as in the game (Big Time clones them; object_sanity has its own say).
             GadgetKind.Clock,
 
-            // The island's folding chairs (Big Break clones them).
             GadgetKind.Chair,
         };
 
-        // A trap's tomato pops this many seconds after it is set going (player, 2026-10-06).
         internal const float TomatoSeconds = 3f;
 
-        // The packs: on the map when they are checks (Core/PackChecks, `pack_sanity`), hidden
-        // otherwise. Whatever the option, their vanilla instances never lend their tickets to a
-        // clone (VanillaUsable), so a clone and a pack still on the map can never share one, and
-        // host and guests agree on every clone's tickets before the guest knows the option.
-        // The gadgets `object_sanity` leaves on the island (ROADMAP S7). The clocks, paintbrushes and cowbells
-        // are not gadgets of the pool and were never hidden. Like the packs, they lend no tickets (LendsNoTickets).
+        // Packs, flare guns and these lend no tickets, so host and guests agree before the options.
         private static readonly HashSet<GadgetKind> IslandObjects = new()
         {
             GadgetKind.Megaphone, GadgetKind.WalkieTalkie, GadgetKind.Laser, GadgetKind.Binoculars,
@@ -210,10 +129,7 @@ namespace BigWalkArchipelago.Core
             GadgetKind.GourdCarton,
         };
 
-        // The flare guns stay on the island whatever the options (player, 2026-10-07): checks with
-        // `flare_gun_sanity` (Core/PackChecks, which then takes a collected one off the map), the
-        // game's own without. No flare gun is filler any more, so none has to be hidden. Kept like
-        // the packs: their vanilla instances lend no tickets.
+        // The flare guns stay on the island whatever the options; no flare gun is filler any more.
         private static readonly HashSet<GadgetKind> FlareGuns = new()
         {
             GadgetKind.FlareGun,
@@ -223,70 +139,20 @@ namespace BigWalkArchipelago.Core
             GadgetKind.RainbowFlareGun,
         };
 
-        // The island's gadgets too, whatever `object_sanity` says (players, 2026-10-15 and 17: a received scanner
-        // nobody else could pick up, then stuck on a guest's face; a torch staying on; a walkie-talkie that gave a
-        // guest their own voice back). With `object_sanity` they stay on the map, but a clone still borrowed the
-        // tickets of one of them whenever that one was not registered yet, loaded later and far away: the host's
-        // logs show Torch #0/#1/#2/#5, XrayGoggles #3/#4/#6, WalkieTalkie #3/#4/#6. Once it registered, two props
-        // held one ticket, the office refused one, and its state (held, switched on) stopped being shared, the
-        // lamps' bug of 2026-09-25 again. Not tied to the option, for the packs' reason: host and guests must agree
-        // on every clone's tickets before the guest knows it. A clone takes invented tickets instead, all 32 slots.
+        // A clone borrowing a not-yet-registered prop's ticket ends with two props on one ticket.
         private static bool LendsNoTickets(GadgetKind kind)
         {
             return KeptInWorld.Contains(kind) || Packs.Contains(kind) || FlareGuns.Contains(kind)
                 || IslandObjects.Contains(kind);
         }
 
-        // A block of our own, clear of ReceivedItemSpawner.CosmeticAssetId
-        // (0xB16_9A00) and of anything Mirror or the game might register —
-        // the value only has to be agreed on by every machine, which a
-        // shared formula guarantees. The SpawnDelegate signature Mirror
-        // accepts is (Vector3, uint) only, with no room for a payload saying
-        // which gadget, so the asset id itself is what tells a client what
-        // to build — same reasoning as CosmeticAssetId's own comment.
-        //
-        // ONE PER (KIND, VANILLA INSTANCE) SINCE 2026-09-23, where it used to
-        // be one per kind (0xB16_9B01 to 0xB16_9B11, retired rather than
-        // reused). The instance matters because of tickets: a clone carries
-        // the tickets of the vanilla prop its template was taken from, the
-        // ticket office accepts one holder per ticket, and the second
-        // backpack of a session — built from the same template as the first —
-        // accepted nothing stowed into it (measured in co-op that day). So the
-        // host builds each clone from a DIFFERENT vanilla instance whose
-        // tickets are free, and the asset id is how every client learns which.
+        // Mirror's SpawnDelegate has no payload, so the asset id encodes the kind and the instance.
         private const uint InstanceAssetIdBase = 0xB16_9C00;
 
-        // More than any kind has in the island (torches, the most numerous,
-        // count nine) and small enough for all 20 kinds to stay inside one
-        // block: 0xB16_9C00 to 0xB16_9E7F (the tomato 17, the rainbow gun 18 and the blindfold 19 the last 96).
+        // Room for 20 kinds in one block: 0xB16_9C00 to 0xB16_9E7F.
         internal const int MaxInstancesPerKind = 32;
 
-        // EXTRA SLOTS (2026-09-23). An index at or past the number of vanilla
-        // instances of its kind is not an instance at all: it is a clone the
-        // island has no spare prop for — the gourd carton exists once, so the
-        // second carton a slot receives has nothing left to borrow tickets
-        // from. Such a clone is built from the first template and given
-        // tickets of its own, before it is ever switched on, since PropHome
-        // registers in OnEnable.
-        //
-        // Invented tickets were refused for a day for two reasons, and this is
-        // how each is met:
-        //
-        //  - Every machine must invent the SAME ticket. The formula below reads
-        //    nothing but the kind, the index and the component's rank inside
-        //    the clone, and the index already travels inside the asset id — so
-        //    host and client compute the same number without talking.
-        //
-        //  - An invented ticket must never land on a real one. They are taken
-        //    from the very top of the range (61184 to 65535), where nothing
-        //    observed so far lives (27247, 41356 and 43035 were), and the host
-        //    checks each one against its own office before using a slot at
-        //    all. A taken ticket makes the slot unusable, never overwritten:
-        //    the office refuses duplicates rather than replacing them, so the
-        //    worst a collision can do is leave that one clone empty.
-        //
-        // What stays unmeasured: whether the game hands out any ticket at run
-        // time, after the check. Nothing suggests it does.
+        // Extra slots invent tickets from the top of the range, computed alike on every machine.
         private const int MaxTicketsPerClone = 8;
 
         private const int ExtraTicketTop = 65535;
@@ -327,34 +193,19 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Marks both a captured template and a spawned pickup as "ours",
-        // the same way ReceivedItemSpawner.CosmeticNameSuffix does for a
-        // gourd clone. A template is never spawned over the network itself
-        // (only clones built FROM it are), so it needs a suffix of its own
-        // rather than reusing that one.
+        // Templates are never spawned over the network, so they get a suffix of their own.
         private const string TemplateNameSuffix = "(AP template)";
         private const string PlaceholderNameSuffix = "(AP placeholder)";
 
-        // One template per vanilla instance of each kind, in savablePropGuid
-        // order — see CaptureTemplate for why that key and no other.
+        // In savablePropGuid order, so indices line up on every machine.
         private static readonly Dictionary<GadgetKind, List<Prop>> _templates = new();
 
-        // Whether HideVanillaInstances has run since the world last loaded.
-        // See EnsureVanillaHidden.
         private static bool _hiddenThisWorld;
 
-        // What HideVanillaInstances switched off on THIS machine, kept so
-        // ReHideVanillaInstances can put back anything Mirror switches on
-        // again. Around 68 objects, against every Prop in the world for a
-        // full scan.
+        // Kept so ReHideVanillaInstances can switch off again what Mirror switches on.
         private static readonly List<GameObject> _hidden = new();
 
-        // Called on EVERY machine (host and every client alike) once per
-        // world load, before RemoveVanillaInstances runs on the host — see
-        // VanillaGadgetRemover. Purely local: each machine clones a private,
-        // inactive copy of whatever it currently sees loaded, mirroring
-        // CosmeticGourdSpawnHandler's "each client builds its own from its
-        // own scene" rather than trusting anything to travel over the wire.
+        // Every machine, once per world load: each clones its own templates from its own scene.
         internal static void CaptureTemplates()
         {
             foreach (var kind in PrefabNames.Keys)
@@ -365,19 +216,7 @@ namespace BigWalkArchipelago.Core
         {
             var prefabName = PrefabNames[kind];
 
-            // INACTIVE ONES COUNT, and on a guest they are the only ones
-            // there (2026-09-22, second co-op round). The host hides its 68
-            // copies locally, and Mirror does not send a spawn message for a
-            // deactivated object — so a client's own scene copies are never
-            // switched on, and the default active-only scan walked straight
-            // past all of them. The guest captured exactly one template, the
-            // Lamp, which is the one kind the hiding pass spares: the same
-            // control that caught the networked-destroy version of this bug
-            // an hour earlier, pointing one step further in.
-            //
-            // Cloning an inactive source is the normal path here anyway —
-            // the capture below deactivates its candidate before Instantiate
-            // on purpose, so that the clone's Awake() is deferred.
+            // Inactive ones count: on a guest the hidden props are never switched on.
             var all = UnityEngine.Object.FindObjectsByType<Prop>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (all == null)
@@ -402,16 +241,7 @@ namespace BigWalkArchipelago.Core
                 return;
             }
 
-            // SORTED BY savablePropGuid, and the order is the whole point.
-            // The host picks a template by index and sends the index inside
-            // the asset id; a client builds from ITS template at that index.
-            // The two lists must therefore line up on every machine, and
-            // FindObjectsByType promises no order at all. The guid is the
-            // game's own per-instance identity, serialized with the scene,
-            // so it reads the same everywhere — which neither a name
-            // ("BackpackProp" is shared) nor a position (a prop that was
-            // active on the host may have been knocked about before it was
-            // hidden) can promise.
+            // Sorted by guid: FindObjectsByType has no order and host and clients must index alike.
             candidates.Sort(CompareByGuid);
             if (candidates.Count > MaxInstancesPerKind)
                 candidates.RemoveRange(MaxInstancesPerKind, candidates.Count - MaxInstancesPerKind);
@@ -424,9 +254,7 @@ namespace BigWalkArchipelago.Core
                     templates.Add(template);
             }
 
-            // Re-armed on every world load (VanillaGadgetRemover), so the
-            // previous world's templates would otherwise leak for the life
-            // of the process.
+            // Re-armed on every world load, so the previous world's templates would leak.
             if (_templates.TryGetValue(kind, out var previous) && previous != null)
             {
                 foreach (var old in previous)
@@ -450,20 +278,10 @@ namespace BigWalkArchipelago.Core
 
         private static Prop BuildTemplate(Prop candidate, string prefabName)
         {
-            // Captured BEFORE Instantiate (Instantiate does not copy a
-            // per-instance MaterialPropertyBlock, unlike every serialized
-            // reference — cf. ReceivedItemSpawner.CapturePropertyBlocks),
-            // and reapplied below: without this the template itself
-            // bakes in the shader-pink/magenta look, and every clone made
-            // from it inherits that broken state for the rest of the
-            // session.
+            // Instantiate drops the MaterialPropertyBlock; without it the template turns pink.
             var propertyBlocks = ReceivedItemSpawner.CapturePropertyBlocks(candidate.gameObject);
 
-            // Same "disable before Instantiate" trick BuildNeutralizedClone
-            // (and the gourd version before it) uses: it defers the
-            // clone's Awake()/OnEnable() until SetActive(true) is called
-            // explicitly, which here never happens — the template is
-            // meant to stay inactive for the rest of the session.
+            // Inactive before Instantiate, so the clone's Awake and OnEnable never run.
             var templateWasActive = candidate.gameObject.activeSelf;
             GameObject clone;
             try
@@ -473,11 +291,6 @@ namespace BigWalkArchipelago.Core
             }
             finally
             {
-                // Restored regardless: this candidate is a vanilla
-                // instance RemoveVanillaInstances is about to destroy
-                // anyway (on the host), and on a client it is simply the
-                // real prop players still see until the host's
-                // NetworkServer.Destroy message reaches them.
                 if (templateWasActive)
                     candidate.gameObject.SetActive(true);
             }
@@ -501,32 +314,13 @@ namespace BigWalkArchipelago.Core
             return _templates.TryGetValue(kind, out var list) && list != null ? list.Count : 0;
         }
 
-        // How many indices can borrow a vanilla instance's tickets.
-        //
-        // NONE, for a kind the island keeps (2026-09-25, found with a real
-        // second player). The Lamp is never hidden, so every buoy light's
-        // tickets stay registered to the buoy itself — a lamp clone borrowing
-        // one was refused, every time. Worse, the capture had filled all 32
-        // indices with buoys, which left no extra slot to invent tickets in:
-        // the host's log read "All 32 Lamp slot(s) are held by live clones"
-        // 55 times in one evening, every received lamp fell back to the first
-        // template, its switch was registered nowhere (the desync between
-        // players) and it always wore that template's colour (red, where the
-        // game has two). A kept kind now goes straight to invented tickets,
-        // all 32 of its indices.
+        // None for a kind the island keeps: its vanilla tickets are always taken.
         private static int VanillaUsable(GadgetKind kind)
         {
             return LendsNoTickets(kind) ? 0 : VanillaCount(kind);
         }
 
-        // The template a given index is built from, and whether that index is
-        // an extra slot rather than a vanilla instance of its own.
-        //
-        // An extra slot walks the templates in turn rather than always taking
-        // the first, so that what a kind looks like in the island — two
-        // colours of buoy light — is what a player receives too. The template
-        // only lends its look to an extra slot, never its tickets, and the
-        // index decides which one, so every machine picks the same.
+        // An extra slot walks the templates in turn, so received lamps get the island's colours.
         private static Prop ResolveTemplate(GadgetKind kind, int index, out bool extra)
         {
             var count = VanillaCount(kind);
@@ -535,16 +329,7 @@ namespace BigWalkArchipelago.Core
             return GetTemplate(kind, extra ? (index - usable) % count : index);
         }
 
-        // RANDOM, NOT FIRST (player request, 2026-09-25: "a way to randomise
-        // the colour?"). Which free slot the host takes decides what the
-        // clone looks like — each slot's template is a different vanilla
-        // instance, and for the lamp a different buoy, red or green — so
-        // drawing the slot at random draws the look at random, in the
-        // proportions the island itself has.
-        //
-        // Only the host ever draws. The slot it picked travels inside the
-        // asset id and every client builds exactly that one, so the two
-        // screens cannot disagree about a colour.
+        // Random, so the look is drawn in the island's proportions; only the host draws.
         private static readonly System.Random _draw = new();
 
         private static int PickAtRandom(List<int> candidates)
@@ -559,10 +344,7 @@ namespace BigWalkArchipelago.Core
 
             if (index < 0 || index >= list.Count)
             {
-                // Only a client can get here: told to build an instance it
-                // does not have. Every machine loads the same scene, so this
-                // is not expected — but a clone with the wrong tickets is
-                // better than no clone at all, and the log says which.
+                // Not expected, every machine loads the same scene; wrong tickets beat no clone.
                 Plugin.Log.LogWarning(
                     $"[{nameof(GadgetItemSpawner)}] Asked for {kind} instance {index}, but only {list.Count} were captured here; using the first.");
                 index = 0;
@@ -572,22 +354,13 @@ namespace BigWalkArchipelago.Core
             return template != null ? template : null;
         }
 
-        // Which vanilla instance the next clone of this kind is built from.
-        //
-        // HOST ONLY. It reads this machine's ticket office, and the answer
-        // travels to every client inside the asset id, so nothing about a
-        // client's own office ever matters. The first instance whose tickets
-        // are all free wins: every vanilla one is hidden, so a ticket still
-        // in the office belongs to a clone that is alive right now.
+        // Host only: reads this machine's ticket office; the answer travels in the asset id.
         private static int ChooseInstance(GadgetKind kind)
         {
             if (!_templates.TryGetValue(kind, out var list) || list == null || list.Count == 0 || list[0] == null)
                 return 0;
 
-            // Nothing ticketed in this kind means nothing to share: every
-            // template is available, so any of them. Asked of every template,
-            // not the first: a kind can mix prefabs (the lamp does) whose
-            // components differ.
+            // Asked of every template: a kind can mix prefabs whose components differ.
             var needed = Math.Min(TicketsOf(list[0].gameObject).Count, MaxTicketsPerClone);
             var anyTicketed = list.Exists(template => template != null && TicketsOf(template.gameObject).Count > 0);
             if (!anyTicketed)
@@ -610,14 +383,9 @@ namespace BigWalkArchipelago.Core
             if (candidates.Count > 0)
                 return PickAtRandom(candidates);
 
-            // Every vanilla instance is in use, or the kind never borrows one:
-            // the extra slots, which invent as many tickets as the kind has
-            // ticketed components.
             for (var index = usable; index < MaxInstancesPerKind; index++)
             {
-                // The tickets of the template this slot would really be built
-                // from: with the lamp's three prefabs mixed in one list, the
-                // first template is not a safe stand-in for all of them.
+                // This slot's own template: the lamp mixes three prefabs in one list.
                 var template = list[(index - usable) % list.Count];
                 var slotNeeds = template != null
                     ? Math.Min(TicketsOf(template.gameObject).Count, MaxTicketsPerClone)
@@ -640,15 +408,7 @@ namespace BigWalkArchipelago.Core
             return usable < MaxInstancesPerKind ? usable : 0;
         }
 
-        // Gives an extra-slot clone its invented tickets. Called on the clone
-        // while it is still inactive, so that its components register the new
-        // numbers when it is switched on rather than the template's.
-        //
-        // The rank is the component's position in a fixed walk — homes, then
-        // switches, then tracked states, then seats, each in hierarchy order — which is
-        // the same on every machine because every clone of a kind is a copy
-        // of the same prefab. Components carrying ticket 0 are skipped here
-        // exactly as TicketsOf skips them, so both count the same things.
+        // Called while the clone is inactive, so its components register the new tickets.
         private static void AssignExtraTickets(GameObject clone, GadgetKind kind, int index)
         {
             var rank = 0;
@@ -690,8 +450,7 @@ namespace BigWalkArchipelago.Core
                 rank++;
             }
 
-            // The seats too (Big Break's chair, 2026-10-14: with the template's ticket, sitting on the island's chair
-            // took the player to the clone).
+            // Seats too: with the template's ticket, sitting on the island's chair moved you to it.
             foreach (var pose in clone.GetComponentsInChildren<PlayerPose>(true))
             {
                 if (pose == null || pose.ticket == 0)
@@ -700,7 +459,7 @@ namespace BigWalkArchipelago.Core
                 if (rank < MaxTicketsPerClone)
                 {
                     pose.ticket = ExtraTicket(kind, index, rank);
-                    // The reference the network carries (CmdEnterPose) holds a ticket of its own: the template's, else.
+                    // CmdEnterPose carries a ticket of its own, the template's unless set.
                     pose.shellReference = new(pose.ticket);
                 }
                 else
@@ -721,8 +480,7 @@ namespace BigWalkArchipelago.Core
                     + $"{MaxTicketsPerClone} a slot reserves; those keep the template's ticket and will not work.");
         }
 
-        // Ticket 0 is skipped: a component carrying it has no identity to
-        // protect, and counting it would make every such kind look taken.
+        // Ticket 0 has no identity to protect; counting it would make every such kind look taken.
         private static List<ushort> TicketsOf(GameObject root)
         {
             var tickets = new List<ushort>();
@@ -754,7 +512,7 @@ namespace BigWalkArchipelago.Core
             return tickets;
         }
 
-        // A switched-off scene object (a hidden Memory Bombs mine) holds its ticket outside the office.
+        // A switched-off scene object (a hidden Memory Bombs mine) holds its ticket off the office.
         private static bool IsInventedTicketFree(ushort ticket)
         {
             return IsTicketFree(ticket) && !WorldButtons.SceneTickets().Contains(ticket);
@@ -773,14 +531,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The other half of the same measurement. On 2026-09-23 the host's
-        // log read "An incoming Backpack arrived before the world-ready
-        // sweep": items replayed at connection can be built before
-        // VanillaGadgetRemover has hidden anything, and at that moment the
-        // vanilla backpack still held its tickets. The clone was refused, and
-        // PropHome only registers in OnEnable, so it never tried again even
-        // once the vanilla let go. So the host hides first, whenever the
-        // sweep has not happened yet in this world.
+        // Items replayed on connecting can come before the sweep, while vanilla props hold tickets.
         private static void EnsureVanillaHidden()
         {
             if (_hiddenThisWorld || !ModConfig.ArchipelagoEnabled.Value)
@@ -789,8 +540,6 @@ namespace BigWalkArchipelago.Core
             HideVanillaInstances();
         }
 
-        // Called by VanillaGadgetRemover whenever no world is ready, so the
-        // next world starts out not hidden.
         internal static void ForgetWorld()
         {
             _hiddenThisWorld = false;
@@ -858,12 +607,7 @@ namespace BigWalkArchipelago.Core
 
         private const float LateCaptureCooldownSeconds = 1f;
 
-        // Throttled, and deliberately captures ALL the kinds rather than the
-        // one asked for: a spawn wave arrives in one burst, so the first
-        // gadget that finds nothing pays for one scan and the rest of the
-        // burst finds its template waiting. Without the throttle a wave that
-        // is genuinely too early — the scene not loaded at all — would scan
-        // every Prop in the world once per spawn.
+        // Captures every kind at once: a spawn wave comes in one burst, so one scan serves it.
         private static void TryCaptureLate(GadgetKind kind)
         {
             if (Time.time < _nextLateCapture)
@@ -877,35 +621,13 @@ namespace BigWalkArchipelago.Core
             CaptureTemplates();
         }
 
-        // Called right after CaptureTemplates, on EVERY machine, host and
-        // guest alike, and entirely locally.
-        //
-        // It was host-only and used NetworkServer.Destroy until 2026-09-22,
-        // on the reasoning that SetActive(false) does not replicate and
-        // these props therefore had to be destroyed to leave everybody's
-        // map. See the note at the top of this file for what that cost in
-        // co-op the same evening.
-        //
-        // Hiding also beats destroying locally, which would be the obvious
-        // alternative: these are networked scene objects, and tearing one
-        // out of a client's spawned table while the server still believes in
-        // it is the same class of failure this change exists to remove.
-        // Deactivated, the identity stays alive and only this machine stops
-        // drawing and colliding with it.
-        //
-        // The template captured just above is inactive and therefore already
-        // excluded by the default (active-only) FindObjectsByType scan, so
-        // this never hides its own template.
+        // Local on every machine: SetActive(false) keeps the network identity alive.
         internal static int HideVanillaInstances()
         {
             var hidden = 0;
             _hidden.Clear();
 
-            // Inactive ones included, for the reason CaptureTemplate gives:
-            // on a guest these props arrive switched off and must be kept
-            // that way, so they belong in _hidden even though there is
-            // nothing to switch off today. Mirror turning one on later is
-            // exactly what ReHideVanillaInstances is for.
+            // Inactive ones too: on a guest they arrive switched off and must stay that way.
             var all = UnityEngine.Object.FindObjectsByType<Prop>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (all == null)
@@ -956,13 +678,7 @@ namespace BigWalkArchipelago.Core
             return hidden;
         }
 
-        // Anything that came back on since the sweep. Mirror calls
-        // SetActive(true) on a scene object when it spawns it, so a spawn
-        // wave arriving after the sweep — a late joiner's, or interest
-        // management rebuilding observers — can undo it. Walks only what was
-        // hidden, not the world.
-        // The packs this machine hid before it knew they were checks, back on the map, and out
-        // of the list ReHideVanillaInstances keeps hidden.
+        // The packs hidden before this machine knew they were checks, back on the map.
         internal static void ShowPacks(Func<string, bool> stays)
         {
             var shown = 0;
@@ -993,8 +709,7 @@ namespace BigWalkArchipelago.Core
                 Plugin.Log.LogInfo($"[{nameof(GadgetItemSpawner)}] {shown} pack(s) back on the map: they are checks.");
         }
 
-        // The island's gadgets hidden before this machine knew `object_sanity` keeps them (a guest's first
-        // snapshot, a slot read after the world came up): back on the map, all but those collected.
+        // Gadgets hidden before this machine knew `object_sanity` keeps them, back on the map.
         internal static void ShowObjects(Func<Prop, bool> stays)
         {
             var shown = 0;
@@ -1025,7 +740,7 @@ namespace BigWalkArchipelago.Core
                 Plugin.Log.LogInfo($"[{nameof(GadgetItemSpawner)}] {shown} object(s) back on the map: they are checks.");
         }
 
-        // A pack collected for its check (Core/PackChecks): off this machine's map, and kept off.
+        // A pack collected for its check: off this machine's map, and kept off.
         internal static void HidePack(GameObject pack)
         {
             if (pack == null)
@@ -1085,11 +800,7 @@ namespace BigWalkArchipelago.Core
             return again;
         }
 
-        // What the sweep leaves standing, by kind, so the rebuild can count
-        // it as already there. Without this the resync cleared its tally to
-        // zero and then restocked every gadget the ledger owed — including
-        // the ones it had just been careful not to touch, which came back as
-        // duplicates.
+        // Counted so the rebuild does not restock what the sweep left standing.
         private static void CountKept(Dictionary<GadgetKind, int> kept, Prop prop)
         {
             var kind = MatchKind(prop.gameObject.name);
@@ -1110,10 +821,7 @@ namespace BigWalkArchipelago.Core
             return null;
         }
 
-        // Exact-prefix match with a boundary character, not a plain
-        // StartsWith: "FlareGunProp" must not also catch "FlareGunPropBlue"
-        // (a real, distinct prop this mod leaves alone), only the base name
-        // itself or a Unity-appended " (1)"-style suffix.
+        // "FlareGunProp" must not also match "FlareGunPropBlue".
         private static bool NameMatches(string name, string exact)
         {
             if (string.IsNullOrEmpty(name))
@@ -1128,45 +836,7 @@ namespace BigWalkArchipelago.Core
                 || name.Contains(ReceivedItemSpawner.CosmeticNameSuffix, StringComparison.Ordinal);
         }
 
-        // The gadget half of Ctrl+R, and the reason the key press needed one
-        // at all (player request, 2026-09-22). A filler gadget has no
-        // deposit sink: what is owed is "received, minus spawned this
-        // session", forever. So a gadget that ends up somewhere unreachable
-        // stays counted as spawned and is never replaced — and a gadget
-        // still in someone's hands when the world is swept is counted twice
-        // by the rebuild. Clearing both, and letting RestoreLooseGadgets put
-        // back exactly what the ledger owes, is the same promise the gourds
-        // already make.
-        //
-        // Scans Prop rather than a gadget type of its own: a cosmetic clone
-        // is recognized by NeutralizeProgression having made it notSavable
-        // plus the name suffix, which is precisely what IsCosmeticClone
-        // asks. RewardGourd carries that mark too, so gourds are handed back
-        // to their own sweep instead of being destroyed twice.
-        // LOOSE is the operative word, and it is a rule, not a description
-        // (player request, 2026-09-22): "the backpacks and belts WORN BY
-        // PLAYERS must not answer this command, and neither must the objects
-        // hanging inside them."
-        //
-        // A worn pack is not stranded — it is exactly where its owner put it
-        // — and sweeping it would take the pack, everything stowed in it, and
-        // the other player's afternoon with it. Worse, it is the one case
-        // where the sweep would destroy something a SECOND player is using,
-        // on a key only the host can press.
-        //
-        // What makes it decidable is PropHome, which says who a home belongs
-        // to: `parentCharacter` is a home on a player (PropGroup.PackHanger,
-        // WearHolster), `parentProp` is a home on another prop (a pack's own
-        // GoesInBackpack/GoesInHolster slots), and `isInventory` marks a
-        // stash. So the rule is simply: a prop that is in any home is placed,
-        // not lost, and this sweep leaves it alone. Only a homeless prop is
-        // loose.
-        //
-        // The second pass exists for the last case that rule does not cover:
-        // a pack lying on the ground IS homeless, so it would be swept — and
-        // destroying it would strand whatever is homed inside it, which is
-        // the stale-reference bug this whole sweep exists to avoid. A prop
-        // that is somebody's home is therefore kept too.
+        // Only loose props go: anything in a home (worn, stowed) or holding one stays.
         internal static int DestroyLooseCosmeticGadgets(out Dictionary<GadgetKind, int> kept)
         {
             kept = new Dictionary<GadgetKind, int>();
@@ -1174,9 +844,7 @@ namespace BigWalkArchipelago.Core
             var seen = 0;
             var placed = 0;
 
-            // Inactive included, same as the gourd sweep: a prop that has
-            // been picked up can leave the active hierarchy, and the default
-            // scan would walk past exactly the one this is meant to reclaim.
+            // Inactive included: a picked-up prop can leave the active hierarchy.
             var all = UnityEngine.Object.FindObjectsByType<Prop>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (all == null)
@@ -1190,11 +858,7 @@ namespace BigWalkArchipelago.Core
                 if (prop == null || !ReceivedItemSpawner.IsCosmeticClone(prop))
                     continue;
 
-                // A gourd is not this sweep's to remove, but it can still be
-                // the reason a backpack or a carton has to stay: until
-                // 2026-09-23 it was skipped before being asked, so a pack
-                // lying on the ground with a gourd in it went, and the gourd
-                // with it.
+                // A gourd is not swept here, but it can keep its backpack or carton.
                 if (prop.GetComponent<RewardGourd>() != null)
                 {
                     var gourdHome = prop.currentHome;
@@ -1215,9 +879,7 @@ namespace BigWalkArchipelago.Core
                 placed++;
                 CountKept(kept, prop);
 
-                // This prop stays, and so must whatever is holding it: a
-                // backpack whose contents survive it would leave those
-                // contents homed in a destroyed object.
+                // Its holder stays too, or its contents would be homed in a destroyed object.
                 if (home.parentProp != null)
                     occupiedHosts.Add(home.parentProp.GetInstanceID());
             }
@@ -1231,10 +893,7 @@ namespace BigWalkArchipelago.Core
                     continue;
                 }
 
-                // Tidying the hands is best effort; removing the prop is
-                // not — the split that the gourd sweep learned the hard way
-                // on 2026-09-15, when a failed drop aborted the removal and
-                // left behind the one object that most needed reclaiming.
+                // Tidying the hands is best effort; removing the prop is not.
                 ReceivedItemSpawner.ReleaseFromHands(prop);
 
                 try
@@ -1263,11 +922,7 @@ namespace BigWalkArchipelago.Core
             return destroyed;
         }
 
-        // Host entry point, called from ItemApplier.ApplyGadgetItem. Same
-        // toPlayer split as ReceivedItemSpawner.SpawnCosmeticPickup: true
-        // for a gadget arriving during play (hands, or in front of the
-        // player), false for the session-start replay, which stocks it at
-        // the hub instead.
+        // Host entry point; toPlayer is false for the session-start replay, stocked at the hub.
         internal static GameObject SpawnCosmeticPickup(GadgetKind kind, bool toPlayer)
         {
             using var activity = ModActivity.Enter("cosmetic gadget spawn");
@@ -1300,8 +955,7 @@ namespace BigWalkArchipelago.Core
 
                 NetworkServer.Spawn(prop.gameObject, AssetIdFor(kind, index));
 
-                // Without this the clone stays "fixed" as in its original
-                // resting pose — same reasoning as the gourd version.
+                // Otherwise the clone stays fixed in its original resting pose.
                 prop.SetLoose();
                 PublishLooseStates(prop.gameObject);
 
@@ -1316,16 +970,13 @@ namespace BigWalkArchipelago.Core
             }
             catch (Exception ex)
             {
-                // Must never make the actual item reception fail — purely
-                // cosmetic, same guarantee ReceivedItemSpawner gives.
+                // Must never make the item reception fail.
                 Plugin.Log.LogWarning($"[{nameof(GadgetItemSpawner)}] Cosmetic spawn failed, ignored: {ex}");
                 return null;
             }
         }
 
-        // The tomato's tick and pop (PeckEffectAudio, PeckEffectParticleNetworked) listen to a
-        // state through a PeckSystemReference; each is made to listen to the clone's own state,
-        // before the clone wakes and subscribes, and what each listened to is logged.
+        // Points the tomato's tick and pop at the clone's own state before the clone wakes.
         private static void WireTomatoEffects(GameObject clone)
         {
             var own = clone.GetComponent<TrackedPeckState>();
@@ -1340,8 +991,7 @@ namespace BigWalkArchipelago.Core
                 reference.peckSystem = own;
                 audio.systemReference = reference;
 
-                // Played at the tomato itself, not at "the context's prop": a guest is told of the
-                // state change without that prop, and heard nothing (2026-10-06).
+                // Played at the tomato: a guest gets the state change without the context's prop.
                 var where = audio.transformReference;
                 where.referenceType = PeckTransformReference.ReferenceType.Custom;
                 where.customTransform = clone.transform;
@@ -1359,9 +1009,7 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"[{nameof(GadgetItemSpawner)}] Tomato clone: {string.Join(", ", notes)}; all on the clone now.");
         }
 
-        // Host: one of `kind` for a given player, in their hands if they are empty, else on the
-        // ground in front of them (a trap's tomato, Core/Traps). Null if it could not be built.
-        // Host: one of `kind` set down at a given place, upright (Big Break's chair). Null if it could not be built.
+        // Host: one of `kind` set down upright at a place (Big Break's chair). Null on failure.
         internal static Prop SpawnAt(GadgetKind kind, Vector3 position, Quaternion rotation)
         {
             if (!NetworkServer.active)
@@ -1377,8 +1025,7 @@ namespace BigWalkArchipelago.Core
                 if (prop == null)
                     return null;
 
-                // Its lowest point on the spot, not its pivot (2026-10-14: the chairs sat half in the ground). Read from
-                // the meshes, which still answer while the clone is inactive.
+                // Lowest point on the spot, not the pivot; meshes answer while inactive.
                 var lowest = float.MaxValue;
                 foreach (var filter in prop.GetComponentsInChildren<MeshFilter>(true))
                 {
@@ -1440,28 +1087,13 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Builds the clone WITHOUT spawning it — split out so GadgetSpawnHandler
-        // can run exactly the same construction from its spawn handler, on a
-        // client that never calls SpawnCosmeticPickup itself. Mirrors
-        // ReceivedItemSpawner.BuildNeutralizedClone; the differences are
-        // exactly the RewardGourd-only steps that one performs and this
-        // has no equivalent for (gourdState, colour, propsToMakeSavable).
+        // Builds the clone without spawning it, so GadgetSpawnHandler can do the same on a client.
         internal static Prop BuildNeutralizedClone(GadgetKind kind, Vector3 position, Quaternion rotation, int index = 0)
         {
             var template = ResolveTemplate(kind, index, out var extra);
             if (template == null)
             {
-                // Capture now rather than wait for the world-ready sweep.
-                //
-                // A guest joining a world that already has gadgets in it gets
-                // Mirror's whole spawn wave before WorldManager says the world
-                // is ready, so every one of those arrived with no template and
-                // landed as an empty placeholder — 38 of them in one measured
-                // reconnection (2026-09-23), invisible to that player for the
-                // rest of the session. The log also showed how narrow the miss
-                // was: the first placeholder and the first successful capture
-                // are two lines apart. The props are already in the scene when
-                // the wave arrives; only the sweep had not run yet. So run it.
+                // A guest gets Mirror's spawn wave before the world is ready, so capture now.
                 TryCaptureLate(kind);
                 template = ResolveTemplate(kind, index, out extra);
             }
@@ -1473,19 +1105,14 @@ namespace BigWalkArchipelago.Core
                 return null;
             }
 
-            // Same reasoning as CaptureTemplate: Instantiate does not carry
-            // a per-instance MaterialPropertyBlock over, so without this
-            // every gadget spawned from an (already-correct) template would
-            // itself come out shader-pink/magenta.
+            // Instantiate does not carry a MaterialPropertyBlock over.
             var templatePropertyBlocks = ReceivedItemSpawner.CapturePropertyBlocks(template.gameObject);
 
             var clone = UnityEngine.Object.Instantiate(template.gameObject, position, rotation);
             clone.name = $"{PrefabNames[kind]} {ReceivedItemSpawner.CosmeticNameSuffix}";
             ReceivedItemSpawner.ApplyPropertyBlocks(clone, templatePropertyBlocks);
 
-            // Before activation, never after: the components register their
-            // ticket in OnEnable, and a clone switched on with the template's
-            // numbers is refused and never asks again.
+            // Before activation: tickets register in OnEnable, and a refused one never asks again.
             if (extra)
                 AssignExtraTickets(clone, kind, index);
 
@@ -1508,13 +1135,11 @@ namespace BigWalkArchipelago.Core
             ReceivedItemSpawner.NeutralizeProgression(prop);
             StartLooseNotHung(clone);
 
-            // Big Mask's helmet stays on the head it is pinned to, on every machine: a player can no
-            // more take it off than the wearer can (player, 2026-10-07).
+            // Big Mask's helmet cannot be taken off by anyone.
             if (kind == GadgetKind.Blindfold)
                 prop.blockRemovingFromHomes = true;
 
-            // A trap's tomato runs for TomatoSeconds, on every machine: each one's timer is local
-            // (PeckEffectTimer), so each clone, the host's and every guest's, is set here.
+            // The tomato timer is local (PeckEffectTimer), so every machine's clone is set here.
             if (kind == GadgetKind.Pomodoro)
             {
                 foreach (var timer in clone.GetComponentsInChildren<PeckEffectTimer>(true))
@@ -1528,56 +1153,20 @@ namespace BigWalkArchipelago.Core
                 ReceivedItemSpawner.GetPrivatePropertySetter<NetworkIdentity>(nameof(NetworkIdentity.SpawnedFromInstantiate))
                     ?.Invoke(cloneIdentity, new object[] { false });
 
-            // Re-applied AFTER activation, not just once on the template:
-            // the template itself never runs Awake() (it stays inactive for
-            // the whole session), but THIS clone does the moment
-            // SetActive(true) runs above — and measured in-game (2026-09-22)
-            // to re-enable the same materialless renderer the template had
-            // already had disabled. Whatever component does that clearly
-            // runs on activation, so the fix has to run after it, not before.
+            // After activation: something re-enables the materialless renderer on wake.
             ReceivedItemSpawner.ClearLightmapReferences(clone);
             ReceivedItemSpawner.FixMaterialessRenderers(clone);
             ReceivedItemSpawner.RefreshPropertyBlockHelpers(clone);
             SettleOffTheHanger(clone);
 
-            // The seed's colours, after the helpers' refresh, which would put a buoy's tint back.
+            // After the helpers' refresh, which would put a buoy's tint back.
             if (kind == GadgetKind.Lamp || FlareGuns.Contains(kind))
                 ColourPainter.PaintClone(kind, clone, kind == GadgetKind.RainbowFlareGun);
 
             return prop;
         }
 
-        // A CLONE HAS NEVER BEEN ON A HANGER, SO IT MUST NOT LOOK HUNG
-        // (2026-09-25, measured in co-op after the first alpha's report of a
-        // belt "attached to an unseen object" and worn twice over).
-        //
-        // A belt carries three versions of its mesh: `belt_hung` on its
-        // pavilion hanger, `belt_closed` from its first pick-up on, and `belt`
-        // when worn. The worn/closed pair is switched by the belt's own
-        // IsWornEffects; hung is switched off from outside it, once, when the
-        // vanilla belt first leaves its hanger — and a clone is copied from a
-        // template still hanging, and never leaves a hanger. So it went
-        // around hung for good: on the ground, in hand, and worn, where the
-        // log read `belt=True, belt_hung=True` against vanilla's `belt=True`
-        // alone — the second belt in front of the wearer and in their shadow.
-        //
-        // So a clone starts as a vanilla prop does after its first pick-up:
-        // every `<name>_hung` that has a `<name>_closed` beside it is swapped
-        // for it. By name, because the backpack's straps come in the same
-        // hung/closed pair and have the same history.
-        //
-        // THE MESHES FOLLOW STATES, AND IT IS THE STATES THAT MUST BE RIGHT
-        // (measured the same day, host and guest logs side by side). The
-        // swap below held on the host and not on a guest, because each mesh
-        // is switched by a PeckEffectToggle following one of the belt's own
-        // TrackedPeckStates — `belt_hung` follows "placed on hanger",
-        // `belt_closed` follows "backpack not worn", `belt` follows
-        // "backpackWornSystem" — and a clone copies those states from a
-        // template still on its hanger. The guest's clone read "placed on
-        // hanger" = 1, and the next time its effects were applied the hung
-        // mesh came straight back. So the states are set first, before the
-        // clone is switched on, to what a belt lying loose has: not on a
-        // hanger, not worn. The backpack's straps answer to the same labels.
+        // A clone copies a template still on its hanger, so its states are reset to lying loose.
         private static readonly Dictionary<string, int> LooseStates = new()
         {
             { "placed on hanger", 0 },
@@ -1585,17 +1174,7 @@ namespace BigWalkArchipelago.Core
             { "backpackWornSystem", 0 },
         };
 
-        //
-        // AND THE STATES MUST NOT BE THE VANILLA PROP'S (decompiled after that
-        // still failed on the guest). TrackedPeckState.Initialize reads its
-        // starting value from the save, under its saveIdentity's saveGuid, and
-        // SetState writes back under the same key. A clone copies the saveGuid
-        // of the vanilla prop it was made from, so it read that belt's
-        // "placed on hanger" = 1 and undid the value set here — and wearing a
-        // clone wrote the vanilla belt's saved state. The clone's states lose
-        // their save identity before they are switched on: a received gadget
-        // is not the island's, and must neither read nor write the island's
-        // record of it.
+        // Save identity removed, or the clone reads and writes the vanilla prop's saved states.
         private static void StartLooseNotHung(GameObject clone)
         {
             foreach (var state in clone.GetComponentsInChildren<TrackedPeckState>(true))
@@ -1626,14 +1205,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // THE GUEST'S VALUE COMES FROM THE HOST (third measurement, same day).
-        // With its save identity gone and its states set before activation, a
-        // guest's clone still read "placed on hanger" = 1. What is left is the
-        // network: a TrackedPeckState is synchronised by its ticket, a clone
-        // borrows the ticket of a vanilla prop, and the server still holds that
-        // vanilla belt's last state — hanging. Only the server can change what
-        // it holds, so the host sets the loose states for real, through
-        // SetState, which publishes them to every client present and to come.
+        // The server holds the borrowed ticket's last state, so the host publishes the loose ones.
         private static void PublishLooseStates(GameObject clone)
         {
             if (!NetworkServer.active)
@@ -1674,23 +1246,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // THE TWO FALLBACKS BELOW EXIST BECAUSE OF WHAT RETURNING NOTHING
-        // DID (2026-09-22, measured in co-op — see GadgetSpawnHandler.Spawn).
-        //
-        // A Mirror spawn handler that hands back null leaves its netId
-        // unresolved on that client. The next SyncVar pointing at it is a
-        // player's PlayerHeldInformation, whose `identity` field is then
-        // null and whose GetProp() dereferences it — so the exception lands
-        // inside DeserializeSyncVars, which stops mid-read. Mirror reports a
-        // size hash mismatch, and from that moment every state update for
-        // that player throws, every frame, for the rest of the session.
-        // Losing one cosmetic gadget is nothing; losing a player's network
-        // state is the session.
-        //
-        // So the handler always builds something. First choice: another
-        // captured template. It is a real Prop with real components, and the
-        // Lamp in particular survives the hiding pass (KeptInWorld), so any
-        // machine that loaded the world normally has one to hand.
+        // Never null: an unresolved netId breaks that player's network state for the session.
         internal static Prop BuildStandInClone(GadgetKind wanted, Vector3 position, Quaternion rotation)
         {
             foreach (var kind in StandInOrder())
@@ -1713,21 +1269,14 @@ namespace BigWalkArchipelago.Core
 
         private static IEnumerable<GadgetKind> StandInOrder()
         {
-            // The Lamp first: the one kind the hiding pass spares, so the
-            // one most likely to be there.
+            // The Lamp first: the one kind the hiding pass spares.
             yield return GadgetKind.Lamp;
 
             foreach (var kind in PrefabNames.Keys)
                 yield return kind;
         }
 
-        // Second choice, when a machine has no template whatsoever: an
-        // object carrying nothing but a NetworkIdentity. It draws nothing
-        // and does nothing. Its entire job is to give Mirror a netId to
-        // resolve, so that a player holding it deserializes instead of
-        // throwing — GetProp() then returns null rather than dereferencing a
-        // null identity. That is the difference between "this player cannot
-        // see the gadget" and "this player is broken until they reconnect".
+        // Just a NetworkIdentity, so Mirror has a netId to resolve.
         internal static GameObject BuildResolvablePlaceholder(GadgetKind wanted, Vector3 position)
         {
             try

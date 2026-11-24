@@ -4,11 +4,7 @@ using Newtonsoft.Json.Linq;
 
 namespace BigWalkArchipelago.Core.Net
 {
-    // The world's logic, as the apworld writes it into slot_data (`logic`, apworld/bigwalk/logic_export.py), evaluated
-    // with the items this slot has received: which checks are in logic now (R7, the next-check board). The same sweep
-    // as the apworld's test (test_logic_export.reachable), which checks it against Archipelago's own logic: regions
-    // reached from the origin through their exits, locations reached in them, an event's item collected as soon as
-    // its location is reached, until nothing changes.
+    // Evaluates the slot_data `logic` with the items received; same sweep as the apworld's test.
     internal sealed class ApLogic
     {
         private enum Kind
@@ -50,7 +46,6 @@ namespace BigWalkArchipelago.Core.Net
 
         internal int LocationCount => _locations.Count;
 
-        // A check's region by its id (null if unknown).
         internal string RegionOf(long id)
         {
             foreach (var location in _locations)
@@ -129,7 +124,7 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // The real checks (not events) in logic with these items, in the apworld's order.
+        // Real checks (not events) in logic with these items, in the apworld's order.
         internal List<(long id, string name)> InLogic(Dictionary<string, int> received)
         {
             var have = new Dictionary<string, int>(received);

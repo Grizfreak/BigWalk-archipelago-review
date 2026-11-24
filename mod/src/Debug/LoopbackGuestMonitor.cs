@@ -4,18 +4,10 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Runs in the loopback guest only (added by Plugin.Load when
-    // LoopbackGuest.IsGuest). Two jobs:
-    //
-    // - joins on its own once the title menu is up, when the launcher passed
-    //   --bwap-join (it does when the host was already listening);
-    // - says every step of the connection as it happens, failure included:
-    //   connecting, connected, authenticated, ready, player spawned,
-    //   disconnected. "Nothing happened" and "it stopped at step three" have
-    //   to read differently in the guest's log.
+    // Loopback guest only: joins on --bwap-join and logs every step of the connection.
     internal class LoopbackGuestMonitor : MonoBehaviour
     {
-        // Constructor required by Il2CppInterop for any type injected into IL2CPP.
+        // Required by Il2CppInterop for any type injected into IL2CPP.
         public LoopbackGuestMonitor(IntPtr ptr) : base(ptr)
         {
         }
@@ -59,13 +51,7 @@ namespace BigWalkArchipelago.Debug
             }
         }
 
-        // On its own try: before the menu scene exists this throws rather
-        // than finding nothing (first run, 2026-09-26), and the Update's
-        // once-only warning would then have hidden any later, real failure.
-        // Any exception, not NullReferenceException: the game's own NRE
-        // reaches managed code wrapped in an Il2CppException (its message
-        // starts "System.NullReferenceException:"), which a catch on the
-        // managed type lets straight through — measured on the next run.
+        // Throws before the menu scene exists; catch all, the game's NRE is an Il2CppException.
         private static bool TitleMenuIsUp()
         {
             try

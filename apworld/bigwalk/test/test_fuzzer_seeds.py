@@ -1,7 +1,4 @@
-"""
-Seeds the Archipelago fuzzer failed on with 0.6.0 (2026-10-13), each cut down to the options that broke it. Every
-class here also fills its seed (WorldTestBase), which is half of what it guards.
-"""
+"""Seeds the fuzzer failed on, cut down to the options that broke them; each one fills."""
 
 from .. import data, items, regions
 from .bases import BigWalkTestBase, build_like_universal_tracker, world_shape
@@ -9,10 +6,7 @@ from .test_vanilla_options import pool, precollected
 
 
 class TestThePartyHasARadioInATightPool(BigWalkTestBase):
-    """
-    `big_party` needs a radio, which used to come from the filler headroom after the gear: with the puzzles holding
-    their gourds and the keys their monuments, the gear took it all and the seed could not be won (62 seeds).
-    """
+    """`big_party` needs a radio even when the gear takes the whole filler headroom."""
 
     options = {
         "goal": "big_goodbye", "objectives": ["big_body", "big_collection", "big_party"], "random_objectives": 0,
@@ -31,7 +25,7 @@ class TestThePartyHasARadioInATightPool(BigWalkTestBase):
 
 
 class TestTheTrackerRebuildsAVanillaSeed(BigWalkTestBase):
-    """The vanilla options put items in locations: Universal Tracker failed to rebuild such a seed without them."""
+    """Universal Tracker rebuilds a seed with the vanilla options."""
 
     options = {"linear_keys": True, "linear_puzzles": True, "linear_arch_doors": True, "linear_towers": True,
                "start_with_map_room_open": True}
@@ -42,10 +36,7 @@ class TestTheTrackerRebuildsAVanillaSeed(BigWalkTestBase):
 
 
 class TestNoRoomForTheWayOut(BigWalkTestBase):
-    """
-    The tutorial's puzzles hold their gourds, its lamps this world's own filler, and its deposit the Drawbridge: the
-    First Arch Door, asked for early as the way out, had nowhere to go (23 seeds).
-    """
+    """With the tutorial full, the First Arch Door, asked for early, still finds a place."""
 
     options = {
         "start_with_drawbridge_open": False, "start_with_arch_doors_open": ["Right Arch Door"],
@@ -61,10 +52,7 @@ class TestNoRoomForTheWayOut(BigWalkTestBase):
 
 
 class TestTheGamesOwnWayOut(BigWalkTestBase):
-    """
-    Every door as in the game, and the drawbridge closed: the tutorial's four gourds fill its monument, which holds
-    the key the drawbridge waits for. That monument full used to sit in the overworld, past the drawbridge.
-    """
+    """Doors as in the game, drawbridge closed: the tutorial monument holds its key."""
 
     options = {"start_with_drawbridge_open": False, "linear_arch_doors": True, "linear_keys": True,
                "linear_towers": True, "linear_puzzles": True, "tower_mode": "all_open"}
@@ -76,10 +64,7 @@ class TestTheGamesOwnWayOut(BigWalkTestBase):
 
 
 class TestNoRoomForTheFirstMonument(BigWalkTestBase):
-    """
-    With `by_item` and the first monument closed, every puzzle holding its gourd and every door on its key's deposit,
-    nothing was left that did not wait for the first Progressive Monument, which was then placed last, nowhere.
-    """
+    """`by_item`, first monument closed: the first Progressive Monument still fits."""
 
     options = {
         "goal": "big_collection", "start_with_drawbridge_open": True,
@@ -99,11 +84,7 @@ class TestNoRoomForTheFirstMonument(BigWalkTestBase):
 
 
 class TestJunkLeavesRoomForProgression(BigWalkTestBase):
-    """
-    1.0's fuzz: the packs on their own checks, the objects' and lights' checks as junk and the vanilla behaviours left
-    the progression too few locations (10 short), mostly in the first spheres. The junk options now stop excluding
-    while half as many again as the progression items are left (rules.room_for_progression).
-    """
+    """The junk options stop excluding while room is left for the progression."""
 
     options = {
         "goal": "big_game", "gourd_sanity": "off", "radio_sanity": False, "pack_sanity": "vanilla",
@@ -122,7 +103,7 @@ class TestJunkLeavesRoomForProgression(BigWalkTestBase):
 
     def test_room_left(self) -> None:
         from BaseClasses import LocationProgressType
-        # The progression the fill placed (not the items locked on their location: a puzzle's gourd, a deposit's door).
+        # The progression the fill placed, not the items locked on their location.
         progression = sum(1 for location in self.multiworld.get_locations()
                           if location.item is not None and location.item.player == self.player
                           and location.item.advancement and location.address is not None and not location.locked)

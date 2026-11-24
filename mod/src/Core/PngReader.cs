@@ -5,14 +5,13 @@ using System.Text;
 
 namespace BigWalkArchipelago.Core
 {
-    // Every PNG colour type and depth, not interlaced, for the custom tiles (CustomTiles).
-    // Not ImageConversion: its EncodeToPNG crashed the game via Il2CppInterop (2026-10-15).
+    // Not ImageConversion: its EncodeToPNG crashes the game through Il2CppInterop.
     internal static class PngReader
     {
-        // Checked before anything is inflated: a small file can claim a huge picture.
+        // Checked before inflating: a small file can claim a huge picture.
         internal const int MaxSide = 4096;
 
-        // The pixels as 8-bit RGBA, top row first (as in the file).
+        // 8-bit RGBA, top row first.
         internal static byte[] ReadRgba(Stream stream, out int width, out int height)
         {
             using var reader = new BinaryReader(stream);
@@ -176,7 +175,6 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // A grey level or palette index of 1 to 16 bits, packed from the high bits of each byte.
         private static int Sample(byte[] row, int x, int depth)
         {
             if (depth == 16)

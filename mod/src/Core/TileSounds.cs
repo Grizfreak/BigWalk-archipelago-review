@@ -72,7 +72,6 @@ namespace BigWalkArchipelago.Core
             Channel.Forget();
         }
 
-        // Every couple of seconds while a world is ready (TeleportButtonRunner).
         internal static void Tick()
         {
             ScanLocal();
@@ -177,7 +176,7 @@ namespace BigWalkArchipelago.Core
                 : $"{Tag} Tile sounds replaced: {string.Join(", ", Names(wanted.Keys))} ({changed} stem(s), {players} speaker(s) switched).");
         }
 
-        // Speakers loop their stem and are only muted: a live one gets the new clip at its play head.
+        // Speakers loop their stem and are only muted: a live one gets the clip at its play head.
         private static int Repoint(Dictionary<IntPtr, AudioClip> swaps)
         {
             if (swaps.Count == 0)
@@ -274,10 +273,6 @@ namespace BigWalkArchipelago.Core
             return true;
         }
 
-        // ------------------------------------------------------------------
-        // The tiles folder (the host's, or a player alone)
-        // ------------------------------------------------------------------
-
         private static void ScanLocal()
         {
             FileInfo[] files;
@@ -359,10 +354,6 @@ namespace BigWalkArchipelago.Core
             Buffer.BlockCopy(pcm, 0, bytes, 0, bytes.Length);
             return bytes;
         }
-
-        // ------------------------------------------------------------------
-        // Host -> guests
-        // ------------------------------------------------------------------
 
         // Every host frame (ModChannel): the host's sounds to its guests, a few chunks at a time.
         internal static void PumpHost(IEnumerable<NetworkConnection> guests)

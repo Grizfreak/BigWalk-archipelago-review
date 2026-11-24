@@ -11,29 +11,16 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // R8, the custom tiles (1.0): tiles shown as the drawings the seed drew, from the community's drawings carried in the
-    // DLL (mod/assets/tiles/<category>, CC BY 4.0): the nine basic tiles (PegTileA1..A9, `custom_tiles`, slot data
-    // `peg_tiles`) and a few of the drawing panels' scribbles (C, Priest; `custom_drawings`, slot data `peg_drawings`).
-    //
-    // Every peg tile, split-flap and display draws its symbol through the one PegTileDataSet: a tile kind is a cell
-    // of an atlas (texture index, x, y). The drawings go into an atlas of the mod's own, a fourth material of the data
-    // set, and their kinds are pointed at its cells; then every renderer refreshes. What a puzzle asks for (the
-    // PropGroup) never changes, only what the tile shows. Dumped 2026-10-15 (Debug/DebugPegTileDump): one data set,
-    // three 6x6 atlases, no renderer drawing an atlas outside it.
-    //
-    // The host has the drawings from the slot; a guest from the host, in the snapshot (ModChannel), as
-    // "<tile kind>=<drawing>". Outside an Archipelago world the cells are the game's again.
-    // The host's own PNGs (LocalFolder) override a drawing or a tile kind, and go to its guests.
+    // Shows the seed's drawings on peg tiles by pointing tile kinds at a mod atlas's cells.
     internal static class CustomTiles
     {
         private const string Tag = "[" + nameof(CustomTiles) + "]";
 
-        // The game's basic tiles, PegTileA1 to PegTileA9, by the apworld's names (tiles.VANILLA_TILES).
+        // PegTileA1 to PegTileA9, by the apworld's names (tiles.VANILLA_TILES).
         private static readonly string[] Vanilla =
             { "triangle", "asterisk", "diagonal_line", "G", "dot_and_line", "vertical_ellipsis", "S", "spiral", "e" };
 
-        // The mod's atlas: cells of 512 (the drawings are 512 x 512), as many as the drawings shown, on a square
-        // power-of-two grid (1, 2, 4 or 8 a side), filled from the top left as the game's atlases are.
+        // Cells of 512 on a square power-of-two grid, filled from the top left as the game does.
         private const int Cell = 512;
 
         private static string[] _seed = Array.Empty<string>();
@@ -49,7 +36,7 @@ namespace BigWalkArchipelago.Core
         private static bool _newWorld;
         private static readonly Dictionary<string, byte[]> Drawings = new(StringComparer.OrdinalIgnoreCase);
 
-        // The player's folder: drawings by name, and "@<tile kind>" for a kind's own file.
+        // In the player's folder, "@<tile kind>" names a kind's own file.
         private const string KindPrefix = "@";
         private const long MaxFileBytes = 16 * 1024 * 1024;
         private static readonly Dictionary<string, string> LocalFiles = new(StringComparer.OrdinalIgnoreCase);
@@ -57,10 +44,9 @@ namespace BigWalkArchipelago.Core
         private static string _localSignature = string.Empty;
         private static bool _folderFailed;
 
-        // Only the icons and the scribbles: the poses and the points are what their puzzles read.
+        // Only icons and scribbles: puzzles read the poses and the points.
         private static readonly Regex ReplaceableKind = new("^PegTile(A[1-9]|C[1-9]|Priest[A-D][1-9])$");
 
-        // The host's drawings for guests: 512 x 512 ink, by "@<kind>" or drawing name.
         private static readonly BlobChannel Channel = new(1, Tag, 1024 * 1024, Cell * Cell);
         private static Dictionary<string, Blob> _hostBlobs = new();
         private static string _hostBlobsSignature;
@@ -70,7 +56,6 @@ namespace BigWalkArchipelago.Core
 
         internal static string LocalFolder => Path.Combine(BepInEx.Paths.ConfigPath, "BigWalkArchipelago", "tiles");
 
-        // The mod's atlas, for the tile dump (Debug/DebugPegTileDump).
         internal static Texture2D Atlas => _atlas;
 
         internal static void Configure(ApSlotData slot)
@@ -106,7 +91,6 @@ namespace BigWalkArchipelago.Core
             Channel.Forget();
         }
 
-        // What the host's snapshot carries: each of its own drawings and the hash of its ink.
         internal static Dictionary<string, ulong> HostManifest()
         {
             var manifest = new Dictionary<string, ulong>();
@@ -168,11 +152,9 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} The host's drawing '{name}' received ({total / 1024} KB).");
         }
 
-        // Every couple of seconds while a world is ready (TeleportButtonRunner): the cells follow what this machine
-        // should show, and are left alone once they do.
         internal static void Tick()
         {
-            // Its tile gone, this is another world (a guest rejoining): its set may be a fresh one.
+            // Unity null with a live reference: the tile is gone, so this is another world.
             if (!ReferenceEquals(_probe, null) && _probe == null)
                 ForgetSet();
 
@@ -273,7 +255,6 @@ namespace BigWalkArchipelago.Core
                     _original[i] = cells[i];
             }
 
-            // Each tile kind wanted, to its drawing's cell in the mod's atlas; a kind or a drawing unknown is left out.
             var kinds = new Dictionary<PropGroup, int>();
             var shown = new List<string>();
             foreach (var entry in wanted)
@@ -343,7 +324,6 @@ namespace BigWalkArchipelago.Core
             return true;
         }
 
-        // White ink on 512 x 512, from the tiles folder or the DLL; null if unreadable.
         private static byte[] Drawing(string name)
         {
             if (Drawings.TryGetValue(name, out var known))
@@ -357,7 +337,6 @@ namespace BigWalkArchipelago.Core
             {
                 if (IsGuest)
                 {
-                    // The host's once here; until then the DLL's, or the game's tile for a kind.
                     if (Received.TryGetValue(name, out var received))
                         pixels = InkToPixels(received.Ink);
                     else if (!name.StartsWith(KindPrefix, StringComparison.Ordinal))
@@ -410,7 +389,7 @@ namespace BigWalkArchipelago.Core
             return pixels;
         }
 
-        // Listed every tick: a file added, removed or saved again makes every drawing read anew.
+        // Scanned every tick: a file added, removed or saved again makes every drawing read anew.
         private static void ScanLocal()
         {
             if (_folderFailed)
@@ -488,7 +467,6 @@ namespace BigWalkArchipelago.Core
             DrawPool(pool, draw);
         }
 
-        // tiles/pool: any number of PNGs, drawn for the icons no file of their own names.
         private const int MaxPoolFiles = 1000;
         private const int PoolOnGameTiles = 1;
         private const int PoolOff = 2;
@@ -533,7 +511,6 @@ namespace BigWalkArchipelago.Core
             if (pool.Length == 0 || draw.Length == 0 || mode == PoolOff)
                 return;
 
-            // Mode 1 leaves every icon the seed drew (custom_tiles) to the seed.
             var seeded = new HashSet<string>();
             if (mode == PoolOnGameTiles)
             {
@@ -655,10 +632,7 @@ namespace BigWalkArchipelago.Core
             return (rgba[at] * 299 + rgba[at + 1] * 587 + rgba[at + 2] * 114) / 1000;
         }
 
-        // `mirrored_poses` (the player, 2026-10-20): "mirror_PegTileD4" is pose D4 the other way round. No picture of the
-        // game travels in the DLL: the pose's own cell is read from the game's atlas (Blit and ReadPixels, as the tile
-        // dump does; not EncodeToPNG, which crashed), flipped left to right and brought to the drawings' 512 x 512. The
-        // ink is the pixel's alpha times its brightness, whichever of the two the atlas carries it in.
+        // A pose read from the game's atlas and flipped; no game picture ships in the DLL.
         private const string MirrorPrefix = "mirror_";
 
         private static byte[] Mirrored(string kindName)
@@ -713,11 +687,9 @@ namespace BigWalkArchipelago.Core
                 var pixels = new byte[Cell * Cell * 4];
                 for (var row = 0; row < Cell; row++)
                 {
-                    // Top row first here; the copy's first row is its bottom one.
                     var y = height - 1 - Math.Min(height - 1, (int)((row + 0.5f) * height / Cell));
                     for (var column = 0; column < Cell; column++)
                     {
-                        // Left to right flipped: the mirror.
                         var x = width - 1 - Math.Min(width - 1, (int)((column + 0.5f) * width / Cell));
                         var pixel = source[y * width + x];
                         var bright = Math.Max(pixel.r, Math.Max(pixel.g, pixel.b));
@@ -748,8 +720,7 @@ namespace BigWalkArchipelago.Core
 
         private static void BuildAtlas(List<string> shown, int grid)
         {
-            // Unity's rows run bottom to top: the cell of row 0 is the texture's top.
-            // Past 16 drawings, 256 cells: a 4096 atlas with its mips costs hundreds of MB.
+            // Past 16 drawings, half-size cells: a 4096 atlas with its mips costs hundreds of MB.
             var cell = grid > 4 ? Cell / 2 : Cell;
             var size = cell * grid;
             var top = new byte[size * size * 4];
@@ -767,9 +738,7 @@ namespace BigWalkArchipelago.Core
                 }
             }
 
-            // As the game's atlas has it: white ink, black where there is none (its shader reads the colour, not only
-            // the alpha: an atlas white everywhere drew every cell as all ink, 2026-10-15). The drawings are white
-            // ink with an alpha, so the colour is the alpha; averaged that way, the mips keep no rim either.
+            // The shader reads the colour, not only the alpha, so colour = ink alpha.
             for (var i = 0; i < top.Length; i += 4)
             {
                 var ink = top[i + 3];
@@ -816,7 +785,7 @@ namespace BigWalkArchipelago.Core
             // Kept readable: it is filled again in place at the next change.
             atlas.Apply(false, false);
 
-            // Unity's null as well: a material destroyed is made again, in the same slot.
+            // Unity null too: a destroyed material is made again, in the same slot.
             if (_material == null)
             {
                 _material = new Material(_set.materialPerTextureIndex[0]) { name = "PegTile Archipelago" };
@@ -845,14 +814,12 @@ namespace BigWalkArchipelago.Core
                 _textureIndex = materials.Length;
             }
 
-            // The grid of this atlas: it follows the number of drawings shown.
             _set.sizePerTextureIndex[_textureIndex] = new PegTileDataSet.Int2 { x = grid, y = grid };
 
             _material.mainTexture = atlas;
             _atlas = atlas;
         }
 
-        // A mip level: each pixel the mean of the four under it.
         private static byte[] HalfSize(byte[] pixels, int side)
         {
             var half = side / 2;

@@ -1,38 +1,4 @@
-"""Region graph for the Big Walk world.
-
-Big Walk is *mostly* an open map. The towers' entrance doors are opened by a
-button anyone can press, the mod opens the hub shortcuts itself on a save's
-first session (`Core/ArchDoorUnlocker.cs`), and no puzzle is ever locked by the
-mod — a received gourd is monument currency, it never validates a puzzle. So
-most puzzles, radio stations and key deposits live in one region, and what
-actually gates progress is the gourd count in rules.py.
-
-Three structural gates are modelled, all of them big keys:
-
-- **The ending.** The Black Monolith Key (`bigKeyBoss` -> `bigKeyPlinthEnding`)
-  opens the Big Wall, the field behind it and the Gauntlet beyond that.
-- **The chairlift.** The Green Cup Key opens it, and past it sit the purple
-  "variant challenge" gourds and a radio station. Found in play on 2026-09-21:
-  until then this file claimed the island was open apart from the ending, which
-  let generation place the Green Cup Key behind the chairlift it opens and make
-  the seed unbeatable.
-- **The tunnels.** The Yellow Twist Key opens them, and a radio station sits
-  past them.
-- **The Spawn Secret Door.** Its own item opens it, and the game's second
-  ending is behind it.
-- **The way out of the starting zone** (2026-09-25). Players spawn at the hub,
-  and the only zone open from there is the tutorial; the drawbridge and the
-  first arch door lead on to the rest of the island. The mod opens that door
-  on a save's first session unless `start_with_arch_doors_open` leaves it
-  out, so
-  the gate only has a rule in that case: the Drawbridge or the First Arch
-  Door. The two far arch doors are shortcuts and gate nothing.
-
-Still deliberately *not* modelled: which puzzle belongs to which tower. That
-mapping was never established, and inventing one would produce logic that looks
-precise while being wrong. The two gates above are different — they were
-observed, not inferred.
-"""
+"""Regions of the Big Walk world: one open map plus the zones behind big keys and doors."""
 
 from __future__ import annotations
 

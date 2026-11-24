@@ -5,39 +5,23 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // U2 (`map_tracker`, player 2026-10-13): the Map Room's big map as a tracker of the seed. A check done leaves the map
-    // (however it was sent), one out of logic is greyed, never hidden. The puzzles on the game's own flags; the island's
-    // objects, lamps, packs and flare guns on markers of the mod's own: a stick and, on it, a small copy of the
-    // object's own model (player, 2026-10-13: the kind told by the object on the pin, not by a colour).
-    //
-    // The map (recon 2026-10-13): one `GourdMap` (MapRoom/Positioner/Map-Relief/GourdMap) builds a flag per gourd from
-    // `GourdMapFlag`, placed by the map's `worldScaleOffset` (0, 50, 0) and `scale` (about 1/70); a flag holds the
-    // gourd in three states (gourd_locked, gourd_loose, gourd_stashed, each coloured through a PropertyBlockHelper) and
-    // the towers' two marks. The game sets a flag's state again as gourds move, so this is applied every second, and a
-    // flag left alone goes back as the game made it.
-    //
-    // Every check is known by a key any machine can find on the island ("prop:<guid>", "cut:<key>:<n>", ...): the host,
-    // which has the slot, works out each key's state (shown, greyed, hinted, in the tunnels, an ending open) and sends
-    // the list to the guests (ModChannel, kind 8), who build the same markers from the keys and show the same states.
+    // Turns the Map Room's big map into a tracker; the host sends each check's state to guests.
     internal static class MapTracker
     {
         private const string Tag = "[" + nameof(MapTracker) + "]";
         private const float TickSeconds = 1f;
 
-        // A flag out of logic: its colours drawn towards this grey.
         private static readonly Color Grey = new(0.55f, 0.55f, 0.55f, 1f);
         private const float GreyAmount = 0.8f;
 
         private static GourdMap _map;
         private static float _tickAt;
 
-        // The colours a flag's helpers had before the mod greyed them, by helper, to give them back.
         private static readonly Dictionary<int, Color[]> Original = new();
         private static readonly Dictionary<int, PropertyBlockHelper> Greyed = new();
         private static readonly Dictionary<int, GourdFlag> HiddenFlags = new();
         private static int _loggedBuilt;
 
-        // The mod's markers, by location id.
         private sealed class Marker
         {
             internal GameObject Root;
@@ -48,21 +32,18 @@ namespace BigWalkArchipelago.Core
             internal bool Hinted;
         }
 
-        // A hinted check (player, 2026-10-13): its stick gold, glowing (its colour runs from gold to white and back),
-        // shown even out of logic. A puzzle's flag gets such a stick of its own, under it.
+        // Hinted checks get a glowing gold stick, shown even out of logic.
         private static readonly Color Gold = new(1.6f, 1.2f, 0.25f, 1f);
         private static readonly Color Glow = new(2.2f, 2.2f, 2f, 1f);
         private static readonly HashSet<Renderer> Glowing = new();
         private static readonly Dictionary<int, GameObject> FlagSticks = new();
 
-        // By key; built once for every key known, in the keys' order, so a spot's spread is the same on every machine.
+        // Built in the keys' order, so a spot's spread is the same on every machine.
         private static readonly Dictionary<string, Marker> Markers = new();
         private static readonly HashSet<string> Built = new();
 
-        // A key's state: bits.
         private const byte Visible = 1, GreyBit = 2, HintBit = 4, TunnelBit = 8, OpenBit = 16;
 
-        // The host's keys (with their location ids) and the states last worked out; a guest's, as the host sent them.
         private static readonly List<(string key, long id)> HostKeys = new();
         private static bool _hostKeysBuilt;
         private static Dictionary<string, byte> _states = new();
@@ -73,8 +54,7 @@ namespace BigWalkArchipelago.Core
 
         private static bool IsGuest => Mirror.NetworkClient.active && !Mirror.NetworkServer.active;
 
-        // A marker's size on the map: the copy fits in this, on a stick this tall (map units are metres; a gourd's flag
-        // stands about 0.2 above the relief).
+        // Map units are metres; a gourd's flag stands about 0.2 above the relief.
         private const float ModelSize = 0.13f;
         private const float StickHeight = 0.2f;
         private const float Neighbour = 0.22f;
@@ -87,7 +67,6 @@ namespace BigWalkArchipelago.Core
         private static bool OnlyInLogic =>
             !DebugShowAll && ApRuntime.SlotData != null && ApRuntime.SlotData.MapTrackerMode == "in_logic";
 
-        // Debug (Alt + 6, Debug/DebugRecon07): every check on the map, as `all`, on this machine.
         internal static bool DebugShowAll;
 
         private static bool On => IsGuest
@@ -108,7 +87,6 @@ namespace BigWalkArchipelago.Core
 
         internal static void ForgetMirror() => _mirrored = null;
 
-        // Every frame (TrapRunner).
         internal static void Tick()
         {
             PulseHints();
@@ -155,7 +133,6 @@ namespace BigWalkArchipelago.Core
                 }
                 var states = IsGuest ? _mirrored : _states;
 
-                // The markers, built once for every key, in order.
                 var keys = new List<string>(states.Keys);
                 keys.Sort(StringComparer.Ordinal);
                 foreach (var key in keys)
@@ -188,7 +165,7 @@ namespace BigWalkArchipelago.Core
             return null;
         }
 
-        // A done check's flag: its renderers off (the game keeps the flag and may set its state again).
+        // Renderers off only: the game keeps the flag and may set its state again.
         private static void Hide(GourdFlag flag)
         {
             HiddenFlags[flag.GetInstanceID()] = flag;
@@ -218,7 +195,7 @@ namespace BigWalkArchipelago.Core
                 var original = new Color[settings.Length];
                 for (var i = 0; i < settings.Length; i++)
                 {
-                    // An element of an IL2CPP struct array comes back as a copy (ReceivedItemSpawner).
+                    // An element of an IL2CPP struct array comes back as a copy.
                     var setting = settings[i];
                     original[i] = setting.color;
                     setting.color = Color.Lerp(setting.color, Grey, GreyAmount);
@@ -243,10 +220,6 @@ namespace BigWalkArchipelago.Core
             }
             helper.Refresh();
         }
-
-        // ------------------------------------------------------------------
-        // The host: the keys and their states
-        // ------------------------------------------------------------------
 
         private static void BuildHostKeys()
         {
@@ -313,7 +286,6 @@ namespace BigWalkArchipelago.Core
                 states[key] = (byte)((shown ? Visible : 0) | (inLogic ? 0 : GreyBit) | (hinted ? HintBit : 0) | (tunnel ? TunnelBit : 0));
             }
 
-            // The run's objectives with a place, and the seed's ending even when it is the goal alone.
             var objectives = new List<string>(ApObjectives.Keys);
             var goal = ApRuntime.SlotData?.Goal switch
             {
@@ -340,7 +312,6 @@ namespace BigWalkArchipelago.Core
         private static bool HasPlace(string objective) =>
             objective is "big_climb" or "big_party" or "big_doof" or "big_makeover" or "big_wall" or "big_game" or "big_goodbye";
 
-        // To the guests: the list when it changes, and every few seconds for one who joined since.
         private static void SendToGuests()
         {
             var lines = new List<string>();
@@ -354,10 +325,6 @@ namespace BigWalkArchipelago.Core
             _sentAt = Time.unscaledTime;
             ModChannel.SendMap(text);
         }
-
-        // ------------------------------------------------------------------
-        // Every machine: the markers and the puzzles' flags
-        // ------------------------------------------------------------------
 
         private static void ApplyFlags(Dictionary<string, byte> states)
         {
@@ -422,10 +389,6 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // ------------------------------------------------------------------
-        // Where each key stands on the island, and its model
-        // ------------------------------------------------------------------
-
         private sealed class Scene
         {
             internal readonly Dictionary<string, Prop> Props = new();
@@ -484,7 +447,6 @@ namespace BigWalkArchipelago.Core
             return _scene = scene;
         }
 
-        // The marker of a key: where it stands and what it shows.
         private static void Build(string key)
         {
             var scene = Island();
@@ -512,7 +474,7 @@ namespace BigWalkArchipelago.Core
                     }
                     break;
                 case "radio":
-                    // The station itself, not the radio that tunes it (player, 2026-10-13).
+                    // The station itself, not the radio that tunes it.
                     if (scene.Stations.TryGetValue(rest, out var station))
                         Place(key, station.position, station, false);
                     break;
@@ -537,7 +499,6 @@ namespace BigWalkArchipelago.Core
                 }
                 case "monumentkey":
                 {
-                    // At the monument, the tower's own key on the pin.
                     var tower = MonumentOrder.TowerIndexOf(rest);
                     if (tower >= 0 && scene.Monuments.TryGetValue(tower, out var monument)
                         && Enum.TryParse<SaveablePropName>(rest, out var keyName) && scene.Keys.TryGetValue(keyName, out var bigKey))
@@ -545,13 +506,11 @@ namespace BigWalkArchipelago.Core
                     break;
                 }
                 case "gauntlet":
-                    // In a bunch at the Gauntlet (player, 2026-10-13).
                     if (scene.Gauntlet != null && scene.GourdMark != null)
                         Place(key, scene.Gauntlet.position, scene.GourdMark, true);
                     break;
                 case "cut":
                 {
-                    // Each at its own cutting station, five per key (player, 2026-10-13), on the key's own trail.
                     var last = rest.LastIndexOf(':');
                     if (last < 0 || !Enum.TryParse<SaveablePropName>(rest.Substring(0, last), out var name)
                         || !int.TryParse(rest.Substring(last + 1), out var index) || !scene.Keys.TryGetValue(name, out var bigKey))
@@ -586,11 +545,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // A key's trail of cutting stations, by the trail's name (the scene's LandmarksNonChallenge/CuttingTrails).
-        // It used to be the trail whose end lay nearest the key, wherever the key was: a key received, carried or
-        // set down elsewhere took another key's trail, and its flags with it (players, 2026-10-17: green key flags
-        // on the red key's stations, the red key cut and in the map room). The checks were never wrong:
-        // KeyBlankCutPatch counts a cut by key and segment, whatever the station.
+        // By trail name, not nearest trail: a carried key would take another key's trail.
         private static readonly Dictionary<SaveablePropName, string> TrailNames = new()
         {
             { SaveablePropName.bigKeyIntro, "CuttingTrailBoardwalk" },
@@ -614,12 +569,6 @@ namespace BigWalkArchipelago.Core
             return null;
         }
 
-        // ------------------------------------------------------------------
-        // The run's objectives that have a place (player, 2026-10-13)
-        // ------------------------------------------------------------------
-
-        // A tall white stick with the map's tower flag; an ending still locked greyed; an ending open (every other
-        // objective done) on a tall stick running through the colours; done, gone.
         private static readonly Dictionary<string, Marker> Objectives = new();
         private const float ObjectiveStick = 0.6f;
         private const float OpenStick = 1.6f;
@@ -689,7 +638,6 @@ namespace BigWalkArchipelago.Core
             return any;
         }
 
-        // Each tower's monument, where its slots stand (their middle), by the tower's place in MonumentOrder.
         private static Dictionary<int, Vector3> MonumentPlaces()
         {
             var sums = new Dictionary<int, (Vector3 sum, int count)>();
@@ -713,7 +661,6 @@ namespace BigWalkArchipelago.Core
             return places;
         }
 
-        // The open ending: its stick tall and through the colours.
         private static void SetOpen(Marker marker, bool open)
         {
             if (marker.Stick == null || open == marker.Hinted)
@@ -737,8 +684,7 @@ namespace BigWalkArchipelago.Core
 
         private static readonly List<Vector3> _placed = new();
 
-        // A marker for this key at this point of the island; markers on one spot spread on a spiral around it, a little
-        // higher each (player, 2026-10-13). Every marker stands on the relief's surface above its point.
+        // Markers on one spot spread on a spiral around it, each a little higher.
         private static void Place(string key, Vector3 world, Transform modelSource, bool fromPrefab)
         {
             var at = MapPoint(world);
@@ -766,7 +712,6 @@ namespace BigWalkArchipelago.Core
 
         private static bool _noSurfaceLogged;
 
-        // Lifts a map point to the relief's surface right above it, when it is under: whether it was.
         private static bool Surface(ref Vector3 at)
         {
             var relief = _map.transform.parent;
@@ -792,8 +737,7 @@ namespace BigWalkArchipelago.Core
             if (best <= at.y + 0.005f)
                 return false;
             at.y = best;
-            // Orange only when it was under the ground itself; inside a tower's or a building's model it stands on
-            // the model, as anything there (player, 2026-10-13: the towers' sticks were orange).
+            // Orange only when under the ground itself; inside a model it stands on the model.
             return onTerrain;
         }
 
@@ -847,12 +791,10 @@ namespace BigWalkArchipelago.Core
             return path;
         }
 
-        // Where a point of the island stands on the map: the map's own conversion (GourdMap.worldScaleOffset, scale).
         private static Vector3 MapPoint(Vector3 world) =>
             _map.transform.TransformPoint(Vector3.Scale(world + _map.worldScaleOffset, _map.scale));
 
-        // A stick at this point of the map and, on it, a small copy of the model under `source`: each mesh with its
-        // place, materials and colours. `fromPrefab`: the source is the map's own flag (inactive), taken whole.
+        // `fromPrefab`: the source is the map's own (inactive) flag, taken whole.
         private static Marker Make(Vector3 at, Transform source, bool fromPrefab, float stickHeight, Color stickColour)
         {
             var marker = new Marker { Root = new GameObject("AP map marker " + source.name) };
@@ -900,7 +842,7 @@ namespace BigWalkArchipelago.Core
                 grey.SetColor("_TintColor", GreyTint);
                 marker.Parts.Add((copy, own, grey));
 
-                // The part's box in the source's space, from its mesh (a prefab's renderer has no bounds).
+                // A prefab's renderer has no bounds, so use the mesh's.
                 var mesh = filter.sharedMesh.bounds;
                 foreach (var corner in Corners(mesh))
                 {
@@ -917,7 +859,6 @@ namespace BigWalkArchipelago.Core
                 return null;
             }
 
-            // Centred on the stick's top, its largest side ModelSize, turned as the source.
             var centre = (min + max) / 2f;
             foreach (var part in parts)
                 part.transform.localPosition -= centre;
@@ -925,7 +866,7 @@ namespace BigWalkArchipelago.Core
             var size = Mathf.Max(extent.x, Mathf.Max(extent.y, extent.z));
             var factor = size > 0.0001f ? ModelSize / size : 1f;
             model.transform.localScale = Vector3.one * factor;
-            // A part of the map's flag keeps the turn it has in the flag (the tower's mark stood askew without it).
+            // Keep the part's turn in the flag, or the tower's mark stands askew.
             model.transform.rotation = fromPrefab && _map.flagPrefab != null
                 ? Quaternion.Inverse(_map.flagPrefab.transform.rotation) * source.rotation
                 : source.rotation;
@@ -939,7 +880,6 @@ namespace BigWalkArchipelago.Core
                 yield return b.center + Vector3.Scale(b.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
         }
 
-        // A level of detail past the first (`..._LOD1`, `LOD2`): the first one is enough on a model this small.
         private static bool IsFarLod(string name) =>
             name.IndexOf("LOD", StringComparison.OrdinalIgnoreCase) >= 0 && !name.EndsWith("LOD0", StringComparison.OrdinalIgnoreCase);
 
@@ -965,7 +905,6 @@ namespace BigWalkArchipelago.Core
             renderer.SetPropertyBlock(block);
         }
 
-        // A hinted puzzle's gold stick, under its flag.
         private static void FlagStick(GourdFlag flag, bool hinted)
         {
             var key = flag.GetInstanceID();

@@ -1,4 +1,4 @@
-"""The two lamps behind the Big Wall (Morgan, 2026-11-08): out of logic until the Big Wall Door."""
+"""The two lamps behind the Big Wall: out of logic until the Big Wall Door."""
 
 from BaseClasses import CollectionState
 
@@ -13,7 +13,7 @@ class TestBigWallIds(BigWalkTestBase):
     run_default_tests = False
 
     def test_renaming_kept_the_ids(self) -> None:
-        # Named "near Centurion Song" until 1.0.8; the mod reports them by these ids.
+        # The mod reports these lamps by their ids, whatever their names.
         ids = locations.LOCATION_NAME_TO_ID
         self.assertEqual([ids[name] for name in LAMPS], [8_613_577, 8_613_616])
         self.assertEqual([ids[name] for name in LIGHTS], [8_614_014, 8_614_053])
@@ -56,7 +56,7 @@ class TestBigWallLampsBigGame(BigWallLampsMixin, BigWalkTestBase):
 
 
 class TestBigWallLampsAsObjects(BigWallLampsMixin, BigWalkTestBase):
-    # Without light_sanity the lamps are objects, and the zone locks lock the lamps by their pick-up.
+    # Without light_sanity the lamps are objects, and zone locks lock them by their pick-up.
     names = LAMPS
     options = {"object_sanity": "every", "zone_locks": True, "lock_puzzle_needs": False}
 

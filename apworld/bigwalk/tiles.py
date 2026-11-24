@@ -1,15 +1,4 @@
-"""
-R8, the custom tiles (the community document's `random_basic_tiles`), by category, each a folder of mod/assets/tiles
-(how to add one: its README.md; CC BY 4.0, credited in its LICENSE.md):
-
-- icons: the nine basic peg tiles (the game's set A, the icon and sound panels) drawn for the seed among the game's
-  own and the community's icons (`custom_tiles`).
-- drawings: the scribbles of the drawing panels (sets C and Priest, the Poet's and the Pontiff's) replaced, a few of
-  them, by the community's own scribbles (`custom_drawings`).
-
-The mod repaints each tile with the drawing it is given; what a puzzle asks for (the tile's kind) does not change,
-only what the tile shows.
-"""
+"""Custom tiles drawn for the seed: basic peg tiles, drawing panels and pose panels."""
 
 from __future__ import annotations
 
@@ -19,25 +8,22 @@ from typing import Iterable, Mapping, NamedTuple
 
 class CustomTile(NamedTuple):
     key: str
-    """The drawing's name: its file in mod/assets/tiles, and its key in `custom_tile_weights`."""
+    """Its file in mod/assets/tiles and its key in `custom_tile_weights`."""
     games: tuple[str, ...]
-    """
-    It belongs to a multiworld holding a game whose name contains one of these (anywhere, whatever the capitals);
-    with none, to every multiworld.
-    """
+    """Shown when a game in the multiworld has one of these in its name; with none, always."""
     artist: str
 
 
 class CustomDrawing(NamedTuple):
     key: str
-    """Its file in mod/assets/tiles/drawings (every file name is unique across the categories: the mod finds it by it)."""
+    """Its file in mod/assets/tiles/drawings; file names are unique across categories."""
     artist: str
 
 
 VANILLA_TILES: tuple[str, ...] = (
     "triangle", "asterisk", "diagonal_line", "G", "dot_and_line", "vertical_ellipsis", "S", "spiral", "e",
 )
-"""The game's nine basic tiles, PegTileA1 to PegTileA9 (the atlas, dumped 2026-10-15), by the document's names."""
+"""PegTileA1 to PegTileA9, by the community document's names."""
 
 CUSTOM_TILES: tuple[CustomTile, ...] = (
     CustomTile("pelly", (), "Jack5"),
@@ -76,50 +62,34 @@ CUSTOM_TILES: tuple[CustomTile, ...] = (
 ALL_TILES: tuple[str, ...] = (*VANILLA_TILES, *(tile.key for tile in CUSTOM_TILES))
 
 CUSTOM_DRAWINGS: tuple[CustomDrawing, ...] = ()
-"""The community's scribbles for the drawing panels (mod/assets/tiles/drawings). None yet."""
 
 DRAWING_PLACES: tuple[str, ...] = (
     *(f"PegTileC{i}" for i in range(1, 10)),
     *(f"PegTilePriest{letter}{i}" for letter in "ABCD" for i in range(1, 10)),
 )
-"""The drawing panels' tile kinds (the mod's PropGroup names): C1..C9, Priest A1..D9 (the tile dump, 2026-10-15)."""
+"""Drawing panel tile kinds (the mod's PropGroup names): C1..C9 and Priest A1..D9."""
 
 
 POSE_PLACES: tuple[str, ...] = tuple(f"PegTileD{i}" for i in range(1, 10))
-"""The pose panels' tile kinds (set D: Indoor Semaphore, Optical Telegraph, Charades), the mod's PropGroup names."""
+"""Pose panel tile kinds (set D: Indoor Semaphore, Optical Telegraph, Charades)."""
 
 ASYMMETRIC_POSES: tuple[str, ...] = ("PegTileD4", "PegTileD5", "PegTileD6", "PegTileD9")
-"""
-The poses whose mirror is another pose (the atlas, looked at 2026-10-20): D4 an arm level and one up, D5 one up and one
-down, D6 one level and one down, D9 crouched with one up and one down. The other five are symmetric, and no pose is
-another's mirror, so the four mirrors are four new poses.
-"""
+"""Poses whose mirror is a new pose; the other five are symmetric."""
 
 KEPT_POSES: tuple[str, ...] = ("PegTileD3",)
-"""
-Always shown as the game has it: D3 (both arms down) is also drawn on the pulse flashers of Perspective Counting and
-Signal Flags (the tile dump, 2026-10-15), which are no pose puzzles.
-"""
+"""Never replaced: D3 is also drawn on the pulse flashers, which are not pose puzzles."""
 
 POSE_WEIGHT = 100
-"""A game pose's weight in the draw: `mirrored_poses` gives each mirror its own, against it."""
+"""A game pose's weight in the draw, against each mirror's `mirrored_poses` weight."""
 
 
 def mirror_name(pose: str) -> str:
-    """The drawing the mod builds by flipping a pose's own cell of the game's atlas."""
+    """The drawing the mod builds by flipping the pose's cell of the game's atlas."""
     return f"mirror_{pose}"
 
 
 def draw_poses(random: Random, mirror_weight: int) -> dict[str, str]:
-    """
-    `mirrored_poses`: the nine pose panels drawn among the game's nine poses and the four mirrors, each mirror weighing
-    `mirror_weight` against a game pose's POSE_WEIGHT, as the basic tiles are drawn (draw). A game pose drawn keeps its
-    own place; a mirror takes one of the places left, in a drawn order, so a pose and its mirror can both be there, on
-    two kinds. Only the places that change, place -> drawing; nothing with a weight of 0.
-
-    What a puzzle asks for does not change: a kind showing a mirror is asked for by its kind, and players make the
-    pose it shows. Nothing in the game reads the arms (one validator, PegTileValidator, compares the tiles' kinds).
-    """
+    """Place -> drawing for the pose panels that change; a drawn game pose keeps its place."""
     if mirror_weight <= 0:
         return {}
     weights = {pose: POSE_WEIGHT for pose in POSE_PLACES if pose not in KEPT_POSES}
@@ -137,7 +107,7 @@ def draw_poses(random: Random, mirror_weight: int) -> dict[str, str]:
 
 
 def matching(games: Iterable[str]) -> list[str]:
-    """The drawings whose game is in the multiworld (whatever the capitals: "TUNIC", "Starcraft 2"), and pelly's."""
+    """Drawings whose game is in the multiworld (case-insensitive substring), plus generic ones."""
     names = [name.casefold() for name in games]
     return [tile.key for tile in CUSTOM_TILES
             if not tile.games or any(part.casefold() in name for part in tile.games for name in names)]
@@ -145,14 +115,7 @@ def matching(games: Iterable[str]) -> list[str]:
 
 def draw(random: Random, candidates: Iterable[str], weights: Mapping[str, int],
          chosen: Iterable[str] = (), preferred: Iterable[str] = ()) -> tuple[str, ...]:
-    """
-    The nine basic tiles' drawings, in the order PegTileA1 to PegTileA9: the chosen ones first (whatever their weight
-    and whether they are candidates, nine at most, drawn among them if more), then the preferred ones
-    (`matching_first`: drawn by weight among them if more than the room left), then drawn by weight among the
-    candidates (a weight of 0 leaves a tile out, preferred or not). A basic tile drawn keeps its own place; the
-    drawings take the others, in a drawn order. A place left without a drawing (fewer than nine to draw from) keeps
-    its own tile.
-    """
+    """Drawings for PegTileA1 to A9: chosen ones first, then preferred, then drawn by weight."""
     drawn = list(dict.fromkeys(key for key in chosen if key in ALL_TILES))
     if len(drawn) > len(VANILLA_TILES):
         drawn = random.sample(drawn, len(VANILLA_TILES))
@@ -172,7 +135,7 @@ def draw(random: Random, candidates: Iterable[str], weights: Mapping[str, int],
 
 
 def draw_drawings(random: Random, drawings: Iterable[str]) -> dict[str, str]:
-    """`custom_drawings`: every drawing given takes the place of a scribble drawn among DRAWING_PLACES (45 at most)."""
+    """Each drawing given replaces a scribble at a random place among DRAWING_PLACES."""
     names = list(dict.fromkeys(drawings))
     random.shuffle(names)
     places = random.sample(DRAWING_PLACES, min(len(names), len(DRAWING_PLACES)))

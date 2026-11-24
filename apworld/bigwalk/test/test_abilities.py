@@ -1,7 +1,4 @@
-"""
-`lock_abilities` (ROADMAP R3, 0.6): the players' bodies behind items. Legs is the way out of the
-starting zone; the Seat and the arms are asked for by the gesture puzzles (puzzle tour, 2026-10-12).
-"""
+"""`lock_abilities`: Legs leaves the starting zone, gesture puzzles ask for the Seat and arms."""
 
 from BaseClasses import CollectionState
 from Fill import distribute_items_restrictive
@@ -132,7 +129,7 @@ class TestLockRunningOldValues(BigWalkTestBase):
 
 
 class TestAbilitiesWithEverythingLocked(BigWalkTestBase):
-    """The tightest start: the first arch door, the needs, the Gauntlet's stages and the body all items."""
+    """The tightest start: the first arch door, needs, Gauntlet stages and body all items."""
 
     options = {"lock_abilities": "handed", "lock_running": True, "start_with_arch_doors_open": [], "lock_puzzle_needs": True,
                "gauntlet_mode": "locked_stages", "goal": "big_goodbye"}
@@ -152,8 +149,7 @@ class TestAbilityData(BigWalkTestBase):
 
 
 class TestLegsWithNoRoomAtTheStart(BigWalkTestBase):
-    """The tutorial's puzzles hold their gourds and its monument waits for an item: Legs is handed over at the start
-    (generation failed 4 in 4 before, 2026-10-13)."""
+    """The tutorial holds its gourds and its monument waits: Legs is given at the start."""
 
     # The default tests fill the world (pre_fill included): that the fill succeeds is the test.
     options = {"lock_abilities": "handed", "linear_puzzles": True, "tower_mode": "by_item", "first_tower_open": False}
@@ -177,7 +173,7 @@ class TestSomeAbilitiesFree(BigWalkTestBase):
 
 
 class TestMegaphonesNeedCarrying(BigWalkTestBase):
-    """Every megaphone hangs above one player's reach (Tyrope, 2026-10-27)."""
+    """Every megaphone hangs above one player's reach."""
 
     options = {"lock_abilities": "handed", "lock_puzzle_needs": False, "object_sanity": "every"}
 
@@ -193,7 +189,7 @@ class TestMegaphonesNeedCarrying(BigWalkTestBase):
 
 
 class TestCarouselBinocularsNeedSeat(BigWalkTestBase):
-    """The Carousel's binoculars are only reached on its swings (Morgan, 2026-11-14)."""
+    """The Carousel's binoculars are only reached on its swings."""
 
     options = {"lock_abilities": "handed", "lock_puzzle_needs": False, "object_sanity": "every"}
 

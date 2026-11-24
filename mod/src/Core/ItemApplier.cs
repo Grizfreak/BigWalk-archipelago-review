@@ -2,26 +2,10 @@ using Mirror;
 
 namespace BigWalkArchipelago.Core
 {
-    // Single entry point for materializing a remotely received Archipelago
-    // item (today: simulated by Debug/DebugItemSimulator; tomorrow: the
-    // real Archipelago client will call the same method). Design settled in
-    // session (cf. big-walk-archipelago-notes.md): writes directly to
-    // SaveManager, never touching the live RewardGourd/Prop in the scene —
-    // Prop.Start() will do the real pin by itself on the next load of the
-    // relevant zone. This keeps the physical puzzle intact and solvable.
+    // Applies received items through SaveManager; Prop.Start() pins the live prop on the next load.
     internal static class ItemApplier
     {
-        // Generic gourd item received over the AP network (cf. FIX
-        // 2026-09-11, big-walk-archipelago-notes.md): pure progression
-        // currency for monuments, entirely decoupled from puzzle
-        // resolution. Must NEVER write to SaveManager under a specific
-        // gourdXxx name nor drive TryApplyLiveEffect — unlike the 1:1 model
-        // still used for big keys (ApplyBigKeyItem below). Its own location
-        // check continues to be reported only by an actual in-game physical
-        // resolution (GourdStatePatch/SaveValuePatch, never touched here).
-        // toPlayer: true for a gourd arriving during play (hands, or in
-        // front of the player), false for the session-start rebuild, which
-        // stocks them at the hub instead. See ReceivedItemSpawner.
+        // Gourds are monument currency only: never written under a gourd's name, never pinned.
         internal static bool ApplyGourdItem(bool toPlayer)
         {
             using var activity = ModActivity.Enter("apply gourd item");
@@ -32,13 +16,7 @@ namespace BigWalkArchipelago.Core
                 return false;
             }
 
-            // The return value matters, and used to be discarded here.
-            // SpawnCosmeticPickup gives back null when it cannot do the job
-            // — most often because no InventorySpawn is loaded yet, which is
-            // exactly the situation right after a save loads. Reporting that
-            // as success made Core/Net/ApRuntime record the gourd as
-            // materialized and stop trying, so a gourd owed to the player
-            // silently evaporated. A caller that knows it failed can retry.
+            // Null when no InventorySpawn is loaded yet (just after a save loads): caller retries.
             if (ReceivedItemSpawner.SpawnCosmeticPickup(toPlayer) == null)
                 return false;
 
@@ -46,12 +24,7 @@ namespace BigWalkArchipelago.Core
             return true;
         }
 
-        // A filler gadget item (megaphone, walkie-talkie, backpack, belt,
-        // flare gun) received over the AP network. Same shape as
-        // ApplyGourdItem — a cosmetic spawn and nothing else, no SaveManager
-        // write, no location tied to it — because that is all these are:
-        // pure filler that happens to be one of the island's own props
-        // rather than an invented Postcard. See GadgetItemSpawner.
+        // Filler gadgets: a cosmetic spawn and nothing else, like a gourd.
         internal static bool ApplyGadgetItem(GadgetKind kind, bool toPlayer)
         {
             using var activity = ModActivity.Enter("apply gadget item");
@@ -69,26 +42,7 @@ namespace BigWalkArchipelago.Core
             return true;
         }
 
-        // A big key item, under either of the two models this mod supports.
-        //
-        // The one in play today is the feature: what arrives from Archipelago
-        // is the map room, the chairlift, the train, the tunnels, the
-        // drawbridge, the dam or the Green Dome, and the key itself is just a
-        // check carrier the player fores and places freely. Nothing is pinned
-        // here and no location is reported here — placing the key is a
-        // genuine player act again, and SaveValuePatch already sees it, since
-        // the game's own Prop.SavePropHome writes the plinth under the key's
-        // SaveablePropName.
-        //
-        // The other is the original 1:1 model, kept below for any seed whose
-        // apworld is too old to send `big_key_features`. There the item WAS
-        // the pin: it wrote the save, pinned the key live into its plinth and
-        // reported that location on the player's behalf, because applying the
-        // item consumed the plinth and the players could never have placed
-        // the key by hand afterwards (apworld/protocol.md §8 called it a
-        // deliberate quirk). Removing it rather than keeping it would make
-        // those seeds unbeatable, since their logic charges no gourds for a
-        // precollected Tutorial Key's deposit on exactly that assumption.
+        // The 1:1 pin model stays for seeds whose apworld does not send `big_key_features`.
         internal static bool ApplyBigKeyItem(SaveablePropName propName)
         {
             if (KeyFeatures.FeaturesInPlay)
@@ -99,8 +53,6 @@ namespace BigWalkArchipelago.Core
 
         private static bool ApplyBigKeyPin(SaveablePropName propName)
         {
-            // Every save write must come from the host (authority model
-            // already established for the rest of the mod, cf. notes.md).
             if (!NetworkServer.active)
             {
                 Plugin.Log.LogWarning(
@@ -115,29 +67,7 @@ namespace BigWalkArchipelago.Core
                 return false;
             }
 
-            // Marks the location as already settled BEFORE writing. Just
-            // keeping a flag during the single synchronous call below is
-            // not enough: confirmed in testing on 2026-09-07, Prop.Start()
-            // rewrites the same key via the game's real
-            // SaveManager.SetIntValue on the next zone load (to re-pin the
-            // prop), and SaveValuePatch — which cannot distinguish this
-            // deferred rewrite from a genuine resolution — would then
-            // report a phantom check. Marking here covers both cases (the
-            // immediate write below AND Prop.Start()'s deferred one).
-            //
-            // Fixed on 2026-09-07 (spotted in testing, cf. notes.md
-            // discussion "locations/items logic to rethink"): TryMarkReported
-            // alone isn't enough, the check must also be reported. Before
-            // this fix, an item received BEFORE any local resolution of
-            // this location never reported the check anywhere (ItemApplier
-            // silently marked it without calling
-            // Plugin.Reporter.ReportCheck) — the location then stayed
-            // permanently blocked (CheckTracker prevents any future
-            // report), so its own randomized item was never sent to
-            // whoever was waiting for it in the multiworld. Same pattern as
-            // GourdStatePatch/SaveValuePatch: whichever comes first (real
-            // resolution OR received item) reports the check once, no
-            // matter which of the two it is.
+            // Marked first: Prop.Start() rewrites this key later, which must not look like a check.
             if (GourdRegistry.TryGetLocationId(propName, out var locationId)
                 && CheckTracker.TryMarkReported(locationId))
                 Plugin.Reporter.ReportCheck(locationId);
@@ -146,35 +76,13 @@ namespace BigWalkArchipelago.Core
 
             TryApplyLiveEffect(propName, homeName);
 
-            // NO cosmetic spawn here. There used to be one, as a "you just
-            // received something" notification for any item (2026-09-11) —
-            // but later the same day cosmetic gourds stopped being decoration
-            // and became the ONLY way to fill a monument. That turned this
-            // line into a bug that survived unnoticed until the first real
-            // in-game session (2026-09-15): receiving a big key visibly
-            // dropped a GOURD at the hub, and every key handed the player a
-            // free unit of the one currency the Archipelago world balances
-            // exactly (the pool holds one Gourd per monument slot and no
-            // more, see apworld/protocol.md §4).
-            //
-            // A big key needs no notification anyway: it materializes in its
-            // own plinth and whatever it opens opens on the spot.
+            // No cosmetic spawn here: a gourd per key would add to the monument currency.
 
             Plugin.Log.LogInfo($"[{nameof(ItemApplier)}] Item applied: {propName} -> {homeName}.");
             return true;
         }
 
-        // Instant effect, on top of the SaveManager write above — ONLY for
-        // props without a RewardGourd component (big keys, cf.
-        // big-walk-archipelago-notes.md, discovered during a test session
-        // on 2026-09-07). The two reasons that forbid a live pin for a
-        // gourd don't apply to these props: no GourdState/map icon to
-        // desync (there isn't one), and no local puzzle to keep solvable
-        // (a big key's "check" is the peck toward its plinth, not a
-        // repeatable resolution). Does nothing if the zone isn't loaded
-        // (prop not found) or if a RewardGourd is present: Prop.Start()
-        // will then take over on the next load, exactly as before in all
-        // cases.
+        // Only for props without a RewardGourd; otherwise Prop.Start() pins it on the next load.
         private static void TryApplyLiveEffect(SaveablePropName propName, SaveableHomeName homeName)
         {
             Prop targetProp = null;

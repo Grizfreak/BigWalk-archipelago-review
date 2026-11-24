@@ -6,19 +6,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The resync stations (player's design, 2026-10-05): one in the hub, one in each of the five
-    // towers, one at the Drawbridge and one at the Green Dome. Each is a button, a toggle beside it and a sign above them.
-    //
-    //  - The button takes back every gourd, key and (when the toggle says so) gadget of the slot
-    //    that is not where it counts, and puts them back in front of itself (ApRuntime.ResyncAll).
-    //  - The toggle says whether the gadgets come too; the sign says what the button does, and
-    //    changes with the toggle.
-    //  - One resync at a time on the whole map: while one is running every button refuses.
-    //  - Only the host can press them to any effect: the items live in its world. A guest's
-    //    press is told so.
-    //
-    // This replaces Ctrl+R. Every machine builds the same stations; the host's toggles and
-    // whether a resync is running reach the guests in the snapshot, for their signs.
+    // The resync buttons that replace Ctrl+R. Only the host's press has an effect.
     internal static class ResyncStations
     {
         private sealed class Station
@@ -28,21 +16,16 @@ namespace BigWalkArchipelago.Core
             internal Vector3 Point;
             internal Vector3 Normal;
 
-            // Where the sign stands, when it is not right above the button: the hub's is where the
-            // player marked it (2026-10-05).
             internal Vector3? SignPoint;
 
-            // How deep the button sits in the wall, and the sign: the towers' walls lean, so what
-            // stands well on a straight one sticks out of a leaning one (player, 2026-10-05).
+            // The tower walls lean, so a button flush on a straight wall would stick out.
             internal float ButtonSink = 0.25f;
             internal float SignSink;
 
-            // How deep the sign goes behind its face: deep where the wall leans away, thin where
-            // the wall is thin (the Black Tower's, through which it showed outside).
+            // Deep where the wall leans away, thin where the wall is thin.
             internal float SignDepth = 0.3f;
 
-            // The switch under the button rather than beside it: in the towers, where the wall
-            // beside the button curves away (player, 2026-10-05).
+            // Under the button in the towers, where the wall beside it curves away.
             internal bool SwitchBelow;
             internal float SwitchDrop = 0.45f;
             internal float SwitchSink = 0.02f;
@@ -56,8 +39,6 @@ namespace BigWalkArchipelago.Core
             internal bool? BuiltToggleOn;
         }
 
-        // Marks (Keypad 8, 2026-10-04): the hub's beside the map room, the others in each tower
-        // beside its way back to the hub. The hub's sign was marked on 2026-10-05.
         private static readonly Station[] Stations =
         {
             Make("the hub", "hub", -211.81f, 33.09f, -526.06f, 0.66f, 0.75f, 12, new Vector3(-212.09f, 33.53f, -526.02f),
@@ -89,19 +70,14 @@ namespace BigWalkArchipelago.Core
         private const string GadgetsKeyPrefix = "ap_resync_gadgets_";
         private const float SwitchBeside = 0.5f;
 
-        // A switch beside its button sits a little higher, so the two line up: the button's
-        // copy stands on its root, the switch hangs a little below its own.
         private const float SwitchLift = 0.03f;
         private const float GatherAhead = 1.2f;
         private const float SignAbove = 0.8f;
-        // The face of a sign; its depth is the station's.
         private static readonly Vector3 SignSize = new Vector3(1.3f, 0.5f, 0f);
 
-        // On a guest: what the host last said (GadgetBit per station; bit 6: running;
-        // bit 7: the towers' stations are there).
+        // On a guest: what the host last said (GadgetBit per station, bit 6 running, bit 7 towers).
         private static int _mirrored = -1;
 
-        // From the slot (host): the towers' stations, and whether guests may use the stations.
         private static bool _towers;
         private static bool _guests;
 
@@ -118,7 +94,6 @@ namespace BigWalkArchipelago.Core
 
         private static bool TowersOn => IsGuest ? _mirrored >= 0 && (_mirrored & (1 << 7)) != 0 : _towers;
 
-        // For the snapshot.
         internal static ushort HostState()
         {
             var state = 0;
@@ -137,7 +112,6 @@ namespace BigWalkArchipelago.Core
             return (ushort)state;
         }
 
-        // On a guest: the signs follow at once, not at the next sync.
         internal static void ApplyFromHost(ushort state)
         {
             if (_mirrored == state)
@@ -148,7 +122,6 @@ namespace BigWalkArchipelago.Core
                 Write(Stations[i], i);
         }
 
-        // On the host: what was last sent, to send a change at once.
         private static int _sent = -1;
 
         private static void SendIfChanged()
@@ -175,7 +148,6 @@ namespace BigWalkArchipelago.Core
 
         private static bool Running => IsGuest ? _mirrored >= 0 && (_mirrored & (1 << 6)) != 0 : ApRuntime.ResyncRunning;
 
-        // Every couple of seconds (TeleportButtonRunner).
         internal static void Sync(bool wanted)
         {
             if (NetworkServer.active)
@@ -219,14 +191,12 @@ namespace BigWalkArchipelago.Core
             var facing = Quaternion.LookRotation(station.Normal, Vector3.up);
             if (!WorldButtons.Has(station.ButtonSlot))
             {
-                // The hub's restocks where the game itself puts a new player's items, its
-                // inventory spawn (player, 2026-10-05); a tower's in front of its button.
+                // The hub's restock goes to the inventory spawn; a tower's in front of its button.
                 Vector3? where = station.SignPoint != null ? null : station.Point + station.Normal * GatherAhead;
                 WorldButtons.Add(station.ButtonSlot, "Resync in " + station.Name, station.Point - station.Normal * station.ButtonSink,
                     facing, presser => Press(index, where, presser), icon: null, tint: station.Tint, hostSide: true);
             }
 
-            // The toggle is a copy of the game's light switch (player's choice).
             var on = GadgetsOn(index);
             if (!WorldButtons.Has(station.ToggleSlot))
             {
@@ -236,8 +206,7 @@ namespace BigWalkArchipelago.Core
                 station.BuiltToggleOn = null;
             }
 
-            // The host keeps the switch where its saved choice says (up with the gadgets); the
-            // switch is networked, so the guests see it move.
+            // The switch is networked, so the guests see it move.
             if (NetworkServer.active && station.BuiltToggleOn != on)
             {
                 var state = WorldButtons.StateOf(station.ToggleSlot);
@@ -261,7 +230,7 @@ namespace BigWalkArchipelago.Core
             var sign = WorldButtons.MakeSlab("AP resync sign", face - station.Normal * (size.z / 2f),
                 Quaternion.LookRotation(station.Normal, Vector3.up), size, new Color(0.93f, 0.9f, 0.82f));
 
-            // The text faces the reader: a TextMeshPro reads from its back, so it looks into the wall.
+            // A TextMeshPro reads from its back, so it faces into the wall.
             var holder = new GameObject("AP resync text");
             holder.transform.SetParent(sign.transform, false);
             holder.transform.position = face + station.Normal * 0.01f;
@@ -296,7 +265,6 @@ namespace BigWalkArchipelago.Core
 
         private static TMP_FontAsset _font;
 
-        // The game's own font, from any text it shows.
         private static TMP_FontAsset FindFont()
         {
             if (_font != null)
@@ -331,8 +299,7 @@ namespace BigWalkArchipelago.Core
             station.ShownText = text;
         }
 
-        // The controls run on the host, whoever pressed them (hostSide): a guest's press is
-        // refused there, and the guest is told so.
+        // The controls run on the host whoever pressed them; a guest's press is refused there.
         private static bool Refused(PlayerCharacter presser, string why)
         {
             if (!NetworkServer.active)
@@ -362,8 +329,7 @@ namespace BigWalkArchipelago.Core
         {
             if (Refused(presser, "Only the host can change this"))
             {
-                // The guest's press flipped the switch all the same: put back where the choice is
-                // at the next sync, not from inside the press itself.
+                // Reset at the next sync, not from inside the press itself.
                 Stations[index].BuiltToggleOn = null;
                 return;
             }
@@ -376,7 +342,6 @@ namespace BigWalkArchipelago.Core
             SendIfChanged();
         }
 
-        // Every sign says "a resync is running" while one is, wherever it was started.
         private static void WriteAll()
         {
             for (var i = 0; i < Stations.Length; i++)

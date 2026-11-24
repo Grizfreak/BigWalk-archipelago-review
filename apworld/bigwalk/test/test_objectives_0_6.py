@@ -1,6 +1,4 @@
-"""
-The 0.6 objectives (player, 2026-10-13): big_objects and big_body, each at a share the player chooses.
-"""
+"""The big_objects and big_body objectives, each at a share the player chooses."""
 
 from Options import OptionError
 

@@ -3,10 +3,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Measuring pass for the lasers' beams (player, 2026-10-20: "abuse the values"). househouse/laser has an emission
-    // colour (black) and an _Emission (11.2), and the beam glows red: whether the red can be pushed aside is tried
-    // by hand. Alt + 5 puts the next setting on every beam, on a copy of its material (the caster's property block
-    // would replace one of ours), and says which in the log; the last setting puts the game's own back.
+    // Cycles test settings on the laser beams, on a material copy (a property block would be lost).
     internal static class DebugLaserBeam
     {
         private const string Tag = "[" + nameof(DebugLaserBeam) + "]";

@@ -1,19 +1,5 @@
 #!/usr/bin/env python3
-"""
-The logic tour (player, 2026-10-14): every check worth a look, in the order a run would reach it, for the mod's
-teleport tour (Debug/DebugLogicTour: Ctrl + Shift + 1 next, Ctrl + Shift + 2 back, Ctrl + Shift + 0 flags the stop).
-
-Generates a solo seed from a YAML (in-process, from the Archipelago source checkout), then writes, sphere by sphere,
-each check's place in the game (the key the mod finds it by), its region and what the logic asks for it: the rules of
-the entrances that lead to its region, then its own. At each stop the player checks that nothing more is needed in the
-game than what the line says.
-
-    python tools/logic_tour.py [yaml] [--seed N] [--all] [--out PATH]
-
-By default the checks the logic was least tried on: the gadgets, the lights, the packs, the flare guns, the fireworks,
-the radio stations and the towers reached. `--all` adds the puzzles, the key cuts and deposits and the monuments.
-Run it from anywhere; it needs the Archipelago checkout at AP_ROOT (default F:\\Archipelago\\dev\\Archipelago).
-"""
+"""Generates a solo seed and lists each check's place and rules, for the mod's teleport tour."""
 
 from __future__ import annotations
 

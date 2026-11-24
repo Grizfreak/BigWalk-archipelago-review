@@ -19,7 +19,7 @@ from the first check to the goal.
 
 ## About BepInEx
 
-The mod is a BepInEx plugin, so the game needs BepInEx to load it — and not
+The mod is a BepInEx plugin, so the game needs BepInEx to load it, and not
 just any BepInEx. It needs **BepInEx 6, the Unity IL2CPP x64 build**, and
 specifically **`6.0.0-be.781`**, the build the mod is compiled and tested
 against.
@@ -28,7 +28,7 @@ The release zip contains that exact build, so there is nothing to fetch.
 Installing a different one yourself is the most common way to end up with a
 mod that loads nothing: BepInEx 6 has no stable release, its builds are
 numbered rather than versioned and are not interchangeable, and the Mono
-build will not work at all — Big Walk is an IL2CPP game. If the game folder
+build will not work at all, Big Walk is an IL2CPP game. If the game folder
 already has a BepInEx in it from something else, replace it with the one
 from the zip.
 
@@ -51,12 +51,12 @@ below for why.
    `BepInEx/`.
 4. Launch the game **through Steam**. Double-clicking the executable does not
    always load BepInEx.
-5. The first launch is slow — a minute or two of black screen while BepInEx
+5. The first launch is slow, a minute or two of black screen while BepInEx
    downloads the Unity libraries it needs and builds its cache, so be online
    for it.
 
 To check it worked, `BepInEx/LogOutput.log` should contain a line reading
-`Big Walk Archipelago v<version> loaded (build …).`, the version being the zip's — the build is a short code that
+`Big Walk Archipelago v<version> loaded (build …).`, the version being the zip's, the build is a short code that
 tells two copies of the mod apart.
 
 **On Linux or the Steam Deck (Proton):** Proton loads its own `winhttp.dll` rather than BepInEx's, and the mod
@@ -91,7 +91,7 @@ players in the same multiworld can all have different options.
 Once the apworld is installed, you can generate one with the **Generate
 Template Options** button in the Archipelago Launcher. It appears in
 `Players/Templates` as `Big Walk.yaml`, with every option documented in the
-comments. Copy it into `Players` — not `Templates` — and edit it there.
+comments. Copy it into `Players`, not `Templates`, and edit it there.
 
 If the file is missing from `Players/Templates`, the apworld is not where
 Archipelago is looking. Check `custom_worlds` again.
@@ -145,19 +145,19 @@ Only the host of the co-op session connects to Archipelago.
 
 1. From the main menu, start hosting a game.
 2. The mod adds one field to the hosting screen and relabels two:
-   - **Slot name** — your slot name in the multiworld, exactly as in the
+   - **Slot name**: your slot name in the multiworld, exactly as in the
      YAML. It is also the save's own name, so it can only be typed when the
      save is created: once it exists the field is locked, because renaming it
      would point the save at a different Archipelago slot.
-   - **Archipelago password** — the room's password, or leave it empty: the
+   - **Archipelago password**: the room's password, or leave it empty: the
      mod makes the field optional, which it is not in the vanilla game. On a
-     build where it stays mandatory anyway, type anything — a server with no
+     build where it stays mandatory anyway, type anything, a server with no
      password ignores what you send.
-   - **Archipelago host** — the server, as `host:port`, for example
+   - **Archipelago host**: the server, as `host:port`, for example
      `archipelago.gg:38281`. It is prefilled with `archipelago.gg:` the first
      time and remembers what you typed afterwards.
 3. Press **Test connection**. It logs in once, throws the session away and
-   says what happened: connected under your slot name, or why not — an
+   says what happened: connected under your slot name, or why not, an
    unknown slot name, a wrong password and a server that never answered are
    told apart. It never stops you continuing.
 4. Continue. Your co-op partners join your session the usual way, with
@@ -165,7 +165,7 @@ Only the host of the co-op session connects to Archipelago.
 
 An **AP : ON / AP : OFF** switch sits beside Continue. Switched off, the host
 field greys out and the two fields above go back to being the game's own save
-name and session password — which is what they are when nothing is
+name and session password, which is what they are when nothing is
 connecting.
 
 The host's screen carries a line in the corner: the Archipelago connection,
@@ -174,7 +174,7 @@ underneath it and the resync shortcut below that. It reads `Archipelago: off`
 when the switch is off, so a session started disconnected by mistake says so
 rather than looking normal. It is off for everyone else, who never connects.
 
-What it cannot show is the rest of the multiworld — who received what you
+What it cannot show is the rest of the multiworld, who received what you
 sent, or what anyone else is doing. Keep Archipelago's Text Client open
 beside the game for that.
 
@@ -195,7 +195,7 @@ Big Walk is co-op, and **a whole co-op group shares one Archipelago slot**.
 That is not a compromise, it is the only shape that makes sense: you share
 one world and one save, so you share one set of checks. It also suits the
 game, since depositing a gourd in a monument and breaking either bell both
-need two players acting at once — a Big Walk slot is a two-person slot by
+need two players acting at once, a Big Walk slot is a two-person slot by
 nature.
 
 **You cannot play solo.** Every goal depends on one of those two-player
@@ -211,7 +211,7 @@ anything.
   only one who talks to Archipelago. Their save owns everything: the checks,
   the items received, the filled monuments.
 - **Everyone else** just joins the session the normal way. No address, no
-  slot name, no password — the mod stays dormant for them on purpose.
+  slot name, no password, the mod stays dormant for them on purpose.
 
 ### Why the others still need the mod installed
 
@@ -223,15 +223,15 @@ everybody.
 Most of what a player *sees*, though, their own copy of the mod has to build.
 A player without it:
 
-- sees none of the gourds or gadgets the multiworld sends — they exist for
-  everyone else and are simply not there on that player's screen — and sees
+- sees none of the gourds or gadgets the multiworld sends, they exist for
+  everyone else and are simply not there on that player's screen, and sees
   the big keys all alike, untinted;
 - gets no Archipelago overlay and hears no radio music, even once it has been
   granted;
 - does not see the purple postgame gourds on the map, and walks into the
   sphere on the way to the true ending that the host walks straight through.
 
-A friend without the mod can still join and play — that was tried — but only
+A friend without the mod can still join and play, that was tried, but only
 a vanilla-looking world. So everyone installs it.
 
 The big keys have been through a two-machine session too: a guest can carry,
@@ -259,8 +259,8 @@ would be gone. Pick a host at the start and stay with them.
 ## If you get stuck somewhere unreachable
 
 `Ctrl+R`, on the host's machine, sweeps up everything Archipelago has given
-you that is loose — gourds, big keys, filler props, including whatever is in
-someone's hands — and puts back exactly what the server says you have
+you that is loose, gourds, big keys, filler props, including whatever is in
+someone's hands, and puts back exactly what the server says you have
 received. Deposited gourds and placed keys are never touched, so nothing
 Archipelago counts can be lost by pressing it.
 

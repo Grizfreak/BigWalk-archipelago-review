@@ -4,70 +4,23 @@ using Mirror;
 
 namespace BigWalkArchipelago.Patches
 {
-    // Stops a radio station from granting itself.
-    //
-    // `BroadcastStation.Unlock` is the effect subscribed to the station's peck
-    // system, and it is the ONLY thing between switching a station on and its
-    // music playing — an inlined copy of FmRadioManager.Unlock that writes
-    // nothing to the save (decompiled 2026-09-21, see Core/RadioStations.cs
-    // for the three facts this rests on). Skipping it therefore:
-    //
-    //   - leaves the check intact. The save write happens one level up, in the
-    //     station's TrackedPeckState, which is where SaveValuePatch reads it.
-    //     The player switches the station on, the check goes out, the music
-    //     does not start.
-    //   - is the only way to suppress it at all. There is no relock: writing
-    //     the FmStation* key back to 0 does nothing, because FmRadioManager
-    //     never reads it.
-    //
-    // It also runs on the restore path. A TrackedPeckState re-asserts its
-    // saved state when its zone loads, which re-fires this effect — so
-    // without the prefix every station already switched on would come back
-    // for free on the next load, item or no item.
-    //
-    // Only the host suppresses. Nobody else in the session runs an
-    // Archipelago client, so a guest has no way of knowing which stations the
-    // slot has received; leaving their radio vanilla means they hear a
-    // station as soon as it is switched on, while the host waits for the
-    // item. A cosmetic difference between two players' speakers, and the
-    // alternative — a guest whose radio can never play anything — is worse.
-    // Stated in the apworld option so nobody discovers it in play.
-    //
-    // `nameof` rather than the literal "Unlock" that a private method usually
-    // forces: Il2CppInterop re-emits the game's private methods as public, so
-    // the compiler can check this one for us. A Harmony target that has been
-    // renamed in a game update then fails the build instead of throwing
-    // during PatchAll and taking the whole plugin down with it.
-    //
-    // The argument is taken by index (`__0`) and not by name. Parameter names
-    // survive into the interop assembly only by convention, and a mismatch
-    // there is the same load-time throw with no compiler warning.
+    // Skips the station's own unlock, which writes nothing to the save: the check still goes out.
     [HarmonyPatch(typeof(BroadcastStation), nameof(BroadcastStation.Unlock))]
     internal static class BroadcastStationUnlockPatch
     {
         private static bool Prefix(BroadcastStation __instance, PeckContext __0)
         {
-            // No longer host-only (2026-09-23). A guest's radio lit a station
-            // the moment it was switched on, because this returned early on
-            // any machine that was not the server. On a guest, ItemsInPlay is
-            // only ever true once a host running the mod has said so
-            // (ModChannel), so a guest in a vanilla game — or of a host whose
-            // radio is vanilla — still gets the vanilla behaviour.
+            // On a guest ItemsInPlay is only true once a modded host has said so.
             if (!ModConfig.ArchipelagoEnabled.Value || !RadioStations.ItemsInPlay)
                 return true;
 
-            // The original's own first line: anything below 1 is the switch
-            // going off or idling, and unlocks nothing. Let it through rather
-            // than claim in the log that a station was switched on.
+            // Below 1 is the switch going off or idling, and unlocks nothing.
             if (__0 == null || __0.compressedState < 1)
                 return true;
 
             if (!RadioStations.TryGetSystem(__instance, out var system))
             {
-                // One of FmStation7/8/9, or a station whose peck system is not
-                // wired the way every other one is. Not ours to hold back: the
-                // apworld has no item for it, so suppressing it would take
-                // music away that nothing could ever give back.
+                // A station the apworld has no item for: holding it back would lose its music.
                 Plugin.Log.LogInfo(
                     $"[{nameof(BroadcastStationUnlockPatch)}] '{__instance.name}' has no station this world knows "
                     + "about; leaving its unlock alone.");

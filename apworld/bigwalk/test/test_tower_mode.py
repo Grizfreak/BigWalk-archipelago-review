@@ -81,7 +81,7 @@ class TestTheDepositsOfATowerAreHinted(BigWalkTestBase):
             start += tower.slots
 
     def test_the_drawbridge_and_the_dome_are_hinted_too(self) -> None:
-        # Reached by position in the mod (the player, 2026-10-12), so their deposits are hinted like the others'.
+        # Reached by position in the mod, so their deposits are hinted like the others'.
         hints = self.world.fill_slot_data()["tower_reach_hints"]
         self.assertIn("bigKeyIntro", hints)
         self.assertIn("bigKeyOverflow", hints)
@@ -170,7 +170,7 @@ class TestTheTowersObjectiveNeedsAMode(unittest.TestCase):
 
 
 def _sweep(mode: str, seed: int) -> type:
-    """A whole generation, default checks included, for one seed and one mode: nothing may fail to fill."""
+    """A whole generation, default checks included, for one seed and one mode: it must fill."""
 
     class Sweep(BigWalkTestBase):
         options = {"tower_mode": mode}
@@ -208,7 +208,7 @@ del _cls
 
 
 class TestATowerRoofWaitsForItsTurn(BigWalkTestBase):
-    # The mod holds a tower's opening button until its monument opens: the roof and the button's check wait for it.
+    # The mod holds a tower's button until its monument opens: the roof and its check wait.
     options = {"tower_mode": "in_order", "gourd_sanity": "every_gourd", "tower_sanity": True,
                "firework_sanity": True, "object_sanity": "every"}
     run_default_tests = False

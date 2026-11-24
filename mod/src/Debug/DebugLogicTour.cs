@@ -8,13 +8,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // The logic tour (player, 2026-10-14: "a tool that teleports me to each important check in logic"). tools/logic_tour.py
-    // writes BepInEx/logic-tour.tsv: a seed's checks sphere by sphere, each with the logic's needs. Ctrl + Shift + 1 goes
-    // to the next stop, Ctrl + Shift + 2 back; the overlay says the check and what the logic asks for it, and the player
-    // looks whether the game asks for more. Ctrl + Shift + 0 flags the stop (BepInEx/logic-tour-flags.tsv, with where the
-    // player stands). Within a sphere the stops go nearest first. The file is read again when it changes.
-    // tools/logic_path.py writes the same file from a spoiler's Playthrough (the shortest way to the goal): each stop then
-    // says what its check gives; a stop with no place (the start, a check in another world) is only said.
+    // Teleports through the checks listed in BepInEx/logic-tour.tsv (Ctrl+Shift+1/2, flag with +0).
     internal class DebugLogicTour : MonoBehaviour
     {
         private const string Tag = "[" + nameof(DebugLogicTour) + "]";
@@ -163,7 +157,7 @@ namespace BigWalkArchipelago.Debug
             return _stops.Count > 0;
         }
 
-        // Sphere by sphere; within one, nearest first from the last stop of the sphere before (or the player).
+        // Sphere by sphere; within one, nearest first from the last stop of the sphere before.
         private static List<Stop> Order(List<Stop> stops)
         {
             var ordered = new List<Stop>();
@@ -187,7 +181,7 @@ namespace BigWalkArchipelago.Debug
             return ordered;
         }
 
-        // Where each stop's check stands, by the same keys as Core/MapTracker.
+        // Where each stop's check stands, by the same keys as MapTracker.
         private static void Resolve(List<Stop> stops)
         {
             var props = new Dictionary<string, Prop>();

@@ -5,8 +5,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Patches
 {
-    // Big Slide (Core/TrapEffects): after the game has set the velocity the controls ask for this fixed step, the
-    // local player only drifts towards it, from the velocity it had. LocalFixedUpdate runs for the local player only.
+    // Big Slide trap: the local player only drifts towards the velocity the controls ask for.
     [HarmonyPatch(typeof(PlayerMover), nameof(PlayerMover.LocalFixedUpdate))]
     internal static class BigSlidePatch
     {

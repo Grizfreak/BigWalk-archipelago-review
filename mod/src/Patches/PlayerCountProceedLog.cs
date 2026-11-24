@@ -3,16 +3,7 @@ using HarmonyLib;
 
 namespace BigWalkArchipelago.Patches
 {
-    // Logs the player-count screen's Play button and nothing else. It exists
-    // because a start that stuck on that button (2026-09-25) could only be
-    // explained by the order in which Continue and Play reach the hosting
-    // screen's own start, and that order had never been written down. With
-    // this line beside HostMenuConfirmStartPatch's own, the next log says it.
-    //
-    // Applied on its own rather than through PatchAll, and inside a
-    // try/catch: a patch that fails to apply there throws out of Load and
-    // takes every other feature of the mod with it, and a line of
-    // diagnostics is not worth that risk.
+    // Patched on its own in a try/catch: a failing patch in PatchAll would abort the whole mod.
     internal static class PlayerCountProceedLog
     {
         internal static void TryApply(Harmony harmony)

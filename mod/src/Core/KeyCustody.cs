@@ -5,84 +5,26 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The seven big keys themselves, as Archipelago items.
-    //
-    // WHY THIS EXISTS. The first pass of the 2026-09-21 design left the keys
-    // exactly as the vanilla game hands them out — fill a tower's monument
-    // and its key is released — and made only the FEATURE an item. The player
-    // corrected that: a key should arrive from the multiworld and spawn like
-    // a gourd, not be earned by depositing gourds. So the monument now buys
-    // nothing but its own deposit checks, and a key is something another
-    // player sends you.
-    //
-    // What a key is FOR is unchanged, and that is the point of keeping both
-    // halves: it is a check carrier. Cutting its five segments and placing it
-    // in its receptacle are six checks, and nothing else. The door is still
-    // its own item (Core/KeyFeatures.cs), so receiving a key never opens
-    // anything by itself.
-    //
-    // WHAT HOLDS A KEY BACK (measured in game 2026-09-21, Ctrl+K). Every one
-    // of the seven sits in a `PropHome` — six in a `KeyStoneHome`, and each
-    // reports `blockGrabbing = true`. That single bool is the lock, and the
-    // game's own release is a `PeckEffectPropHomeSettings` whose
-    // `settingsPerState[2]` writes `blockGrabbing := false`, driven by a
-    // TrackedPeckState whose label spells the mechanism out:
-    // `0 - locked, 1 - animating, 2 - grabbable`, on `KeyScrewLogic`.
-    //
-    // So both halves of this class write the same field, in opposite
-    // directions, and neither needs a Harmony patch — which matters, because
-    // `PeckEffectPropHomeSettings.Apply` and `OnPeck` have NO code address in
-    // the export while `Awake` does. They are inlined, so a patch on them
-    // would bind to nothing and suppress nothing, in silence: the trap
-    // `ServerCutSegment` and `BroadcastStation.Unlock` have already sprung
-    // twice on this project.
-    //
-    // Re-asserting rather than intercepting also means this is robust to not
-    // knowing what frees the other six keys. Only `bigKeyOverflow`'s releaser
-    // was found in the dump — the rest are most likely streamed out at 300m
-    // to 900m — and it does not matter: whatever flips the bool, this flips
-    // it back until the item arrives.
+    // Keeps the seven big keys locked in their stones until their Archipelago item arrives.
     internal static class KeyCustody
     {
-        // Same reasoning as CheckTracker's "ap_reported_", RadioStations'
-        // "ap_radio_" and KeyFeatures' "ap_feature_": a prefix the game's own
-        // enum names can never produce, so SaveValuePatch never mistakes one
-        // of these writes for a key being placed.
+        // No game enum name has this prefix, so SaveValuePatch never reads these as a key placed.
         private const string KeyPrefix = "ap_key_";
 
-        // Set from slot_data on connection. While false the game is left
-        // completely alone — monuments release their keys exactly as in the
-        // vanilla game. That covers an apworld too old to send the field, and
-        // a session with Archipelago disabled entirely; in both, locking the
-        // keys away would leave them unobtainable, since nothing would ever
-        // send one.
+        // False when slot_data lacks the field: the keys then behave as in the vanilla game.
         internal static bool KeysAreItems { get; private set; }
 
-        // Keys granted but not yet delivered to the player — a world that is
-        // still loading has no spawn point and no player to put one near.
+        // Granted but not delivered yet: a loading world has no spawn point.
         private static readonly HashSet<SaveablePropName> Pending = new();
 
         private static bool _pendingBlockedLogged;
 
-        // A key delivered to the spawn point, and where it was put, kept until
-        // it has been looked at again a couple of seconds later.
-        //
-        // Observed on 2026-09-21: the key appeared at the hub and vanished
-        // instantly. `ServerSetUnpinned` did not throw and the move reported
-        // success, so what happened is something taking it BACK — and from in
-        // front of the screen, "deactivated", "re-pinned to its stone",
-        // "unspawned by Mirror" and "culled by the game's own region system"
-        // all look exactly alike. The same symptom, with the same ambiguity,
-        // already cost this project a day over the cosmetic gourd, which is why
-        // DebugHotkeys has a delayed recheck of its own; this is that pattern,
-        // moved next to the thing it is diagnosing.
+        // Delivered keys, rechecked a moment later in case the game takes them back.
         private static readonly List<(SaveablePropName key, Vector3 target, float at, int corrections)> Delivered = new();
 
         private const float RecheckDelaySeconds = 2f;
 
-        // Far enough that it cannot be the key simply falling to the ground —
-        // the drop from the spawn point measured 1.3m — and near enough to
-        // catch a launch long before it is out of sight.
+        // Beyond the 1.3m drop from the spawn point, so a key that just fell is not a stray.
         private const float StrayMetres = 5f;
 
         internal static void Configure(bool keysAreItems)
@@ -103,27 +45,10 @@ namespace BigWalkArchipelago.Core
             return SaveManager.GetIntValue(KeyPrefix + propName, 0, false) != 0;
         }
 
-        // --- Holding the release itself ---
-        //
-        // `blockGrabbing`, above, only stops a key being picked up while it sits in
-        // its stone. It does not stop the stone letting the key go: when a monument
-        // fills, the game LAUNCHES the key out of its stone, and a key lying free
-        // is in no home any more, so the lock on the home no longer reaches it.
-        // Found 2026-10-03: four gourds into the drawbridge's slots and the key
-        // flew out, in front of the player and ready to carry, with its item never
-        // sent (the second time, after 2026-09-27).
-        //
-        // So the release is refused where it starts. Each of the seven stones has
-        // a TrackedPeckState that runs it, 0 at rest and 1 and above while it
-        // lets go: `KeyStoneLogic` for six of them (states 1 "start release", 2
-        // "launch"), `KeyScrewLogic` for the Green Dome's (1 "animating", 2
-        // "grabbable"). Refusing a state above 0 while the key's item is missing
-        // keeps the key in its stone, as the gates of the Gauntlet are held.
+        // blockGrabbing does not stop a full monument launching its key, so the release is refused.
         private static readonly Dictionary<int, SaveablePropName> KeyByLogic = new();
         private static readonly HashSet<int> NotAReleaseLogic = new();
 
-        // The patch's question, asked on every state change of the game: a flag,
-        // then a set lookup, and a name only the first time a state is seen.
         internal static bool IsReleaseHeld(TrackedPeckState state, out SaveablePropName propName)
         {
             propName = SaveablePropName.notSavable;
@@ -143,7 +68,7 @@ namespace BigWalkArchipelago.Core
                     return false;
                 }
 
-                // Not cached when its key is not loaded yet: asked again next time.
+                // Not cached while its key is not loaded: asked again next time.
                 if (!TryFindKeyOf(state, out propName))
                     return false;
 
@@ -153,8 +78,7 @@ namespace BigWalkArchipelago.Core
             return !IsGranted(propName);
         }
 
-        // The key a release logic belongs to: the one whose stone sits under the same
-        // parent (`BigKeyInStone`, `BigKeyInBox`, `BigKeyInScrew`).
+        // The key whose stone shares the logic's parent (BigKeyInStone, BigKeyInBox, BigKeyInScrew)
         private static bool TryFindKeyOf(TrackedPeckState logic, out SaveablePropName propName)
         {
             propName = SaveablePropName.notSavable;
@@ -175,26 +99,13 @@ namespace BigWalkArchipelago.Core
             return false;
         }
 
-        // A world went away: its states did too.
         internal static void ForgetReleaseLogics()
         {
             KeyByLogic.Clear();
             NotAReleaseLogic.Clear();
         }
 
-        // A key item arrived. Persisted first, delivered second: the ledger is
-        // what survives the world reload, and the key lying at the hub is only
-        // this session's copy of it.
-        //
-        // toPlayer mirrors the same split ApplyGourdItem/ApplyGadgetItem use
-        // (ReceivedItemSpawner.ResolveSpawnPosition, same call underneath):
-        // false for the connection's startup replay, which belongs at the
-        // hub with everything else arriving in that same burst, true for a
-        // key that arrives once play is already under way. Hardcoded to
-        // true before this fix — measured in-game, 2026-09-22: every key in
-        // a 7-key starting inventory landed on the player while the gourds
-        // and gadgets in the SAME burst landed at the hub, because this was
-        // the only one of the three not reading the settled flag.
+        // toPlayer is false for the startup replay, so those keys land at the hub with the rest.
         internal static bool Grant(SaveablePropName propName, bool toPlayer)
         {
             if (!NetworkServer.active)
@@ -222,14 +133,7 @@ namespace BigWalkArchipelago.Core
             return true;
         }
 
-        // A new (seed, slot) binding replays every item from scratch, so the
-        // keys this save was granted under the old one go with it. Mirrors
-        // RadioStations and KeyFeatures.
-        //
-        // What this cannot undo is a key already lying in the world. Tick()
-        // re-locks its home, so it cannot be taken again after a reload, and
-        // the honest repair for one already in a player's hands is the same
-        // as for a gourd: Ctrl+R.
+        // A key already lying in the world stays there; Tick() re-locks its home after a reload.
         internal static void ClearLedger()
         {
             var cleared = 0;
@@ -253,21 +157,13 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Queues every key this save was granted, for delivery into a world
-        // that has just appeared. Unlike the radio and the doors, a key that
-        // is already lying about does NOT need re-delivering — the game
-        // persists a prop's position and its home by itself. So this only
-        // queues the ones still sitting in their stone.
+        // A key already out of its stone keeps its place: the game saves prop positions itself.
         internal static void RearmFromLedger()
         {
             Pending.Clear();
             _pendingBlockedLogged = false;
 
-            // A new world rebuilds every renderer, so the keys need painting
-            // again. Done here rather than in a world-load handler of its own
-            // because this already runs on exactly the two occasions that
-            // matter: a world becoming ready, and a connection into one that
-            // is already loaded.
+            // A new world rebuilds every renderer, so the keys need painting again.
             KeyColours.Rearm();
 
             if (!KeysAreItems)
@@ -283,15 +179,7 @@ namespace BigWalkArchipelago.Core
                 TickPending(toPlayer: false);
         }
 
-        // Called every frame from ApRuntime.Update(), ahead of the 1s poll
-        // gate and its early returns — same reasoning as SettleDelivered
-        // there. The vanilla release this suppresses (a monument filling)
-        // can flip `blockGrabbing` the instant its condition is met, and a
-        // player standing at it can grab the key well inside a 1-second
-        // window. Confirmed in play, 2026-09-27: four gourds deposited into
-        // the tutorial drawbridge's slots popped the black key loose and it
-        // was carried and used before the item that was supposed to release
-        // it had ever been granted.
+        // Every frame: a player can grab a released key well inside the 1s poll.
         internal static void EnforceCustodyTick()
         {
             if (!KeysAreItems || !NetworkServer.active)
@@ -300,9 +188,6 @@ namespace BigWalkArchipelago.Core
             EnforceCustody();
         }
 
-        // Called from ApRuntime's poll tick, once a second: the two jobs
-        // here don't need every-frame precision the way holding the lock
-        // does.
         internal static void Tick()
         {
             if (!KeysAreItems || !NetworkServer.active)
@@ -312,14 +197,7 @@ namespace BigWalkArchipelago.Core
             KeyColours.PaintOnce();
         }
 
-        // The suppression, and the release, in one pass — they are the same
-        // field written both ways.
-        //
-        // Deliberately keyed on `startHome`, never on `currentHome`. A key's
-        // current home becomes its PLINTH once the players carry it there,
-        // and writing `blockGrabbing` on a plinth would lock a key into its
-        // socket, or free something that should not be free. `startHome` is
-        // the stone it came out of and it does not move.
+        // Keyed on startHome: currentHome becomes the plinth once the key is placed.
         private static void EnforceCustody()
         {
             foreach (var prop in GourdRegistry.LoadedBigKeys())
@@ -328,9 +206,7 @@ namespace BigWalkArchipelago.Core
                 if (stone == null)
                     continue;
 
-                // Belt and braces: a plinth is a PropHome like any other, and
-                // if `startHome` ever turned out to be one, this would be the
-                // line that stopped the damage.
+                // Guard in case startHome is ever a plinth.
                 if (GourdRegistry.IsBigKeyPlinth(stone.saveableHomeName))
                     continue;
 
@@ -356,8 +232,7 @@ namespace BigWalkArchipelago.Core
             if (Pending.Count == 0)
                 return true;
 
-            // Copied before iterating: delivery runs the game's own code, and
-            // nothing guarantees it leaves this set alone.
+            // Copied first: delivery runs game code that may change the set.
             var attempts = new List<SaveablePropName>(Pending);
             foreach (var propName in attempts)
             {
@@ -388,28 +263,14 @@ namespace BigWalkArchipelago.Core
                 $"[{nameof(KeyCustody)}] {Pending.Count} key(s) waiting on a world that can take them. Still trying.");
         }
 
-        // Takes a key out of its stone and drops it where a gourd would land.
-        //
-        // THE UNCERTAIN STEP IS `ServerSetUnpinned`, and it is guarded on
-        // purpose. The method exists by name in the 1.48 interop assembly but
-        // has NO code address in the il2cpp export, while its sibling
-        // `ServerSetPinned` has one — the signature of a method inlined into
-        // its callers, which is how `ServerCutSegment` and
-        // `BroadcastStation.Unlock` both fooled this project before. If the
-        // call throws, the key is still released and still obtainable: it
-        // simply stays in its stone at the tower, grabbable, which is where
-        // the vanilla game would have left it anyway. That is a worse
-        // experience, not a broken one, and the log says which happened.
+        // ServerSetUnpinned looks inlined; if it throws, the key stays grabbable in its stone.
         private static bool TryDeliver(SaveablePropName propName, bool toPlayer)
         {
             var prop = FindKey(propName);
             if (prop == null)
                 return false;
 
-            // Already in its plinth: the players put it there, and its check is sent. Delivered, and
-            // left where it is. Taking it out to hand it over emptied the slot, and the drawbridge
-            // went back up at the end of a run (a player's report, 2026-10-05). The resync has
-            // always kept this rule; the delivery had not.
+            // Already in its plinth: taking it out would empty the slot and raise the drawbridge.
             var placed = prop.currentHome;
             if (placed != null && GourdRegistry.IsBigKeyPlinth(placed.saveableHomeName))
             {
@@ -417,13 +278,7 @@ namespace BigWalkArchipelago.Core
                 return true;
             }
 
-            // A key arriving during play goes into somebody's hands, like a
-            // gourd or a gadget (player request, 2026-10-02: the Drawbridge
-            // Key landed two metres ahead of a body nobody was watching).
-            // The same choice of recipient and the same hand-over, so a key
-            // and a gourd take turns between the players alike. Without a
-            // recipient, or when the hands cannot take it, it stays where it
-            // was put, in front of them.
+            // During play the key goes into a player's hands, like a gourd.
             var recipient = toPlayer ? ItemRecipients.Choose() : null;
             var destination = ReceivedItemSpawner.ResolveSpawnPosition(toPlayer, recipient);
             if (destination == null)
@@ -432,8 +287,7 @@ namespace BigWalkArchipelago.Core
                 return false;
             }
 
-            // Unlocked first and unconditionally, because this is the half
-            // that decides whether the key can be obtained at all.
+            // Unlocked first: this is what makes the key obtainable at all.
             var stone = prop.startHome;
             if (stone != null && !GourdRegistry.IsBigKeyPlinth(stone.saveableHomeName))
                 stone.blockGrabbing = false;
@@ -446,7 +300,7 @@ namespace BigWalkArchipelago.Core
             {
                 Plugin.Log.LogWarning(
                     $"[{nameof(KeyCustody)}] {propName}: Prop.ServerSetUnpinned threw ({ex.Message}). The key is "
-                    + "unlocked but stays in its stone at the tower — go and fetch it there.");
+                    + "unlocked but stays in its stone at the tower, go and fetch it there.");
                 ItemRecipients.Settled(recipient);
                 return true;
             }
@@ -465,19 +319,14 @@ namespace BigWalkArchipelago.Core
 
             Delivered.Add((propName, destination.Value, Time.time + RecheckDelaySeconds, 0));
 
-            // One frame later, for the reason the gourd's hand-over gives: the
-            // spawn and the "is holding it" SyncVar must not share a frame.
+            // One frame later: the spawn and the holding SyncVar must not share a frame.
             if (recipient != null)
                 ReceivedItemSpawner.QueueHandover(prop, recipient);
 
             return true;
         }
 
-        // Ctrl+R for keys: every key this slot owns and that is not already in
-        // its plinth goes back to the spawn point. Same promise as the gourd
-        // resync — nothing that counts for Archipelago can be lost by pressing
-        // it, because a key already placed is a check already sent and is left
-        // exactly where it is.
+        // Ctrl+R for keys; a key already in its plinth is left alone.
         internal static int ResyncToSpawn()
         {
             using var activity = ModActivity.Enter("key resync");
@@ -498,18 +347,7 @@ namespace BigWalkArchipelago.Core
                 if (home != null && GourdRegistry.IsBigKeyPlinth(home.saveableHomeName))
                     continue;
 
-                // Dropped before it is moved. Reported in play on 2026-09-22:
-                // "the key was sent back but not taken out of my hands" — the
-                // key teleported to the spawn point while the hands went on
-                // holding it, so it was both across the island and still
-                // carried.
-                //
-                // The gourd sweep has always done this (ReleaseFromHands is
-                // its first act on each prop) and the gadget sweep was
-                // written with it; only the key path, which moves a prop
-                // instead of destroying it, was missing it. Moving is the
-                // same problem as destroying here: the hands keep a
-                // reference the prop no longer honours.
+                // Dropped first, or the hands keep holding a key that has moved away.
                 ReceivedItemSpawner.ReleaseFromHands(prop);
 
                 Pending.Add(propName);
@@ -522,37 +360,12 @@ namespace BigWalkArchipelago.Core
             return moved;
         }
 
-        // Moving a key across the island.
-        //
-        // Deliberately just the transform, after two wrong diagnoses. The key
-        // turned up 201m away and 60m higher two seconds after delivery, still
-        // active, visible and loose, which read like a Rigidbody launched by a
-        // teleport — and is not: the player watched it go back to its ORIGINAL
-        // spot at its tower, out of its socket. The game is fetching it home,
-        // and `UnityEngine.Rigidbody` is not even referenced by this project.
-        //
-        // What fetches it is the open question. `PropHome.propShepherd` and
-        // `PropHome.CheckShepherd(Prop)` are the named candidates.
         private static void Teleport(Prop prop, Vector3 destination)
         {
             prop.transform.position = destination;
         }
 
-        // Holds a freshly delivered key where it was put, EVERY FRAME for a
-        // couple of seconds, and counts how often it had to.
-        //
-        // That count is the experiment. The key returns to its original spot
-        // at its tower, out of its socket — the player watched it happen —
-        // so something in the game fetches it home. `PropHome.CheckShepherd`
-        // calling `PropShepherd.DoShepherd(prop)` is the named candidate, and
-        // Ghidra will not say who calls it: IL2CPP dispatches indirectly and
-        // resolves almost no static call edges.
-        //
-        // ONE correction means the fetch fires once, on the unpin, and
-        // putting the key back afterwards is the whole fix. MANY means
-        // something holds it there continuously, and then this is a tug of
-        // war that has to be won at the cause instead. The log says which,
-        // and the two are indistinguishable from in front of the screen.
+        // Holds a delivered key in place for a moment and counts how often the game moved it.
         internal static void SettleDelivered()
         {
             using var activity = ModActivity.Enter("key settle");
@@ -564,9 +377,7 @@ namespace BigWalkArchipelago.Core
                 var entry = Delivered[i];
                 var prop = FindKey(entry.key);
 
-                // In somebody's hands it moves with them, and putting it back
-                // where it was delivered would take it away from the player
-                // it was just handed to.
+                // A held key moves with its player; putting it back would take it from them.
                 if (prop != null && IsHeld(prop))
                 {
                     Delivered.RemoveAt(i);
@@ -637,8 +448,7 @@ namespace BigWalkArchipelago.Core
             }
             catch (Exception)
             {
-                // A prop whose NetworkIdentity has gone is exactly one of the
-                // outcomes being told apart here, so this is data, not noise.
+                // A prop without its NetworkIdentity is one of the outcomes this log tells apart.
             }
 
             var renderer = go.GetComponentInChildren<Renderer>(true);
@@ -656,9 +466,7 @@ namespace BigWalkArchipelago.Core
 
         private static Prop FindKey(SaveablePropName propName)
         {
-            // Through GourdRegistry, because `Prop.allProps` throws when there
-            // is no world — which is the normal state at connection time, and
-            // where this was caught coming out of RearmFromLedger.
+            // Through GourdRegistry: Prop.allProps throws when there is no world.
             return GourdRegistry.FindProp(propName);
         }
     }

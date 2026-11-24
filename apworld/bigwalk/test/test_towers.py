@@ -3,7 +3,7 @@ from .bases import BigWalkTestBase
 
 
 class TestTowersReached(BigWalkTestBase):
-    """tower_sanity is on by default: a check for each of the seven towers (the drawbridge and the dome by position)."""
+    """tower_sanity is on by default: a check for each of the seven towers."""
 
     def test_every_tower_has_its_check(self) -> None:
         names = {location.name for location in self.multiworld.get_locations(self.player)}
@@ -11,7 +11,7 @@ class TestTowersReached(BigWalkTestBase):
             self.assertIn(data.tower_reached_location_name(tower), names)
 
     def test_the_five_first_keep_their_ids(self) -> None:
-        # The drawbridge and the dome came later (0.5.0): appended, so the five with a button keep their ids.
+        # The drawbridge and the dome were appended, so the five with a button keep their ids.
         self.assertEqual(7, len(data.reached_towers()))
         self.assertEqual(data.reachable_towers(), data.reached_towers()[:5])
         self.assertEqual(["bigKeyIntro", "bigKeyOverflow"], [tower.prop_name for tower in data.reached_towers()[5:]])

@@ -5,16 +5,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // Big Flare (player, 2026-10-07): a flare gun's shot fired on each player, through the game's
-    // own shot (PeckEffectParticleNetworked.RpcFire, the Rpc a real shot sends: every machine moves
-    // the gun's FlareParticleSystem there and plays it), nothing copied, nothing new in the world.
-    // The host borrows the island's flare guns, one per player (the same gun again a moment later
-    // when there are more players than guns), and fires from above the head down onto them.
-    //
-    // Every machine, told by the trap (Core/TrapEffects): for a few seconds the guns' shots take
-    // the Archipelago colours, running through them, then their own colours come back. A machine
-    // with gentle effects on (ModConfig.GentleEffects, the accessibility setting) clears the shots
-    // as they appear instead.
+    // Big Flare trap: the host fires the island's flare guns over each player through RpcFire.
     internal static class BigFlare
     {
         private const string Tag = "[" + nameof(BigFlare) + "]";
@@ -38,12 +29,9 @@ namespace BigWalkArchipelago.Core
         private static int _shown = -1;
         private static readonly Dictionary<int, (ParticleSystem system, Color colour)> Saved = new();
 
-        // Host: when each player's shot goes, and from which gun.
         private static readonly List<(float at, PeckEffectParticleNetworked gun, Vector3 position, Quaternion rotation)> Shots = new();
 
-        // The shot's sound is not in RpcFire (that plays the particles only, 2026-10-09): it is a
-        // PeckEffectAudio on the gun, state 1 playing sfx_prop_flaregun_flare_shoot_layer. Every
-        // machine plays it itself, where each shot lands, as the shot goes.
+        // RpcFire plays only particles; the sound is a PeckEffectAudio each machine plays itself.
         private static readonly List<(float at, Vector3 position)> Sounds = new();
         private static PeckEffectAudio _shootAudio;
         private static AudioAsset _shootAsset;
@@ -88,11 +76,9 @@ namespace BigWalkArchipelago.Core
             return guns;
         }
 
-        // Host: the shots, one per player, a moment from now (once every machine has its colours).
         internal static void FireOn(IEnumerable<PlayerCharacter> players)
         {
-            // Only a gun in play on the network (not the mod's inactive templates, whose netId
-            // throws for want of an identity, 2026-10-07).
+            // Skips the mod's inactive templates: their netId throws for want of an identity.
             var guns = Guns().FindAll(g =>
             {
                 try
@@ -117,8 +103,7 @@ namespace BigWalkArchipelago.Core
                     continue;
                 var gun = guns[i % guns.Count];
                 var at = Time.unscaledTime + FireDelay + (i / guns.Count) * ReuseGap;
-                // Close above the head: a shot keeps flying a little, less the shorter its fall (its speed
-                // is out of the mod's reach: the engine's own setter is stripped, 2026-10-07).
+                // Close above the head: the shot speed cannot be set (its setter is stripped).
                 var position = player.transform.position + Vector3.up * 2.2f;
                 Shots.Add((at, gun, position, Quaternion.LookRotation(Vector3.down, player.transform.forward)));
                 i++;
@@ -127,7 +112,6 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"{Tag} {i} flare(s) to fire with {guns.Count} gun(s).");
         }
 
-        // Every machine, as the trap plays: the colours, or the clearing, and the sounds to come.
         internal static void Play()
         {
             _until = Time.unscaledTime + Seconds;
@@ -162,7 +146,6 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Every frame (TrapRunner).
         internal static void Tick()
         {
             if (Shots.Count > 0 && NetworkServer.active)
@@ -240,7 +223,6 @@ namespace BigWalkArchipelago.Core
                         continue;
                     }
 
-                    // A place of its own in the world to play it from.
                     var spot = new GameObject("Big Flare sound (AP)");
                     spot.transform.position = position;
                     _shootAudio.PlayAudioAsset(_shootAsset, _shootOutcome, spot.transform);
@@ -253,8 +235,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The guns' own shot colours back (the flare's colour as it was, its smoke rebuilt from it),
-        // and the seed's colours painted again over them (Core/ColourPainter).
+        // Puts the guns' own colours back, then the seed's colours over them.
         private static void Restore()
         {
             foreach (var pair in Saved.Values)

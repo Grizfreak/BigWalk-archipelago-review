@@ -116,7 +116,7 @@ class TestCleaning(TestCase):
             self.assertEqual(self.clean(wanted), data.GOURD_ITEM_NAME, wanted)
 
     def test_the_cartons_names_must_be_free_too(self) -> None:
-        # "Big" gives "Big Carton" and "Big Carrier": both free, so it is kept; a taken one refuses the name.
+        # "Big" gives "Big Carton" and "Big Carrier", both free; a taken one refuses the name.
         self.assertEqual(gourd_name.clean("Big", ("Big Carton",), "Tester"), data.GOURD_ITEM_NAME)
         self.assertEqual(gourd_name.clean("Big", ("big carrier",), "Tester"), data.GOURD_ITEM_NAME)
         self.assertEqual(self.clean("Big"), "Big")

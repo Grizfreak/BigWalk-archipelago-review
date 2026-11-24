@@ -4,40 +4,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // Paints the buoys and the flare guns with the seed's colours (Core/Palette), on every machine
-    // for its own copy of the world: nothing here is networked, every machine draws the same
-    // colour for the same object from things they all share.
-    //
-    // Measured on 2026-10-06/07 (Debug: DebugColourProbe, DebugBuoyTint, DebugFlareTint):
-    //   a buoy     its body "buoy" (househouse/VertexColors) by _TintColor through a property
-    //              block; its halo "LobbyFlareMesh" under "bouyLight" (househouse/flare) by
-    //              _MainColor; its Light "bouyLight". Its colour comes from its guid (a received
-    //              lamp carries its template's, and looks like it).
-    //   a gun      body and barrel through their PropertyBlockHelpers (_TintColor, submesh 0; the
-    //              grip's accent, submesh 1, stays); its shot through Core/FlareColours. The four
-    //              island guns take the first four colours of the seed's draw, by kind (base,
-    //              Blue, Green, Yellow, as the apworld's items); a received one, its kind's.
-    //   rainbow    a white body; its shot's colour follows Palette.RainbowNow, set every frame.
-    //   a gadget   (C2, 0.7, player 2026-10-13: "the gadgets that are relevant") every renderer of the
-    //              house shader (hhVertexColors, which multiplies its painted vertex colours by _TintColor,
-    //              as the buoy) through a property block; one colour per object for the seed. Left alone:
-    //              the paintbrush and the kettles (puzzles), the folding map (paper, another shader), an
-    //              emissive part (the laser's tip). The walkie-talkies' blue and yellow mean nothing (player,
-    //              2026-10-13): their colour is a PropertyBlockHelper's (_TintColor, _Tint), written too.
-    //   a laser   (player on Discord, 2026-10: "are the colour of the laser but mainly their beams able to be
-    //              random?") a colour of its own, from its guid like a buoy (a received one, its template's): its
-    //              body as a gadget's, its tip, and its beam: a tube of the mod's own under the game's shader, its
-    //              vertices the colour (measured 2026-10-20, see RecolourLaserPart and BeamTube).
-    //   a firework the launcher's model (_TintColor) and its explosion (HangingSpark's _EmissionColor and
-    //              start colour, the sparks' start colour); the smoke stays black (its start colour,
-    //              tinted, did not show in game, 2026-10-13; the player let it go), through their PropertyBlockHelpers; never the four
-    //              of the towers (player, 2026-10-13), whose colours are the towers' own. A colour per
-    //              launcher, from its landmark.
-    //
-    // All of it holds once written (a property block, a helper's setting, a light's colour, a
-    // particle system's start colour stay put when the gun is picked up and its kernel moves to
-    // the hand), so the world is painted once when it is ready or the colours arrive, and a clone
-    // as it is built (GadgetItemSpawner).
+    // Paints buoys, guns, gadgets, lasers and fireworks in the seed's colours, on each machine.
     internal static class ColourPainter
     {
         private const string Tag = "[" + nameof(ColourPainter) + "]";
@@ -46,7 +13,7 @@ namespace BigWalkArchipelago.Core
         private static readonly string[] BuoyNames = { "BuoyLight", "BuoyProp", "BuoyRedProp" };
         private static readonly string[] GunNames = { "FlareGunPropBlue", "FlareGunPropGreen", "FlareGunPropYellow", "FlareGunProp" };
 
-        // C2: the gadgets painted (a laser is painted on its own first, PaintIfLaser).
+        // The gadgets painted (a laser is painted on its own first, PaintIfLaser).
         private static readonly string[][] GadgetKinds =
         {
             new[] { "BinocularsProp" }, new[] { "ClockProp" }, new[] { "CompassProp" },
@@ -63,9 +30,7 @@ namespace BigWalkArchipelago.Core
 
         internal static void Repaint() => _dirty = true;
 
-        // P2 (0.4 playtest: an orange lamp gave a green light, a blue one a white light): the body holds its tint, but
-        // switching a lamp on lets the game's own effects put back its light and its halo. So each painted lamp's light
-        // and halo are remembered and put back, twice a second, when something else changed them.
+        // Switching a lamp on resets its light and halo, so they are put back twice a second.
         private static readonly List<(Light light, Renderer halo, Color colour, Renderer body, Color bodyColour)> Lamps = new();
         private static float _nextLampCheck;
 
@@ -95,8 +60,7 @@ namespace BigWalkArchipelago.Core
                 {
                     var block = new MaterialPropertyBlock();
                     halo.GetPropertyBlock(block);
-                    // A lamp switched off hides its halo (LobbyFlare inactive, colour probe 2026-10-12): only a shown one
-                    // is put back. A block the game wrote again reads black, which is no sign of "off".
+                    // An off lamp hides its halo; a block the game rewrote reads black.
                     if (halo.gameObject.activeInHierarchy && block.GetColor("_MainColor") != colour)
                     {
                         block.SetColor("_MainColor", colour);
@@ -105,9 +69,7 @@ namespace BigWalkArchipelago.Core
                     }
                 }
 
-                // The body too: the buoy's own PropertyBlockHelper writes its block again when the lamp is switched, and
-                // that block has no tint, so a map lamp went back to its own colour while its light kept the seed's
-                // (2026-10-12, colour probe: an orange pedestal buoy with the seed's lime light).
+                // The buoy's PropertyBlockHelper rewrites its block untinted on a switch.
                 if (body != null)
                 {
                     var block = new MaterialPropertyBlock();
@@ -130,8 +92,7 @@ namespace BigWalkArchipelago.Core
 
         private static bool _lampFixLogged;
 
-        // Every frame (TrapRunner): the world once it is ready or the colours change, and the
-        // rainbow guns' shots.
+        // Every frame: the world once ready or recoloured, and the rainbow guns' shots.
         internal static void Tick()
         {
             var ready = WorldManager.isReadyForEffects;
@@ -231,7 +192,7 @@ namespace BigWalkArchipelago.Core
 
         private static string CopyKey(uint netId) => "copy " + netId;
 
-        // A repaint of the world keeps each copy's own colour (a guest repaints after its copies arrive).
+        // A world repaint keeps each copy's own colour (a guest repaints after copies arrive).
         private static string KeyOf(Prop prop)
         {
             if (!ReceivedItemSpawner.IsCosmeticClone(prop))
@@ -249,10 +210,6 @@ namespace BigWalkArchipelago.Core
             }
             return false;
         }
-
-        // ------------------------------------------------------------------
-        // Buoys
-        // ------------------------------------------------------------------
 
         private static bool PaintIfBuoy(GameObject root, string key)
         {
@@ -305,11 +262,8 @@ namespace BigWalkArchipelago.Core
             return true;
         }
 
-        // The pedestal lamps (BuoyLight): their sphere is orange in the model itself and no tint reaches it (all four
-        // regions of househouse/VertexColors tried on 2026-10-13: only the cap took the tint). So their light follows the
-        // sphere instead (player, 2026-10-13): an orange light and halo, the body left untinted (its cap stays black).
+        // A pedestal lamp's sphere is orange in the model and takes no tint: its light matches.
         private static readonly Color PedestalLampHalo = new Color(1.00f, 0.40f, 0.00f);
-
 
         // The halo sits at bouyLight/LobbyFlare/LobbyFlareMesh, two levels under the light.
         private static bool UnderBuoyLight(Transform transform)
@@ -322,11 +276,7 @@ namespace BigWalkArchipelago.Core
             return false;
         }
 
-        // ------------------------------------------------------------------
-        // Gadgets (C2)
-        // ------------------------------------------------------------------
-
-        // One colour per object, as the lamps, the same on every machine (player, 2026-10-27).
+        // One colour per object, as the lamps, the same on every machine.
         private static bool PaintIfGadget(GameObject root, string key)
         {
             var row = Array.FindIndex(GadgetKinds, names => StartsWithAny(root.name, names));
@@ -348,7 +298,7 @@ namespace BigWalkArchipelago.Core
                 renderer.SetPropertyBlock(block);
             }
 
-            // A helper would write its own block over ours (the walkie-talkie's WalkieColour): its tints too.
+            // A helper would write its own block over ours (WalkieColour): its tints are set too.
             foreach (var helper in root.GetComponentsInChildren<PropertyBlockHelper>(true))
             {
                 var settings = helper != null ? helper.colorSettings : null;
@@ -357,7 +307,7 @@ namespace BigWalkArchipelago.Core
                 var changed = false;
                 for (var i = 0; i < settings.Length; i++)
                 {
-                    // An element of an IL2CPP struct array comes back as a copy (ReceivedItemSpawner).
+                    // An element of an IL2CPP struct array comes back as a copy.
                     var setting = settings[i];
                     if (setting.propertyName != "_TintColor" && setting.propertyName != "_Tint")
                         continue;
@@ -384,10 +334,6 @@ namespace BigWalkArchipelago.Core
             return true;
         }
 
-        // ------------------------------------------------------------------
-        // Lasers
-        // ------------------------------------------------------------------
-
         private const string LaserName = "LaserProp";
         private static readonly string[] GlowColours = { "_TintColor", "_MainColor", "_BaseColor", "_Color", "_EmissionColor" };
 
@@ -410,13 +356,11 @@ namespace BigWalkArchipelago.Core
                 if (material.name.StartsWith("hhVertexColors", StringComparison.Ordinal)
                     && !material.name.StartsWith("hhVertexColorsEmissive", StringComparison.Ordinal))
                 {
-                    // The body, as every gadget's.
                     block.SetColor("_TintColor", colour.body);
                 }
                 else if (renderer.name != "laser")
                 {
-                    // The beam, the dot: what the shader has of these takes the bright colour. Not the tip, whose vertex
-                    // colours take it (RecolourLaserPart): a tint on top would darken it.
+                    // Not the tip: its vertex colours are set, and a tint on top would darken it.
                     foreach (var property in GlowColours)
                     {
                         if (material.HasProperty(property))
@@ -432,11 +376,7 @@ namespace BigWalkArchipelago.Core
                     line.endColor = colour.halo;
                 }
 
-                // MEASURED 2026-10-20 (colour probe, the lasers still red): the beam is a mesh "Beam" drawn by
-                // househouse/laser, whose only colour property is _EmissionColor (black), and the tip "laser" is
-                // hhVertexColorsEmissive, its tint white: the red is in the meshes' vertex colours, or in the shader.
-                // Their vertex colours are written when the mesh can be read; else the beam takes a plain unlit
-                // material of the seed's colour.
+                // The lasers' red is in their meshes' vertex colours, not in a shader property.
                 if (renderer.name == "Beam" || renderer.name == "laser")
                     RecolourLaserPart(renderer, colour.halo);
             }
@@ -460,8 +400,7 @@ namespace BigWalkArchipelago.Core
         private const int TubeSides = 6;
         private const int TubeRings = 69;
 
-        // A tube along the bounds' Y, from its top to its bottom, as wide as they are, its vertices one colour. The
-        // game's own red is (204, 7, 2): about 0.8 of a full channel, so the colour is brought to the same brightness.
+        // The game's red is about 0.8 of a full channel, so the colour is brought to that level.
         private static Mesh BeamTube(Bounds bounds, Color colour)
         {
             var max = Mathf.Max(colour.r, Mathf.Max(colour.g, colour.b));
@@ -580,12 +519,7 @@ namespace BigWalkArchipelago.Core
                 }
             }
 
-            // The beam keeps the game's own: househouse/laser is what stretches it to where it points (_distanceScalar,
-            // _thicknessScalar), and under any other shader it vanished (2026-10-20). Its _EmissionColor, on a copy of its material (2026-10-20): unchanged; with _Emission at 0 the beam goes
-            // black, so the shader is the mesh's vertex colour times _Emission. Read from the game's data (UnityPy, the
-            // same day): the mesh "laser" is a thin six-sided tube along -Y (radius 0.005, 0 to -0.375, 69 rings), every
-            // one of its 962 vertices (204, 7, 2), the red. So the beam keeps the game's shader, which stretches it,
-            // and takes a tube of the mod's own, built here to the same bounds, its vertices the laser's colour.
+            // Keeps househouse/laser, which stretches the beam; it vanishes under other shaders.
             if (renderer.name == "Beam")
             {
                 if (filter != null && mesh != null)
@@ -593,9 +527,7 @@ namespace BigWalkArchipelago.Core
                 return;
             }
 
-            // Unreadable (measured 2026-10-20): the tip takes a plain glowing material of the colour. Standard, as the
-            // laser's own Cube has: it ignores the vertex colours, where the red is. Not Particles/Standard Unlit,
-            // tried first: it multiplies its colour by them, and the lasers stayed red.
+            // Unreadable mesh: Standard ignores the red vertex colours, Particles Unlit does not.
             if (!_plainLooked)
             {
                 _plainLooked = true;
@@ -614,12 +546,7 @@ namespace BigWalkArchipelago.Core
             renderer.sharedMaterial = plain;
         }
 
-        // ------------------------------------------------------------------
-        // Firework launchers (C2)
-        // ------------------------------------------------------------------
-
-        // The towers' launchers keep their own red, yellow, blue and green: the other four never take those (player,
-        // 2026-10-13), but another of the seed's colours, or of the whole palette if the seed has none other.
+        // The towers' launchers keep their own colours, and the other launchers never take those.
         private static readonly string[] TowerColours = { "Red", "Yellow", "Blue", "Green" };
 
         private static (string name, Color body, Color halo) FireworkColour(string landmark)
@@ -680,7 +607,7 @@ namespace BigWalkArchipelago.Core
                         var settings = helper.colorSettings;
                         for (var i = 0; i < settings.Length; i++)
                         {
-                            // An element of an IL2CPP struct array comes back as a copy (ReceivedItemSpawner).
+                            // An element of an IL2CPP struct array comes back as a copy.
                             var setting = settings[i];
                             if (setting.propertyName != property)
                                 continue;
@@ -707,11 +634,7 @@ namespace BigWalkArchipelago.Core
             return count;
         }
 
-        // ------------------------------------------------------------------
-        // Flare guns
-        // ------------------------------------------------------------------
-
-        // A gun's place in the seed's draw: base 0, Blue 1, Green 2, Yellow 3 (the apworld's items).
+        // A gun's place in the seed's draw: base 0, Blue 1, Green 2, Yellow 3.
         private static int FlareGunSlot(string name)
         {
             if (name.StartsWith("FlareGunPropBlue", StringComparison.Ordinal))
@@ -744,7 +667,7 @@ namespace BigWalkArchipelago.Core
                 if (settings == null || settings.Length == 0)
                     continue;
 
-                // An element of an IL2CPP struct array comes back as a copy (ReceivedItemSpawner).
+                // An element of an IL2CPP struct array comes back as a copy.
                 var setting = settings[0];
                 setting.color = body;
                 settings[0] = setting;

@@ -2,13 +2,7 @@ using System;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Pure diagnostic (no writes). For mechanisms whose Peck chain leads to
-    // no usable TrackedPeckState/savableSystem (e.g. the Gauntlet, cf.
-    // big-walk-archipelago-notes.md — NHoldSucess is NotSavable and nothing
-    // downstream is visible from a PeckCombinator/PeckSwitch), the only
-    // reliable way to find the real key is to compare a full SaveManager
-    // dump before/after the in-game action (e.g. triggering the bell) rather
-    // than guessing via the object graph.
+    // Full SaveManager dump, to diff before and after an action whose save key is not visible.
     internal static class DebugSaveDump
     {
         internal static void DumpAll()

@@ -10,24 +10,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Starts the loopback guest from inside the host, on a key: a co-op test
-    // becomes "host a world, press Ctrl+L", with no terminal involved. It is
-    // the same launch as tools/launch-guest.ps1 — keep the two in step — and
-    // for the same reasons, which that script's header gives in full:
-    //
-    // - SteamAppId / SteamGameId set, or SteamManager.Awake's
-    //   SteamAPI_RestartAppIfNecessary quits the guest and asks Steam, which
-    //   refuses a second launch;
-    // - no DOORSTOP_* variables passed on: this process carries Doorstop's own,
-    //   and a child that inherits them can skip loading BepInEx;
-    // - windowed, with the Screenmanager values in PlayerPrefs (which both
-    //   instances share) put back by a hidden watcher once the guest exits.
-    //   The watcher is its own process so that it still runs if the host is
-    //   closed first.
-    //
-    // Started through the shell rather than with redirected handles, so the
-    // guest's own boot output does not land in anything of the host's; the
-    // environment is changed in this process for the length of the call.
+    // Starts a loopback guest on Ctrl+L; same launch as tools/launch-guest.ps1, keep them in step.
     internal static class LoopbackLauncher
     {
         private const string Tag = "[" + nameof(LoopbackLauncher) + "]";
@@ -37,8 +20,7 @@ namespace BigWalkArchipelago.Debug
         private const int MaxGuests = 3;
         private const string PrefsKey = @"Software\House House\Big Walk";
 
-        // withoutTheMod: the guest runs --bwap-vanilla, i.e. only the join —
-        // the stand-in for a PlayStation or Xbox player (roadmap X2).
+        // withoutTheMod: the guest runs --bwap-vanilla, only the join.
         internal static void LaunchGuest(bool withoutTheMod)
         {
             using var self = Process.GetCurrentProcess();
@@ -58,8 +40,7 @@ namespace BigWalkArchipelago.Debug
                 return;
             }
 
-            // Every guest after the first sends the host an identifier of its own
-            // (LoopbackGuest.Index), or the host would see two players with one.
+            // A distinct id per guest, or the host would see two players as one.
             var index = running + 1;
 
             var exe = Environment.ProcessPath;
@@ -71,7 +52,7 @@ namespace BigWalkArchipelago.Debug
                 + (hosting ? " " + LoopbackGuest.JoinArgument : "")
                 + $" -logFile \"{unityLog}\" -screen-fullscreen 0 -screen-width {Width} -screen-height {Height}";
 
-            // A BepInEx-guest folder beside BepInEx gives the guest its own plugins (another player's mods).
+            // A BepInEx-guest folder beside BepInEx gives the guest its own plugins.
             var guestLoader = Path.Combine(gameDir, "BepInEx-guest", "core", "BepInEx.Unity.IL2CPP.dll");
             if (!withoutTheMod && File.Exists(guestLoader))
                 arguments += $" --doorstop-target-assembly \"{guestLoader}\"";
@@ -129,13 +110,10 @@ namespace BigWalkArchipelago.Debug
                 StartRestoreWatcher(guest.Id, snapshot);
         }
 
-        // Written as the JSON tools/launch-guest.ps1 writes, so the watcher
-        // below restores it the way that script's own watcher, measured on
-        // 2026-09-26, does.
+        // Same JSON as tools/launch-guest.ps1, so the watcher restores it the same way.
         private static string SnapshotScreenSettings()
         {
-            // The game ships for Windows only; the guard is what tells the
-            // compiler so (CA1416 on every registry call otherwise).
+            // Tells the compiler the registry calls are Windows only (CA1416).
             if (!OperatingSystem.IsWindows())
                 return null;
 
@@ -184,7 +162,7 @@ namespace BigWalkArchipelago.Debug
             var file = snapshotFile.Replace("'", "''");
             var script =
                 $"$p = Get-Process -Id {guestId} -ErrorAction SilentlyContinue; if ($p) {{ $p.WaitForExit() }}\n"
-                // Up to three guests share these settings: put back once the last one is gone.
+                // The guests share these settings: put back once the last one is gone.
                 + "do { Start-Sleep -Seconds 2; $g = @(Get-CimInstance Win32_Process -Filter \"Name='Big Walk.exe'\" -ErrorAction SilentlyContinue | "
                 + "Where-Object { $_.CommandLine -like '*--bwap-guest*' -or $_.CommandLine -like '*--bwap-vanilla*' }) } while ($g.Count -gt 0)\n"
                 + $"if (-not (Test-Path '{file}')) {{ exit 0 }}\n"

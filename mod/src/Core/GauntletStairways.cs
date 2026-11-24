@@ -5,30 +5,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The Silent Gauntlet's stairways as Archipelago items (`gauntlet_mode:
-    // locked_stages`, 0.1.3).
-    //
-    // What the game does, measured on 2026-10-03 (the Keypad 5 dump). Each of
-    // the seven stages, `Level0..6` under `SilentGauntlet 2Player/Positioner`,
-    // has two doors. Solving the stage's puzzle writes the system
-    // `GauntletChamber<N>` and opens a wall inside the stage; that write is
-    // the stage's check, reported like a radio station's (SaveValuePatch). The
-    // stairway out of the stage, `GourdTower_Stairs/GourdTower_Gate All Hold`,
-    // opens when its buttons are held together: the TrackedPeckState
-    // `GourdTowerGateNetworking` goes 0 to 1. Nothing saves it.
-    //
-    // So, while the slot says `locked_stages`:
-    //
-    //   - a stairway's state going up is refused until its item has arrived
-    //     (Patches/GauntletStairwayHoldPatch), whatever asks, and so is the
-    //     wall inside the stage that the puzzle opens;
-    //   - its item sets the state to 1 and is remembered in the save
-    //     (`ap_gauntlet_<N>`), because items already applied are not replayed;
-    //   - the state is not saved by the game, so every granted stairway is
-    //     opened again whenever a world is up (GauntletStairwayEnforcer).
-    //
-    // Host only, like every item: a guest's stairway is the server's, and its
-    // state reaches them over the network.
+    // Holds the Gauntlet stairways shut until their items arrive (`locked_stages`).
     internal static class GauntletStairways
     {
         private const string KeyPrefix = "ap_gauntlet_";
@@ -37,8 +14,7 @@ namespace BigWalkArchipelago.Core
         private const string WallPath = "GourdTower_Gate Challenge Complete";
         private const string GauntletPath = "SilentGauntlet";
 
-        // Stage N's puzzle system, in stage order: the level a system opens is
-        // its position here.
+        // The level a system opens is its position here.
         internal static readonly SavableSystem[] Chambers =
         {
             SavableSystem.GauntletChamber0,
@@ -50,56 +26,34 @@ namespace BigWalkArchipelago.Core
             SavableSystem.GauntletChamber6,
         };
 
-        // The two gates of each stage, found in the scene by name and path.
-        // GateByLevel is the stairway, which the buttons opened in the game.
-        // WallByLevel is the wall inside the stage, which the puzzle opens: it
-        // is held shut like the stairway, because a wall that opened while the
-        // way on stayed closed would look like progress that is not. Its item
-        // opens it once the puzzle is solved, or at once when the puzzles are
-        // not required.
+        // The wall inside a stage is held too, or it would look like progress that is not.
         private static readonly TrackedPeckState[] GateByLevel = new TrackedPeckState[7];
         private static readonly TrackedPeckState[] WallByLevel = new TrackedPeckState[7];
 
-        // Instance id of every gate or wall found, and the level it belongs to.
         private static readonly Dictionary<int, int> LevelByInstance = new();
 
-        // Instance ids already looked at and found not to be a gate, so the
-        // patch does not read the same state's name twice.
         private static readonly HashSet<int> NotAGate = new();
 
-        // From slot_data (`gauntlet_puzzles_required`): whether the puzzle is
-        // still needed to open a stage's wall.
         private static bool _puzzlesRequired = true;
 
-        // Looking for the gates reads every saved state of the world, so a gate
-        // that cannot be found is looked for again only now and then.
+        // Finding the gates reads every saved state of the world, so retry only now and then.
         private const float DiscoverIntervalSeconds = 10f;
         private static float _nextDiscoverAt;
 
-        // The pseudo-need PuzzleNeedHider files the stairway buttons under. It
-        // is not one of PuzzleNeeds' own, so no item, ledger or overlay line
-        // belongs to it: whether it is hidden is ButtonsHidden.
+        // Not one of PuzzleNeeds' own: no item, ledger or overlay line belongs to it.
         internal const string ButtonsNeed = "gauntlet_stairs";
 
         private static bool _mirrored;
         private static bool _partsLocked;
         private static bool _partsMirrored;
 
-        // False until slot_data has said so: nothing is held on the strength
-        // of a list that has not arrived, and a guest never holds anything.
+        // False until slot_data arrives; a guest never holds anything.
         internal static bool Enabled { get; private set; }
 
-        // The stairway buttons are gone wherever the stages are locked: on the
-        // host from slot_data, on a guest because its host said so.
         internal static bool ButtonsHidden => Enabled || _mirrored;
 
-        // The parts of the stages' puzzles are hidden until their item arrives
-        // (PuzzleNeedHider) wherever the slot counts on them, in either Gauntlet
-        // mode (`lock_gauntlet_needs`).
         internal static bool PartsHidden => _partsLocked || _partsMirrored;
 
-        // Guest: the host's snapshot says whether the stages, and their parts,
-        // are locked.
         internal static void ApplyFromHost(bool lockedStages, bool partsLocked)
         {
             _partsMirrored = partsLocked;
@@ -110,7 +64,6 @@ namespace BigWalkArchipelago.Core
             _mirrored = lockedStages;
         }
 
-        // The guest left the host: whatever it was told stops being true.
         internal static void ForgetMirror()
         {
             _mirrored = false;
@@ -137,9 +90,7 @@ namespace BigWalkArchipelago.Core
             Enforce();
         }
 
-        // The world went away: its gates went with it. The slot's setting did
-        // not, because the Archipelago connection outlives a return to the
-        // menu, and hosting the same save again does not say it a second time.
+        // The slot's setting stays: the connection outlives a return to the menu.
         internal static void ForgetGates()
         {
             LevelByInstance.Clear();
@@ -149,7 +100,6 @@ namespace BigWalkArchipelago.Core
             _nextDiscoverAt = 0f;
         }
 
-        // A save hosted with Archipelago switched off is vanilla.
         internal static void Forget()
         {
             Enabled = false;
@@ -162,22 +112,12 @@ namespace BigWalkArchipelago.Core
             return SaveManager.GetIntValue(KeyPrefix + level, 0, false) != 0;
         }
 
-        // Whether this stage's puzzle has been solved: the system its solving
-        // writes, which is also the stage's check.
         private static bool PuzzleDone(int level)
         {
             return SaveManager.GetIntValue(Chambers[level].ToString(), 0, false) != 0;
         }
 
-        // The patch's question, asked on every state change of the game, so it
-        // is a set lookup and nothing else. It covers a stage's stairway and its
-        // wall alike.
-        //
-        // A gate is recognised here on its first state change and not only when
-        // Discover finds it: the game saves a solved puzzle and opens that
-        // stage's wall itself while a world loads, which is before anything has
-        // looked for the gates (found 2026-10-03: a wall open after a reload
-        // whose item had not arrived).
+        // Runs on every state change; gates are learnt here because walls open during load.
         internal static bool IsHeldShut(TrackedPeckState state, out int level)
         {
             level = -1;
@@ -200,15 +140,11 @@ namespace BigWalkArchipelago.Core
             return Enabled && !IsGranted(level) || IsHeldByObjectives(level, state);
         }
 
-        // `lock_endings` (ROADMAP G5): the stairway to the bell chamber, the entry of Big Goodbye,
-        // stays shut until the other objectives are done. Only the stairway itself, and only on the
-        // host, whose gate state the guests follow.
+        // `lock_endings`: the stairway to the bell chamber waits for the other objectives.
         private static bool IsHeldByObjectives(int level, TrackedPeckState state) =>
             level == Chambers.Length - 1 && NetworkServer.active && ObjectiveBoard.HoldsTheLastStairway
             && ObjectiveBoard.Locked("big_goodbye") && state != null && GateByLevel[level] == state;
 
-        // The lowest stage whose stairway item has not arrived, for a progressive door; -1 when all
-        // seven have.
         internal static int LowestShut()
         {
             for (var level = 0; level < Chambers.Length; level++)
@@ -234,26 +170,19 @@ namespace BigWalkArchipelago.Core
             return true;
         }
 
-        // A save rebound to another seed replays every item from scratch, so
-        // stairways granted under the old binding go with it.
+        // A save rebound to another seed replays every item, so the old ledger goes.
         internal static void ClearLedger()
         {
             for (var level = 0; level < Chambers.Length; level++)
                 SaveManager.SetIntValue(KeyPrefix + level, 0);
         }
 
-        // Brings every stage to what the slot says: opened where its item has
-        // arrived, shut where it has not. Cheap enough to run every couple of
-        // seconds, which is how a gate whose object loads late still follows,
-        // and how a wall the game opened on its own while the world loaded is
-        // put back when its item is missing. Does nothing when the slot does
-        // not lock the stages.
+        // Cheap enough to run every couple of seconds, which also catches gates that load late.
         internal static void Enforce()
         {
             if (!NetworkServer.active || !WorldManager.isReadyForEffects)
                 return;
 
-            // The objectives' hold on the last stairway, whether or not the stages are locked.
             if (!Enabled)
             {
                 if (ObjectiveBoard.HoldsTheLastStairway && ObjectiveBoard.Locked("big_goodbye"))
@@ -275,8 +204,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Only a gate that is open is touched, and going down is always let
-        // through by the hold patch.
+        // The hold patch always lets a lowering through.
         private static void Shut(int level)
         {
             ShutGate(GateByLevel[level], $"Stage {level + 1} stairway");
@@ -296,15 +224,11 @@ namespace BigWalkArchipelago.Core
         {
             OpenGate(GateByLevel[level], $"Stage {level + 1} stairway");
 
-            // With the puzzles required, the wall waits for its puzzle: solved
-            // before the item came, it opens now; solved after, the game opens
-            // it itself, the hold being lifted.
+            // Solved before the item, the wall opens now; solved after, the game opens it.
             if (!_puzzlesRequired || PuzzleDone(level))
                 OpenGate(WallByLevel[level], $"Stage {level + 1} wall");
         }
 
-        // Debug key (Ctrl + 8): asks the last stairway, to the bell chamber, to open, the way any
-        // opening of it is asked (a state raise), to see whether the objectives' hold refuses it.
         internal static void DebugOpenLast()
         {
             Discover();
@@ -329,7 +253,6 @@ namespace BigWalkArchipelago.Core
             Plugin.Log.LogInfo($"[{nameof(GauntletStairways)}] {what} opened.");
         }
 
-        // Finds the gates, once per world and again when one is gone.
         private static void Discover()
         {
             var missing = false;
@@ -361,8 +284,6 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Whether this state is one of the stages' gates, and which stage's.
-        // Both kinds are held and both are remembered by level.
         private static bool TryRegister(TrackedPeckState state, out int level)
         {
             level = -1;

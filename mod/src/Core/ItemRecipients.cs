@@ -3,25 +3,12 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // Who a received item goes to (2026-09-25, from the first alpha: "the host
-    // should not get every item — other players would like to receive items
-    // too").
-    //
-    // The rule is the players', word for word: someone whose hands are free,
-    // and if nobody's are, anyone — who then drops what they hold. Among
-    // those, whoever has been given the fewest items this session, ties
-    // broken at random. The count lives in memory only, as asked: it is about
-    // taking turns during a session, not a record to keep.
-    //
-    // Host only: it reads every player's hands, which only the server knows
-    // truthfully, and it is the host that spawns and hands over.
+    // Picks who gets a received item: free hands first, then fewest items this session. Host only.
     internal static class ItemRecipients
     {
         private static readonly Dictionary<uint, int> GivenThisSession = new();
 
-        // Players already promised an item that has not reached their hands
-        // yet: not free, whatever their hands say this frame, so a burst of
-        // arrivals spreads out instead of piling onto the same pair of hands.
+        // Promised but not yet delivered counts as busy, so a burst spreads over several players.
         private static readonly HashSet<uint> Promised = new();
 
         internal static PlayerCharacter Choose()

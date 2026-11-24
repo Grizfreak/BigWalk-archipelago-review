@@ -6,14 +6,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // Zone locks (ROADMAP R12, 0.7.1): the island's gadgets by the zone of the nearest coloured tower, each zone's an
-    // item (apworld `zone_locks`). Until a zone's item arrives, its gadgets are off every machine's map; the lamps and
-    // light switches are only out of logic, so nothing here touches them.
-    //
-    // The same shape as PuzzleNeeds: only the host has slot_data and the items, keeps what arrived in the save
-    // (`ap_zone_<item id>`, items already applied are not replayed) and tells the guests the gadgets still locked in
-    // its snapshot (ModChannel); every machine hides its own copies, checked again every second since Mirror switches a
-    // scene object back on when it spawns it.
+    // `zone_locks`: gadgets stay off every map until their zone's item arrives, as for PuzzleNeeds.
     internal static class ZoneLocks
     {
         private const string Tag = "[" + nameof(ZoneLocks) + "]";
@@ -125,7 +118,7 @@ namespace BigWalkArchipelago.Core
             Locked.Clear();
         }
 
-        // Every frame (Core/Traps), every machine; the work once a second.
+        // Every frame, work once a second: Mirror re-enables a scene object when it spawns it.
         internal static void Tick()
         {
             if (Time.unscaledTime < _nextTick)
@@ -154,7 +147,7 @@ namespace BigWalkArchipelago.Core
             if (Locked.Count == 0 && Hidden.Count == 0)
                 return;
 
-            // Read again, every five seconds at most, while a locked gadget is missing (a guest's arrive late).
+            // Reread at most every 5 s while a locked gadget is missing: a guest's arrive late.
             if (_props == null || Time.unscaledTime >= _nextRefresh && Locked.Any(guid => !_props.ContainsKey(guid)))
             {
                 _props = IslandGadgets();
@@ -209,7 +202,7 @@ namespace BigWalkArchipelago.Core
                 Plugin.Log.LogInfo($"{Tag} {shown} gadget(s) back on the map: their zone arrived.");
         }
 
-        // The island's own gadgets by guid (not the mod's clones, which copy the guid).
+        // The island's own gadgets by guid, not the mod's clones, which copy the guid.
         private static Dictionary<string, Prop> IslandGadgets()
         {
             var props = new Dictionary<string, Prop>();

@@ -1,4 +1,4 @@
-"""R8, the custom tiles: `custom_tiles` and `custom_tile_weights` (tiles.draw)."""
+"""The custom tiles: `custom_tiles` and `custom_tile_weights` (tiles.draw)."""
 
 from random import Random
 
@@ -32,7 +32,7 @@ class TestDraw(BigWalkTestBase):
         self.assertEqual(tiles.matching(["Celeste 64", "The Legend of Zelda", "doom"]),
                          ["pelly", "strawberry", "triforce", "rune"])
         self.assertIn("pokeball", tiles.matching(["Pokemon Red and Blue"]))
-        # The names the main Archipelago repository gives them (2026-10-15).
+        # The names the main Archipelago repository gives them.
         self.assertEqual(tiles.matching(["Starcraft 2", "Old School Runescape", "TUNIC"]),
                          ["pelly", "lodo", "stones_above_banner", "tunic"])
         for game in ("A Link to the Past", "Ocarina of Time", "Links Awakening DX", "The Wind Waker", "SMZ3"):
@@ -77,7 +77,7 @@ class TestDraw(BigWalkTestBase):
         files = [path for path in folder.glob("*/*.png") if path.parent.name != "source"]
         names = [path.stem for path in files]
         self.assertEqual(len(names), len(set(names)))
-        # What the mod's PNG reader takes (mod/src/Core/PngReader.cs): 512 x 512, 8-bit RGBA, not interlaced.
+        # What the mod's PNG reader takes: 512 x 512, 8-bit RGBA, not interlaced.
         import struct
         for path in files:
             header = path.read_bytes()[16:29]
@@ -115,7 +115,7 @@ class TestCustomOnly(BigWalkTestBase):
 
 
 class TestChoicesWithMatchingGames(BigWalkTestBase):
-    """The default mode, Big Walk alone: no game matches, but the chosen drawing is shown (and pelly may be drawn)."""
+    """The default mode, Big Walk alone: no game matches, but the chosen drawing is shown."""
 
     options = {"custom_tile_choices": ["knight"]}
 

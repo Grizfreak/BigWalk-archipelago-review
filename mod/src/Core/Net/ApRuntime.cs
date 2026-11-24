@@ -6,21 +6,10 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Net
 {
-    // The Archipelago client's main loop, and the only place in the mod where
-    // network state meets the game.
-    //
-    // Everything here runs on Unity's main thread, by construction: ApConnection
-    // parks incoming items in a concurrent queue and flips a status flag, and
-    // this Update() is what actually reads them and calls into IL2CPP. The
-    // split is not stylistic — touching a game object from one of the client
-    // library's network threads is a native crash with no managed stack.
-    //
-    // Host-only, like every write in this mod: Big Walk's save belongs to the
-    // host (Mirror [Server] authority), so a non-host client has nothing
-    // truthful to report and nothing it is allowed to apply.
+    // Client main loop, host only. Items are applied on the main thread, never from the socket.
     internal class ApRuntime : MonoBehaviour
     {
-        // Constructor required by Il2CppInterop for any type injected into IL2CPP.
+        // Required by Il2CppInterop for any type injected into IL2CPP.
         public ApRuntime(IntPtr ptr) : base(ptr)
         {
         }
@@ -28,57 +17,31 @@ namespace BigWalkArchipelago.Core.Net
         private const float RetryDelaySeconds = 10f;
         private const float PollIntervalSeconds = 1f;
 
-        // Applying an item can spawn a physical prop, and a reconnection
-        // replays every item the slot ever received — on the new-save
-        // recovery path that is the entire run at once. Spread over frames
-        // so a reconnect never lands as a multi-second freeze. (The
-        // session-start gourd restore paces itself separately, one gourd per
-        // GourdRestoreInterval — see RestoreLooseGourds.)
+        // A reconnect replays every item, so spread them over frames to avoid a freeze.
         private const int MaxItemsPerFrame = 4;
 
-        // How long to let the server's replay arrive before trusting an
-        // empty item queue to mean "that was all of it".
+        // How long to wait for the server's replay before an empty queue means "all done".
         private const float ReplayGraceSeconds = 3f;
 
-        // How long a connection attempt may go unanswered before it is
-        // written off. The client library gives no timeout of its own
-        // that can be relied on here.
+        // The client library has no reliable timeout of its own.
         private const float ConnectTimeoutSeconds = 15f;
 
-        // ALL state below is static, and that is not laziness. This is a type
-        // injected into IL2CPP: the managed wrapper around the component is
-        // not guaranteed to be the same object for the component's whole
-        // life, so per-instance fields can silently come back reset. Most of
-        // the mod gets away with that (ArchDoorUnlocker's one "done" bool);
-        // here it would be a data-loss bug, because losing _seenItemCount
-        // mid-session makes the next replay re-apply items already applied —
-        // duplicating every gourd the slot ever received. Same reasoning as
-        // CosmeticMonumentFillTracker, which is static throughout for the
-        // same reason.
 
-        // Fed by ApReporter from the detection patches, drained below. A
-        // queue rather than a direct send so that a check reported while
-        // disconnected is never dropped on the floor mid-frame.
+        // Queued so a check made while disconnected is not lost.
         private static readonly ConcurrentQueue<string> PendingLocationNames = new();
 
         private static readonly ApConnection Connection = new();
 
-        // Whether the session hosted right now is connected to a seed, whose peg tiles are then
-        // shuffled. Read live rather than kept by the shuffler: a static set by one seed survived
-        // into the next save hosted, Archipelago or not (2026-10-05).
         internal static void ScoutAsHints(long[] locationIds) => Connection.ScoutAsHints(locationIds);
 
-        // The seed's slot data; null until a login has succeeded.
         internal static ApSlotData SlotData => Connection.SlotData;
 
-        // R7: the hint boards read the hints, the items received and the checks done (Core/HintBoards).
         internal static ApConnection Current => Connection;
 
         internal static bool ShufflesPegTiles =>
             Connection.Status == ApConnection.ConnectionStatus.Connected && Connection.SlotData != null;
 
-        // The host turned DeathLink on or off in the settings: the tag follows at once.
-        // A trap of the item pool that has just reached this world, for the other games (TrapLink).
+        // A trap from this world's pool, sent to the other games (TrapLink).
         internal static bool SendTrapLink(string trapName) => Connection.SendTrapLink(trapName);
 
         internal static void ApplyDeathLinkSetting()
@@ -87,12 +50,10 @@ namespace BigWalkArchipelago.Core.Net
             Plugin.Log.LogInfo($"[{nameof(ApRuntime)}] DeathLink {(Traps.DeathLinkOn ? "on (as the seed says)" : "off")} in the settings.");
         }
 
-        // A location's name as the server has it ("Blindfold Catwalk Puzzle"), or its id.
         internal static string LocationName(long locationId) => Connection.LocationName(locationId);
 
         private static float _lastDeathLink = -10f;
 
-        // The debug key. The host holds the connection; a guest has none.
         internal static void SendDeathLink()
         {
             if (Time.unscaledTime - _lastDeathLink < 3f)
@@ -102,8 +63,6 @@ namespace BigWalkArchipelago.Core.Net
             SendDeathLink("pressed the DeathLink key", announce: true);
         }
 
-        // A DeathLink for the rest of the multiworld (Core/Traps: its triggers). A line on the
-        // screen for each (player, 2026-10-09: the first playtest could not tell it worked).
         internal static void SendDeathLink(string what, bool announce = false)
         {
             var cause = $"{Connection.SlotName} {what}";
@@ -116,22 +75,15 @@ namespace BigWalkArchipelago.Core.Net
             SessionJournal.Write("deathlink", $"{(sent ? "sent" : "not sent")} ({cause})");
         }
 
-        // The startup burst is through: items, traps among them, now arrive live.
         internal static bool SessionSettled => _looseGourdsRestored;
         private static readonly List<long> SendBuffer = new();
 
-        // Position in the slot's ordered received-items list. _seen counts
-        // what this session has pulled off the queue; _applied is what this
-        // SAVE has already materialized (ApItemCursor). The gap between them
-        // is exactly the replay the server sends on every connection.
+        // _seen counts this session's queue; _applied is what this save already has (ApItemCursor).
         private static int _seenItemCount;
         private static int _appliedItemCount;
 
-        // Loose-gourd reconciliation, per connection (see RestoreLooseGourds).
         private static bool _worldWasReady;
 
-        // Same predicate as _worldWasReady, but followed whether or not
-        // Archipelago is on (see ReleasePendingChecksWithTheWorld).
         private static bool _worldWasPresent;
         private static bool _looseGourdsRestored;
         private static bool _looseRestoreBlockedLogged;
@@ -142,14 +94,7 @@ namespace BigWalkArchipelago.Core.Net
         private static float _restoreTimer;
         private static float _connectedAt;
 
-        // Loose-gadget reconciliation (see RestoreLooseGadgets) — same
-        // shape as the gourd fields just above, minus a deposit sink: a
-        // filler gadget has nowhere to be "spent", so what is owed is
-        // simply "received minus spawned this session" per kind, forever,
-        // never reduced by anything the player does with the ones already
-        // out there. Player request, 2026-09-22: "you should keep them,
-        // and spawn them if restarting a room, as other gourds and keys
-        // stuff."
+        // Gadgets have no deposit sink: what is owed is "received minus spawned this session".
         private static readonly Dictionary<GadgetKind, int> _gadgetsSpawnedThisSession = new();
         private static bool _looseGadgetsRestored;
         private static bool _looseGadgetsRestoreBlockedLogged;
@@ -157,36 +102,20 @@ namespace BigWalkArchipelago.Core.Net
 
         private static int _lastReportedDepositCount = -1;
 
-        // The deposits the server remembers are turned into a budget once per
-        // connection, when a world is ready: before that the save may not be
-        // readable, and a budget made against an empty count would fill slots
-        // the save already holds.
+        // Set once a world is ready: an empty save count would refill slots the save already holds.
         private static bool _depositBudgetSet;
 
-        // The largest deposit count the server is known to hold, so that a
-        // count that has not risen is not sent again on every poll tick.
         private static int _depositsOnServer;
 
-        // Gourds the server's replay is about to hand out that belong in the
-        // monuments instead: one is not dropped at the hub for each deposit still
-        // to be put back, or the player would hold them twice, once loose and once
-        // in a slot. Only the startup burst skips them (`_looseGourdsRestored`).
+        // Replayed gourds that go back into monuments instead of being dropped at the hub.
         private static int _skipGourdSpawns;
 
-        // Deposits counted on the last poll tick, kept because
-        // CosmeticMonumentFillTracker.GetFilledMonumentCount scans every
-        // entry in the save and three callers now want the number — the
-        // deposit checks, the goal, and the line on screen, which OnGUI
-        // would otherwise ask for several times a frame.
+        // Cached on the poll tick: GetFilledMonumentCount scans the whole save.
         private static int _depositCount;
         internal static int DepositCount => _depositCount;
 
         private static bool _goalSent;
 
-        // Whether this build knows how to detect the slot's goal at all.
-        // Split out from _goalSent, which used to carry both meanings by
-        // being pre-set to true for an unknown goal: harmless while nothing
-        // read it, a lie the moment the overlay started saying "reached".
         private static bool _goalDetectable;
         private static float _retryTimer;
         private static float _connectingSince;
@@ -194,56 +123,28 @@ namespace BigWalkArchipelago.Core.Net
         private static bool _disabledNoticeLogged;
         private static string _lastConnectProblem = string.Empty;
 
-        // What Core/Net/ApStatusOverlay puts on screen, or null when there
-        // is nothing worth saying. Decided here rather than in the overlay
-        // so OnGUI — which Unity calls several times per frame — does no
-        // work in the common case, and so "is this worth interrupting the
-        // player for" stays one decision in one place.
+        // Decided here, not in the overlay, since OnGUI runs several times per frame.
         internal static string StatusMessage { get; private set; }
         internal static bool StatusIsWarning { get; private set; }
 
-        // What this slot is playing for, under the connection line. Player
-        // request (2026-09-22), in two steps: first the deposit count, which
-        // is the one goal with no moment of arrival to announce and so has
-        // to say where you are all of the time — then every other goal too,
-        // because "what am I even trying to do here" is a question a seed
-        // handed to a co-op group two weeks ago cannot answer by itself.
         internal static string GoalLine { get; private set; }
 
-        // True only for a goal this build cannot detect, which is worth the
-        // warning colour: the seed is playable and its goal will never be
-        // reported. It was a log warning nobody reads until now.
         internal static bool GoalLineIsWarning { get; private set; }
 
         internal static void QueueLocation(string locationName)
         {
-            // Dropped outright on a non-host. Its detection patches can
-            // still fire, but it never connects and so never drains this
-            // queue — every check it saw would sit there for the whole
-            // session, growing without bound and reported by nobody. The
-            // host's own client is what reports these.
+            // A non-host never connects, so its queue would only grow.
             if (string.IsNullOrEmpty(locationName) || !NetworkServer.active)
                 return;
 
-            // And with Archipelago off: such a check belongs to no seed. It
-            // used to wait here all the same, and go to whichever room the
-            // process connected to next (2026-09-26: a finished vanilla save
-            // loaded with the switch off, then an Archipelago save in the
-            // same session, sent that room 59 checks in one go and got 59
-            // items back). The log line is all a check made with the switch
-            // off is for.
+            // A check made with Archipelago off belongs to no seed.
             if (!ModConfig.ArchipelagoEnabled.Value)
                 return;
 
             PendingLocationNames.Enqueue(locationName);
         }
 
-        // The world that made the checks still waiting here is going away.
-        // They belong to its save and to no other: the next world may be a
-        // different save, connected to a different room. So they go now if
-        // the socket is still that save's, and are dropped otherwise — the
-        // save keeps every one in its ap_reported_* ledger, and
-        // ResendKnownChecks replays that ledger on its next connection.
+        // Checks belong to the save going away; the ap_reported_* ledger resends them later.
         private static void ReleasePendingChecksWithTheWorld()
         {
             if (Connection.Status == ApConnection.ConnectionStatus.Connected)
@@ -259,27 +160,7 @@ namespace BigWalkArchipelago.Core.Net
                     + "them; its save resends them on its next connection.");
         }
 
-        // Puts the player's gourds back within reach, without quitting.
-        //
-        // Sweeps away every cosmetic gourd that is not in a monument and
-        // re-arms the reconciliation, which then restocks the hub with
-        // exactly what the ledger says is owed. Monument deposits are
-        // untouched, so nothing the Archipelago logic counts can be lost
-        // by pressing this.
-        //
-        // Exists because a gourd can become unreachable while the world
-        // stays loaded — the case the player raised: received inside a
-        // sealed puzzle room, which the game will not let you carry it out
-        // of. A world reload already fixes that; this makes the same fix
-        // available without one, and covers any future placement mishap
-        // the same way.
-        // Ctrl+R also brings back a stranded key, at the player's request:
-        // same promise as for a gourd, since a key already in its plinth is
-        // a check already sent and is left exactly where it is.
-        // Everything the resync does, from one of the resync stations (Core/ResyncStations): the
-        // items come back in front of the button pressed, gadgets only when its toggle says so.
-        // Only the host can: its world is the one the items live in. One at a time on the whole
-        // map, so two restocks never pull the same items two ways.
+        // Host only, one at a time on the whole map, so two restocks never pull the same items.
         internal static bool ResyncAll(Vector3? gatherAt = null, bool gadgets = true)
         {
             if (!NetworkServer.active)
@@ -310,14 +191,12 @@ namespace BigWalkArchipelago.Core.Net
             return true;
         }
 
-        // When the last resync started, and whether it took the gadgets; -1 when none is running.
         private static float _resyncSince = -1f;
         private static bool _resyncGadgets;
         private const float ResyncShortest = 3f;
         private const float ResyncLongest = 60f;
 
-        // True from a resync until everything it took has been put back (or a minute has passed,
-        // so a restock that cannot finish never locks the stations for good).
+        // Times out after a minute so a restock that cannot finish never locks the stations.
         internal static bool ResyncRunning
         {
             get
@@ -353,10 +232,7 @@ namespace BigWalkArchipelago.Core.Net
                 return false;
             }
 
-            // Refused while disconnected, and this is not caution for its
-            // own sake: the rebuild only runs on a live connection, so
-            // sweeping the gourds away now would take them and give nothing
-            // back until the server returned.
+            // The rebuild only runs on a live connection; sweeping now would give nothing back.
             if (Connection.Status != ApConnection.ConnectionStatus.Connected)
             {
                 Plugin.Log.LogWarning(
@@ -372,9 +248,7 @@ namespace BigWalkArchipelago.Core.Net
             _reconciliationLogged = false;
             _looseGourdsRestoredCount = 0;
 
-            // The gourds left in backpacks, cartons and belts still exist, so
-            // they are already spawned as far as the ledger is concerned.
-            // Zero here would restock every one of them a second time.
+            // Gourds in backpacks, cartons and belts still exist; zero would restock them twice.
             _gourdsSpawnedThisSession = keptGourds;
             _restoreTimer = 0f;
 
@@ -385,21 +259,7 @@ namespace BigWalkArchipelago.Core.Net
             return true;
         }
 
-        // The same sweep for the filler gadgets, at the player's request
-        // (2026-09-22): "it should also reset the inventories and the
-        // tracked objects — that avoids duplication and stuck objects too."
-        //
-        // It has to reset the per-session tally as well as destroy the
-        // props, because that tally is half of what RestoreLooseGadgets owes
-        // ("received minus spawned this session"). Sweeping without
-        // resetting would put nothing back; resetting without sweeping would
-        // spawn a second copy of everything already lying around. The two
-        // belong in one action, which is why this is not two methods.
-        //
-        // Held gadgets are dropped by the sweep rather than left in someone's
-        // hands: a prop destroyed out of a pair of hands leaves those hands
-        // believing they still hold it, which is exactly the stuck-object
-        // case this is meant to end.
+        // Sweep and tally reset go together: one without the other duplicates or loses gadgets.
         internal static void ResyncGadgets()
         {
             if (!NetworkServer.active || Connection.Status != ApConnection.ConnectionStatus.Connected)
@@ -407,8 +267,6 @@ namespace BigWalkArchipelago.Core.Net
 
             var removed = GadgetItemSpawner.DestroyLooseCosmeticGadgets(out var keptGadgets);
 
-            // Same reasoning as the gourds: what the sweep spared is still in
-            // the world, and the tally is half of what the restock owes.
             _gadgetsSpawnedThisSession.Clear();
             foreach (var pair in keptGadgets)
                 _gadgetsSpawnedThisSession[pair.Key] = pair.Value;
@@ -423,12 +281,7 @@ namespace BigWalkArchipelago.Core.Net
 
         private static void RefreshStatusMessage()
         {
-            // Nothing to say when Archipelago is switched off, and nothing
-            // to say to a player who is not the host: their client never
-            // connects by design, so an "disconnected" warning would be a
-            // lie.
-            // Nothing to say to a player who is not the host: their client
-            // never connects by design, so any of this would be a lie.
+            // A non-host never connects by design, so a warning would be a lie.
             if (!NetworkServer.active)
             {
                 StatusMessage = null;
@@ -438,12 +291,7 @@ namespace BigWalkArchipelago.Core.Net
 
             RefreshGoalLine();
 
-            // Switched off says so, rather than showing nothing. Silence and
-            // "connected" used to look identical, and the switch now lives on
-            // the hosting screen where it is easy to leave off — and it
-            // persists into the next launch, so a whole session can be played
-            // disconnected with no sign of it anywhere but the log. Seen
-            // happening on 2026-09-22.
+            // Otherwise a session played with the switch off shows no sign of it.
             if (!ModConfig.ArchipelagoEnabled.Value)
             {
                 StatusMessage = "Archipelago: off";
@@ -459,11 +307,6 @@ namespace BigWalkArchipelago.Core.Net
                     break;
 
                 case ApConnection.ConnectionStatus.Connected:
-                    // Shown for the whole session, not just for a few
-                    // seconds after connecting — player request, 2026-09-22.
-                    // A connection that heals itself silently is exactly the
-                    // one worth being able to confirm at a glance, and the
-                    // line is where the feed and the resync hint hang from.
                     StatusMessage = "Archipelago: connected";
                     StatusIsWarning = false;
                     break;
@@ -477,14 +320,11 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // Reads the count cached on the poll tick, never the tracker itself:
-        // this runs once a frame and the tracker walks the whole save.
+        // Uses the cached count: this runs every frame and the tracker walks the whole save.
         private static void RefreshGoalLine()
         {
             RefreshGoalLineCore();
 
-            // With a tower order (in_order, by_item): which tower takes the gourds now, or what is missing to open one
-            // (the player, 2026-10-12). One more line under the goal; the guests read it in the goal they are told.
             var towers = MonumentOrder.HudLine();
             if (towers != null)
                 GoalLine = string.IsNullOrEmpty(GoalLine) ? towers : GoalLine + "\n" + towers;
@@ -492,12 +332,7 @@ namespace BigWalkArchipelago.Core.Net
 
         private static void RefreshGoalLineCore()
         {
-            // SlotData IS NULL until a login has succeeded, and this runs from
-            // the frame the player starts hosting — unlike every other reader
-            // of it, all of which are downstream of a connection. Hosting
-            // before the room answers therefore threw here on every frame,
-            // which is how it was found (in game, 2026-09-22): the overlay
-            // never drew and the log filled with trampoline exceptions.
+            // SlotData is null until login, and this runs from the first hosting frame.
             var slotData = Connection.SlotData;
             if (slotData == null || !ModConfig.ArchipelagoEnabled.Value)
             {
@@ -505,8 +340,6 @@ namespace BigWalkArchipelago.Core.Net
                 return;
             }
 
-            // A seed with objectives (ROADMAP G5): their own line, only when the player asked for it on
-            // the overlay; the board in the world is the rest.
             if (ApObjectives.Active)
             {
                 GoalLine = ModConfig.ShowObjectives.Value ? ApObjectives.Summary() : null;
@@ -535,19 +368,12 @@ namespace BigWalkArchipelago.Core.Net
                     break;
 
                 default:
-                    // Said out loud rather than left in the log. The seed is
-                    // playable and every check works; it is only the goal
-                    // that will never be reported, which is exactly the kind
-                    // of thing nobody notices until the end of a run.
                     GoalLine = $"Goal: {slotData.Goal} - this build cannot detect it";
                     GoalLineIsWarning = true;
                     return;
             }
 
-            // "reached" means REPORTED, not merely met. For the deposit goal
-            // the count already says whether it is met, and for the other
-            // three there is nothing else on screen to confirm the server was
-            // ever told — which is the half that can fail on its own.
+            // "reached" means reported to the server, not merely met.
             GoalLine = _goalSent ? $"Goal: {goal} - reached" : $"Goal: {goal}";
             GoalLineIsWarning = false;
         }
@@ -556,38 +382,18 @@ namespace BigWalkArchipelago.Core.Net
         {
             RefreshStatusMessage();
 
-            // Once a frame, here rather than in the overlay: OnGUI runs
-            // several times per frame and stays pure presentation.
             ApNotices.Prune();
 
-            // Every frame, and ahead of the early returns: a key that has just
-            // been delivered is being pulled back to its tower by the game,
-            // and a poll once a second is far too coarse to hold it. Returns
-            // immediately when nothing has just been delivered, which is all
-            // of the time.
+            // Every frame: a delivered key is pulled back by the game, a 1s poll is too slow.
             KeyCustody.SettleDelivered();
 
-            // Every frame too, same reasoning: the lock this suppresses can
-            // be flipped by the vanilla game the instant a monument fills,
-            // and the 1s poll below was measured too coarse to hold it
-            // against a player standing right there (cf. KeyCustody.cs).
+            // The game can flip this lock the instant a monument fills; the 1s poll is too slow.
             KeyCustody.EnforceCustodyTick();
 
-            // A gourd spawned last tick and meant for the player's hands is
-            // handed over now, a frame after its spawn went out on the wire
-            // (cf. ReceivedItemSpawner.DrainPendingHandover). Ahead of the
-            // early returns too: with Archipelago off in the config, items
-            // still arrive through the debug simulators (Ctrl+I, F4), and
-            // below the return below they were spawned in front of the
-            // right player and never put in anyone's hands (loopback co-op,
-            // 2026-09-26: no "Item handed to" line in a whole test 19).
+            // Before the early returns: debug simulators deliver items with Archipelago off.
             ReceivedItemSpawner.DrainPendingHandover();
 
-            // Ahead of the early returns as well, and tracked apart from
-            // _worldWasReady below: the switch can be turned off on the
-            // hosting screen between two worlds, and a world left with
-            // checks still queued must let go of them whatever the next one
-            // is played with.
+            // Tracked apart from _worldWasReady: the switch can change between two worlds.
             var worldPresent = NetworkServer.active && WorldManager.isReadyForEffects;
             if (!worldPresent && _worldWasPresent)
                 ReleasePendingChecksWithTheWorld();
@@ -605,38 +411,22 @@ namespace BigWalkArchipelago.Core.Net
                 return;
             }
 
-            // Loose gourds do not survive a world reload, and a world reload
-            // does not require the process to restart: going back to the
-            // main menu and hosting again destroys them just the same, while
-            // the Archipelago socket stays open and every static here keeps
-            // its value. Arming the reconciliation on "a connection was
-            // established" therefore missed that case entirely — it has to
-            // be "a world became ready".
+            // On "world ready", not "connected": a reload destroys loose gourds, the socket stays.
             var worldReady = NetworkServer.active && WorldManager.isReadyForEffects;
             if (worldReady && !_worldWasReady)
                 OnWorldBecameReady();
 
-            // The goal flags baseline themselves from the writes the game
-            // makes WHILE a world loads, so the moment to forget the old
-            // world's baseline is when it goes away, not when the next one
-            // is ready — by then the writes that matter have already been
-            // seen (cf. ApGoalFlags).
+            // Goal flags baseline from writes made while a world loads, so reset when it goes away.
             if (!worldReady && _worldWasReady)
             {
                 ApGoalFlags.OnWorldUnloaded();
                 PegTileShuffler.ForgetWorld();
 
-                // The feed reports on the world that produced it. Carrying
-                // "Check: Cabin Fever" back to the main menu would be
-                // reporting on a game that is no longer running.
                 ApNotices.Clear();
             }
 
             _worldWasReady = worldReady;
 
-            // Not hosting: nothing to connect, and anything queued stays
-            // queued. This also covers the main menu, where there is no save
-            // to read a slot name out of yet.
             if (!NetworkServer.active)
                 return;
 
@@ -648,12 +438,7 @@ namespace BigWalkArchipelago.Core.Net
                     return;
 
                 case ApConnection.ConnectionStatus.Connecting:
-                    // An attempt that never comes back would otherwise wedge
-                    // the client here for good: TryConnectAndLogin does not
-                    // reliably return against a dead port (proven in-game,
-                    // 2026-09-15 — one failed retry then silence for
-                    // minutes). Past this, the attempt is written off and the
-                    // retry loop takes over.
+                    // TryConnectAndLogin may never return against a dead port.
                     if (Time.unscaledTime - _connectingSince > ConnectTimeoutSeconds)
                     {
                         Plugin.Log.LogWarning(
@@ -668,10 +453,7 @@ namespace BigWalkArchipelago.Core.Net
             if (_appliedItemCount < 0)
                 OnJustConnected();
 
-            // Quitting to the menu and hosting a *different* save leaves this
-            // session open and connected. Carrying on would apply that
-            // session's items into the new save using the old save's cursor,
-            // so the session is torn down and rebuilt from the new save.
+            // Hosting another save keeps the socket open; rebuild so the old cursor is not reused.
             if (HasSaveChanged())
                 return;
 
@@ -683,18 +465,12 @@ namespace BigWalkArchipelago.Core.Net
             while (Connection.TryDequeueTrapLink(out var linkSource, out var linkTrap))
                 Traps.OnTrapLinkReceived(linkSource, linkTrap);
 
-            // Applying an item spawns props and writes the save, so it waits
-            // for the same "safe to touch the world" signal the rest of the
-            // mod uses. Items simply stay queued until then.
             if (WorldManager.isReadyForEffects)
             {
-                // Before the replay is applied, since it decides what the replay drops.
+                // Before the replay, since it decides what the replay drops.
                 SetDepositBudgetOnce();
                 DrainIncomingItems();
 
-                // Every frame, because it paces itself: it drops one gourd
-                // per GourdRestoreInterval and returns immediately the rest
-                // of the time.
                 RestoreLooseGourds();
                 RestoreLooseGadgets();
                 PuzzleFailures.TickPresses();
@@ -708,57 +484,33 @@ namespace BigWalkArchipelago.Core.Net
 
             if (WorldManager.isReadyForEffects)
             {
-                // Once per tick, for the three things that want it.
                 _depositCount = CosmeticMonumentFillTracker.GetFilledMonumentCount();
 
                 StoreDepositsIfRaised();
                 ReportDeposits();
 
-                // Both return immediately once nothing is pending, which is
-                // the case for all but the first seconds of a world.
                 RadioStations.TickPending();
                 KeyFeatures.TickPending();
 
-                // Not "pending" like the other two: this one also holds the
-                // lock on every key the slot has not been given, so it has
-                // work to do for as long as the session lasts.
                 KeyCustody.Tick();
             }
 
-            // Outside the world gate, unlike everything above it: every goal
-            // here is decided from latched state and a cached count, and an
-            // ending tears its world down as it plays. The patch on it
-            // reports the goal itself (Patches/EndingStartPatch.cs) — this is
-            // the second chance, for the frames where the world is already
-            // gone and the socket is not.
+            // Outside the world gate: an ending tears its world down while the socket is still up.
             CheckGoal();
         }
 
-        // A freshly loaded world contains none of the loose gourds the
-        // previous one did, so everything tracking "what exists right now"
-        // starts over. The ledger itself (ap_gourds_received) is untouched:
-        // it counts what the player was given, which a reload does not
-        // change.
+        // The ledger (ap_gourds_received) survives a reload; only what exists right now resets.
         private static void OnWorldBecameReady()
         {
-            // Hand-overs belong to the world they were promised in, and the
-            // turn-taking count to the session, which a new world starts.
             ReceivedItemSpawner.ForgetPendingHandovers();
 
-            // The radio unlock lives in RAM only (see Core/RadioStations.cs),
-            // so a granted station has to be put back into every new world —
-            // exactly like the loose gourds below, and for the same reason.
+            // Radio unlocks live in RAM only, so granted stations are re-applied per world.
             RadioStations.RearmFromLedger();
 
-            // And the doors, for a reason that is worth stating because it is
-            // not the same one: the game's persistence for these features IS
-            // the key sitting in its plinth, which this world stops happening.
-            // With the key inert, nothing else carries a door across a reload
-            // (see Core/KeyFeatures.cs).
+            // The game keeps these doors via the key in its plinth, which the mod keeps inert.
             KeyFeatures.RearmFromLedger();
             KeyCustody.RearmFromLedger();
 
-            // The stones of the world that went away are gone with their states.
             KeyCustody.ForgetReleaseLogics();
 
             _looseGourdsRestored = false;
@@ -768,10 +520,6 @@ namespace BigWalkArchipelago.Core.Net
             _gourdsSpawnedThisSession = 0;
             _restoreTimer = 0f;
 
-            // Same reasoning, for the filler gadgets: none of the ones
-            // spawned in the previous world survive this one, so the
-            // reconciliation has to run again from a clean "0 spawned this
-            // session" for every kind.
             _gadgetsSpawnedThisSession.Clear();
             _looseGadgetsRestored = false;
             _looseGadgetsRestoreBlockedLogged = false;
@@ -814,9 +562,7 @@ namespace BigWalkArchipelago.Core.Net
 
             if (!ApEndpoint.TryResolve(out var endpoint, out var problem))
             {
-                // Logged once per distinct cause rather than every retry: the
-                // usual case is simply "the player has not filled the address
-                // in yet", which would otherwise spam the log forever.
+                // Once per cause: an empty address would otherwise spam the log on every retry.
                 if (problem != _lastConnectProblem)
                 {
                     _lastConnectProblem = problem;
@@ -831,8 +577,6 @@ namespace BigWalkArchipelago.Core.Net
             Plugin.Log.LogInfo(
                 $"[{nameof(ApRuntime)}] Connecting to {endpoint.Host}:{endpoint.Port} as '{endpoint.SlotName}'...");
 
-            // Marks the session as "not yet initialised" so the first frame
-            // after a successful login runs OnJustConnected.
             _appliedItemCount = -1;
             Connection.BeginConnect(endpoint);
         }
@@ -841,13 +585,10 @@ namespace BigWalkArchipelago.Core.Net
         {
             ApLocationIds.Configure(Connection.SlotData);
 
-            // Read before the cursor below, because the patch that suppresses
-            // the game's own radio unlock consults it on every peck and a
-            // world can already be loaded when this runs.
+            // Before the cursor: the radio patch reads it on every peck, a world may be loaded.
             RadioStations.Configure(Connection.SlotData.RadioStationItems);
 
-            // Read here for the same reason, and it matters more: the patch
-            // that stops a key opening its door consults this on every pin.
+            // The key patch reads it on every pin.
             KeyFeatures.Configure(Connection.SlotData.BigKeyFeatures);
             KeyCustody.Configure(Connection.SlotData.BigKeyItems);
             // Before the ledger below, which it clears by this seed's door ids.
@@ -856,10 +597,7 @@ namespace BigWalkArchipelago.Core.Net
             _seenItemCount = 0;
             _appliedItemCount = ApItemCursor.SyncTo(Connection.SeedName, Connection.SlotName);
 
-            // A cursor back at zero means this save has just been bound to a
-            // different (seed, slot) and everything is about to replay. The
-            // stations it was granted under the old binding go with it —
-            // otherwise the save keeps music the new seed has not given it.
+            // A cursor at zero means the save was rebound to another seed: drop its stations.
             if (_appliedItemCount == 0)
             {
                 ArchDoors.ClearLedger();
@@ -877,12 +615,9 @@ namespace BigWalkArchipelago.Core.Net
                 Traps.ClearLedger();
             }
 
-            // After the ledger above, so a save just rebound to a new seed is
-            // enforced with the doors that seed has given it: none yet.
+            // After the ledger, so a rebound save starts with no doors.
             ArchDoors.Configure(Connection.SlotData.LockedArchDoors, Connection.SlotData.LinearArchDoors);
 
-            // Same place and same reason: after the ledger, so a rebound save
-            // starts with every need locked.
             PuzzleNeeds.Configure(
                 Connection.SlotData.LockPuzzleNeeds,
                 Connection.SlotData.PuzzleNeedKeys,
@@ -894,7 +629,6 @@ namespace BigWalkArchipelago.Core.Net
                 Connection.SlotData.RidesRequireSeat,
                 Connection.SlotData.AbilityKeys,
                 ApLocationIds.Base + Connection.SlotData.AbilityIdOffset);
-            // Also after the ledger, for the same reason.
             GauntletStairways.Configure(
                 Connection.SlotData.GauntletMode == "locked_stages",
                 Connection.SlotData.GauntletPuzzlesRequired,
@@ -930,24 +664,10 @@ namespace BigWalkArchipelago.Core.Net
             _depositsOnServer = 0;
             _skipGourdSpawns = 0;
 
-            // Deliberately does NOT reset the loose-gourd state. That
-            // describes the world — what is currently lying on the ground —
-            // and a reconnection does not touch the world. Resetting it here
-            // is what made reconnecting spawn a second full set of gourds
-            // (observed in-game, 2026-09-15: 28 restored, connection
-            // dropped and recovered, 28 more on top). Only OnWorldBecameReady
-            // may clear it, because only a world reload actually destroys
-            // them.
 
-            // Connection-scoped, unlike the above: the replay and its timing
-            // belong to this session, not to whichever world is loaded.
             _gourdsSeenThisSession = 0;
             _connectedAt = Time.unscaledTime;
 
-            // A goal string this build cannot detect would otherwise leave
-            // the player unable to ever finish, with nothing in the log to
-            // say why. Refuse it loudly here, once, rather than silently
-            // polling for something that will never be true.
             var goal = Connection.SlotData.Goal;
             _goalDetectable = ApObjectives.Active
                 ? ApObjectives.Detectable
@@ -965,30 +685,16 @@ namespace BigWalkArchipelago.Core.Net
                 + $"{_appliedItemCount} item(s) already applied to this save.");
             WarnIfNewerApworld(Connection.SlotData.WorldVersion);
 
-            // ResendKnownChecks FIRST, and that order is not cosmetic. On
-            // 2026-09-21 RearmFromLedger threw out of here — FmRadioManager's
-            // instance property raises rather than returning null when no
-            // world is loaded, which is the normal state at connection time —
-            // and the exception crossed the IL2CPP trampoline, taking the rest
-            // of this method with it. The checks this save had already
-            // validated were never resent, silently. The throw is fixed at
-            // source, and the resend is no longer behind anything that could
-            // reintroduce it.
+            // Resend first, so nothing that might throw below can skip it.
             ResendKnownChecks();
 
-            // Covers connecting into a world that is already loaded: the
-            // stations and doors already applied to this save are replayed by
-            // the server but skipped by the cursor, so this is the only thing
-            // that would ever start their music, or open them, again.
+            // Stations and doors already in this save are skipped by the cursor: re-arm them.
             RadioStations.RearmFromLedger();
             KeyFeatures.RearmFromLedger();
             KeyCustody.RearmFromLedger();
         }
 
-        // A seed generated with a newer apworld than this mod (a minor or major version ahead): the mod ignores what it
-        // does not know, which can leave a seed unwinnable (CHANGELOG). Said on screen, to the host. An older seed is
-        // left alone: its logic was fixed when it was generated and plays the same with this mod, only the newer
-        // options are missing (the player, 2026-10-16: a warning there tells nothing worth a warning).
+        // Warns only for a seed from a newer apworld: the mod ignores options it does not know.
         private static void WarnIfNewerApworld(string worldVersion)
         {
             if (!TryMajorMinor(worldVersion, out var seed) || !TryMajorMinor(Plugin.PluginVersion, out var mod) || seed.CompareTo(mod) <= 0)
@@ -1012,14 +718,7 @@ namespace BigWalkArchipelago.Core.Net
             return true;
         }
 
-        // Every check this save has ever reported is resent on connection.
-        //
-        // This is what makes a disconnection harmless. CheckTracker marks a
-        // location as reported permanently, in the save — so a check
-        // validated while the client was offline would otherwise never be
-        // sent again, and its item would stay lost to whoever was waiting for
-        // it in the multiworld. Resending the whole set costs one packet and
-        // the server deduplicates.
+        // Reported checks are marked in the save, so offline checks are only sent from here.
         private static void ResendKnownChecks()
         {
             SendBuffer.Clear();
@@ -1051,10 +750,7 @@ namespace BigWalkArchipelago.Core.Net
                     continue;
                 }
 
-                // The slot decides what exists, not the game: radio stations
-                // can be off, deposit checks thinned out. Sending an id
-                // this slot does not have is a protocol error, so it is
-                // filtered here rather than hoping the server is forgiving.
+                // Sending an id this slot does not have is a protocol error.
                 if (!Connection.BelongsToSlot(id))
                     continue;
 
@@ -1066,12 +762,7 @@ namespace BigWalkArchipelago.Core.Net
 
             Connection.SendChecks(SendBuffer.ToArray());
 
-            // Only the checks flushed here, never the set ResendKnownChecks
-            // pushes on every connect: those are already-known checks being
-            // repeated for the server's benefit, and announcing them would
-            // replay the player's whole run at them on each reconnection.
-            // A sound, no line (player, 2026-10-09). A puzzle's check is the puzzle's own end, which the
-            // game already plays.
+            // Only newly flushed checks; the resend on connect is not announced.
             foreach (var id in SendBuffer)
             {
                 var name = Connection.LocationName(id);
@@ -1083,35 +774,13 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // Puts back the gourds this save owns but no longer physically has.
-        //
-        // Only a gourd pinned in a monument survives a restart: a loose or
-        // carried one has no save identity, by design, and is gone. So at
-        // every session start the world is made to match the ledger again:
-        //
-        //     loose gourds to spawn = gourds ever received
-        //                             - gourds deposited in monuments
-        //                             - gourds already spawned this session
-        //
-        // Nothing tries to remember *which* gourd was where, because gourds
-        // are interchangeable — the same property that makes the global
-        // deposit model softlock-proof. Quit holding five gourds, find five
-        // at the hub.
-        //
-        // The ledger is rebuilt from the server rather than merely trusted:
-        // the replay names every item this slot ever received, so counting
-        // the gourds in it is authoritative and repairs a save written by a
-        // version of the mod that did not keep the count at all. Hence
-        // waiting for the replay to arrive and go quiet before acting —
-        // reconciling against a ledger of zero would "restore" nothing and
-        // then latch.
+        // Owed = received - deposited - spawned this session; only pinned gourds persist.
         private static void RestoreLooseGourds()
         {
             if (_looseGourdsRestored || Connection.HasPendingItems)
                 return;
 
-            // An empty queue right after connecting usually means the replay
-            // has not landed yet, not that there is nothing to replay.
+            // An empty queue right after connecting usually means the replay has not landed yet.
             if (Time.unscaledTime - _connectedAt < ReplayGraceSeconds)
                 return;
 
@@ -1143,31 +812,14 @@ namespace BigWalkArchipelago.Core.Net
                 return;
             }
 
-            // One at a time, spaced out, each dropped on the game's own
-            // spawn point. Two earlier attempts placed them by computing
-            // offsets — a spiral, then that spiral raycast onto the ground —
-            // and both lost gourds outside the playable area (11 of 28, then
-            // 8 of 28). The mistake was mine to make twice: deciding whether
-            // a position is valid is the game's job, and
-            // InventorySpawn.GetNextSpawnPosition already answers it.
-            //
-            // Landing them one by one is what replaces the spreading: each
-            // gourd falls onto ones that have already settled and rolls off,
-            // instead of dozens being born interpenetrating — which is what
-            // made the game stutter to begin with.
+            // One at a time on the game's spawn point; computed offsets lost gourds off the map.
             _restoreTimer -= Time.unscaledDeltaTime;
             if (_restoreTimer > 0f)
                 return;
 
             _restoreTimer = Mathf.Max(0f, ModConfig.CosmeticGourdRestoreInterval.Value);
 
-            // A failed spawn is NOT counted. The usual cause is that the
-            // hub's InventorySpawn is not loaded yet, which resolves itself
-            // a moment later, so this returns and tries again rather than
-            // recording a gourd the player never got.
-            // toPlayer: false — this is the session-start restock, which
-            // belongs at the hub rather than raining on whoever just
-            // loaded in, wherever they happen to be standing.
+            // A failed spawn (hub not loaded yet) is not counted, so it is retried.
             if (!ItemApplier.ApplyGourdItem(toPlayer: false))
             {
                 if (!_looseRestoreBlockedLogged)
@@ -1185,14 +837,6 @@ namespace BigWalkArchipelago.Core.Net
             _looseGourdsRestoredCount++;
         }
 
-        // Same reconciliation as RestoreLooseGourds, minus the deposit
-        // subtraction: a filler gadget has nowhere to be spent, so "owed"
-        // is simply the received ledger minus what this session has already
-        // spawned, per kind. Player request, 2026-09-22 ("keep them, and
-        // spawn them if restarting a room, as other gourds and keys
-        // stuff"). Paced the same way and reusing the same interval config
-        // — this is cosmetic filler, not worth a setting of its own.
-        // ModConfig.GadgetCopiesKept: how many of one kind a reload or a session start puts back.
         private static int Kept(int received)
         {
             var limit = ModConfig.GadgetCopiesKept.Value;
@@ -1234,9 +878,6 @@ namespace BigWalkArchipelago.Core.Net
 
             _gadgetRestoreTimer = Mathf.Max(0f, ModConfig.CosmeticGourdRestoreInterval.Value);
 
-            // toPlayer: false, same reasoning as the gourd restock — the
-            // session-start catch-up belongs at the hub, not raining on
-            // whoever just loaded in wherever they happen to be standing.
             if (!ItemApplier.ApplyGadgetItem(next.Value, toPlayer: false))
             {
                 if (!_looseGadgetsRestoreBlockedLogged)
@@ -1262,46 +903,28 @@ namespace BigWalkArchipelago.Core.Net
             {
                 _seenItemCount++;
 
-                // Counted even for items about to be skipped: this tally is
-                // what rebuilds the gourd ledger in RestoreLooseGourds, and
-                // for that it has to reflect the slot's whole history, not
-                // just what is new to this save.
+                // Counted even for skipped items: this tally rebuilds the gourd ledger.
                 var isGourd = item.ItemId == ApLocationIds.GourdItemId;
                 if (isGourd)
                     _gourdsSeenThisSession++;
 
-                // Same "what is this item" question as isGourd above, for
-                // the filler gadgets — resolved here too (not just inside
-                // Apply) because the received ledger has to be counted
-                // exactly once per item, on the same "not a replay" gate
-                // the gourd counter uses.
                 var isGadget = ApLocationIds.TryResolveGadgetItem(item.ItemId, out var gadgetKind);
-                // `pack_sanity: vanilla`: a pack that is its own pick-up's item is already in the world; nothing is owed.
+                // `pack_sanity: vanilla`: a pack that is its own pick-up's item is already there.
                 if (isGadget && PackChecks.IsPackItself(item))
                     isGadget = false;
 
-                // Already materialized into this save by an earlier session:
-                // this is the server's replay, not a new item. Skipping it is
-                // the entire reason ApItemCursor exists. Skipped items are
-                // free, so they do not count against the per-frame budget.
+                // Already in this save from an earlier session: the server's replay.
                 if (_seenItemCount <= _appliedItemCount)
                     continue;
 
-                // Raised before the item is applied, deliberately: a gourd
-                // that was granted is owed to the player whether or not the
-                // prop actually spawned. Next session's reconciliation makes
-                // good on it.
+                // Owed whether or not the prop spawned; the next reconciliation makes good on it.
                 if (isGourd)
                     ApItemCursor.CountGourdReceived();
                 else if (isGadget)
                     ApItemCursor.CountGadgetReceived(gadgetKind);
 
-                // Past the replay gate, so this only ever announces an item
-                // that is new to this save. A fresh connection to a slot
-                // already owed forty gourds still posts forty of them in one
-                // frame, which is why ApNotices collapses repeats.
+                // A reconnect can post many at once, which is why ApNotices collapses repeats.
                 ApNotices.Post($"Received: {Palette.Display(GourdNames.Display(item.ItemId, item.ItemName))}");
-                // A trap sounds like a DeathLink (the player, 2026-10-12): the large cowbell; a bonus and the rest, the small one.
                 if (Traps.TryResolveItem(item.ItemId, out var trapKey) && !TrapEffects.IsBonus(trapKey))
                     ApSounds.DeathLinkAlert();
                 else
@@ -1315,25 +938,17 @@ namespace BigWalkArchipelago.Core.Net
                     if (isGourd && materialized)
                         _gourdsSpawnedThisSession++;
                     else if (isGourd)
-                        // The prop did not appear (hub not loaded yet, most
-                        // likely). Re-arm the reconciler so it puts this
-                        // gourd back rather than leaving the player short.
+                        // The prop did not appear: re-arm the reconciler so the gourd comes back.
                         _looseGourdsRestored = false;
                     else if (isGadget && materialized)
                         _gadgetsSpawnedThisSession[gadgetKind] =
                             (_gadgetsSpawnedThisSession.TryGetValue(gadgetKind, out var count) ? count : 0) + 1;
                     else if (isGadget)
-                        // Same reasoning as the gourd branch: the item is
-                        // owed regardless of whether the spawn landed, so
-                        // re-arm the reconciler to make good on it.
                         _looseGadgetsRestored = false;
                 }
                 catch (Exception ex)
                 {
-                    // The item is already off the queue, so the cursor still
-                    // advances: stalling here would wedge every later item
-                    // behind this one forever. Recovering a genuinely lost
-                    // item is what the new-save replay path is for.
+                    // Still advance the cursor, or every later item would be stuck behind this one.
                     Plugin.Log.LogError(
                         $"[{nameof(ApRuntime)}] Failed to apply item {item.ItemId}: {ex}");
                 }
@@ -1344,8 +959,7 @@ namespace BigWalkArchipelago.Core.Net
             }
         }
 
-        // Returns whether the item actually materialized in the world, which
-        // is what the gourd reconciliation counts.
+        // Returns whether the item materialized, which is what the gourd reconciliation counts.
         private static bool Apply(Archipelago.MultiClient.Net.Models.ItemInfo item)
         {
             var itemId = item.ItemId;
@@ -1355,32 +969,15 @@ namespace BigWalkArchipelago.Core.Net
 
             if (itemId == ApLocationIds.GourdItemId && !_looseGourdsRestored && _skipGourdSpawns > 0)
             {
-                // This gourd is one of the deposits the server remembers: it goes
-                // back into a monument slot, not onto the ground.
                 _skipGourdSpawns--;
                 return true;
             }
 
             if (itemId == ApLocationIds.GourdItemId)
-                // Into the hands only once the session has settled. The
-                // startup burst — everything the server replays on connect,
-                // plus anything earned while this save was offline — belongs
-                // at the spawn like the reconciliation's own restock: the
-                // players walk through there on every launch anyway, and
-                // filling someone's hands during a loading screen is both
-                // startling and, with two players, a good way to have one of
-                // them holding something before they have control.
-                //
-                // _looseGourdsRestored is precisely that line: the
-                // reconciliation refuses to run while Connection.HasPendingItems,
-                // so it only latches once the whole burst is through.
-                // Anything applied after it is genuinely live.
+                // The startup burst goes to the spawn; only later items go to the player's hands.
                 return ItemApplier.ApplyGourdItem(toPlayer: _looseGourdsRestored);
 
-            // The KEY before the DOOR, because the two ranges are one offset
-            // apart and a key id would otherwise never be reached. Same
-            // settled flag as the gourd above: the two arrive in the same
-            // startup burst and belong at the same place during it.
+            // Keys before doors: a key id would otherwise match the door range.
             if (MonumentOrder.IsItem(itemId))
                 return MonumentOrder.Grant();
 
@@ -1390,10 +987,6 @@ namespace BigWalkArchipelago.Core.Net
             if (ApLocationIds.TryResolveBigKeyItem(itemId, out var propName))
                 return ItemApplier.ApplyBigKeyItem(propName);
 
-            // Checked before the big key would ever see it: the two ranges do
-            // not overlap, but a Broadcast is the one item whose effect lives
-            // entirely outside SaveManager's prop keys, so it gets its own
-            // resolver rather than a special case inside ItemApplier.
             if (ApLocationIds.TryResolveRadioItem(itemId, out var station))
                 return RadioStations.Grant(station);
 
@@ -1418,23 +1011,14 @@ namespace BigWalkArchipelago.Core.Net
             if (TeleportButtons.TryResolveItem(itemId, out var teleporter))
                 return TeleportButtons.Grant(teleporter);
 
-            // A filler gadget item (megaphone, walkie-talkie, backpack,
-            // belt, flare gun) — same toPlayer split as the gourd above,
-            // and for the same reason: the startup replay belongs at the
-            // hub, a live arrival belongs with the player. Its own settled
-            // flag, not the gourd one: the two reconciliations run
-            // independently and can finish at different times.
             if (ApLocationIds.TryResolveGadgetItem(itemId, out var gadgetKind))
             {
-                // The startup burst stops at the limit instead of spawning copies to remove.
                 var spawned = _gadgetsSpawnedThisSession.TryGetValue(gadgetKind, out var already) ? already : 0;
                 if (!_looseGadgetsRestored && spawned >= Kept(int.MaxValue))
                     return true;
                 return ItemApplier.ApplyGadgetItem(gadgetKind, toPlayer: _looseGadgetsRestored);
             }
 
-            // A trap or a bonus: queued, and fired on every player once the session has settled
-            // (Core/Traps). Not "materialized" in the sense the gourd ledger counts.
             if (Traps.TryResolveItem(itemId, out var effect))
             {
                 var queued = Traps.Enqueue(effect, $"item {item.ItemName}");
@@ -1443,25 +1027,11 @@ namespace BigWalkArchipelago.Core.Net
                 return queued;
             }
 
-            // Anything a newer apworld invents: no effect, by
-            // design. Logged rather than silent so a genuinely unhandled
-            // item is visible in the log instead of looking like a bug in the
-            // multiworld.
             Plugin.Log.LogInfo($"[{nameof(ApRuntime)}] Received '{item.ItemName}' ({itemId}): no in-game effect.");
             return false;
         }
 
-        // Monument deposits are counted across every monument together, never
-        // per tower — that global count is what makes it impossible for a bad
-        // distribution of gourds to lock a seed (Option A, see
-        // apworld/design-decisions.md).
-        //
-        // Reports thresholds crossed, and never un-reports: the count CAN go
-        // down in principle, and a check that has been sent stays sent.
-        // A new save on a slot that already filled monuments: the server's
-        // number minus what this save holds is what has to come back, one slot
-        // at a time as the monuments load. And the number is kept up to date on
-        // the server, which only ever raises it.
+        // Counted across all monuments, never per tower, so no gourd distribution can lock a seed.
         private static void SetDepositBudgetOnce()
         {
             if (_depositBudgetSet || Connection.Status != ApConnection.ConnectionStatus.Connected)
@@ -1477,8 +1047,6 @@ namespace BigWalkArchipelago.Core.Net
                 + $"{filled} -> {_skipGourdSpawns} slot(s) marked filled, their gourds come back as the monuments load.");
         }
 
-        // The server keeps the largest count it was given, so only a count that
-        // has risen is worth sending.
         private static void StoreDepositsIfRaised()
         {
             if (Connection.Status != ApConnection.ConnectionStatus.Connected)
@@ -1518,10 +1086,7 @@ namespace BigWalkArchipelago.Core.Net
                 Connection.SendChecks(SendBuffer.ToArray());
         }
 
-        // Called from Patches/GourdStatePatch, on the frame the second
-        // ending's gourd comes loose. Everything the goals read is latched or
-        // cached, so this needs no world and no tick — only a socket, and
-        // SendGoal already survives not having one.
+        // Called when the second ending's gourd comes loose; needs no world, only a socket.
         internal static void ReportGoalIfReached()
         {
             CheckGoal();
@@ -1532,26 +1097,17 @@ namespace BigWalkArchipelago.Core.Net
             if (_goalSent || !IsGoalReached())
                 return;
 
-            // Marked sent only once the socket took it. A goal can now be
-            // reached on a frame where the connection is down — an ending
-            // transition reports itself while the world dies around it — and
-            // every goal is latched or cached, so leaving it armed costs
-            // nothing and the next tick or the next connection reports it.
+            // Marked sent only once the socket took it; the next tick or connection retries.
             if (Connection.SendGoal())
                 _goalSent = true;
         }
 
         private static bool IsGoalReached()
         {
-            // Guarded for the same reason RefreshGoalProgress is, and for one
-            // more: ReportGoalIfReached is called from a Harmony patch on the
-            // game's ending, which fires whether or not this session ever
-            // connected to anything.
+            // Called from a Harmony patch whether or not this session ever connected.
             if (Connection.SlotData == null)
                 return false;
 
-            // Every objective listed, in any order (ROADMAP G5): each one is latched when it
-            // happens, so the goal goes out on the last of them.
             if (ApObjectives.Active)
                 return ApObjectives.AllDone;
 
@@ -1571,8 +1127,7 @@ namespace BigWalkArchipelago.Core.Net
                     return ApSecondEnding.Reached;
 
                 default:
-                    // Unreachable: OnJustConnected already refused to arm
-                    // goal detection for a goal this build does not know.
+                    // Unreachable: OnJustConnected refuses an unknown goal.
                     return false;
             }
         }

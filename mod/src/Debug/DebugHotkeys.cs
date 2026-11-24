@@ -8,25 +8,16 @@ using UnityEngine.EventSystems;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Injected in IL2CPP by Plugin.AddComponent<DebugHotkeys>() (see
-    // Plugin.Load()), only if Config.DebugModeEnabled is active: the
-    // component doesn't even exist in the scene otherwise, so there is no
-    // polling cost during normal use.
+    // Only added when the debug tools are on, so nothing polls in normal play.
     internal class DebugHotkeys : MonoBehaviour
     {
         private static int _nextNeed;
 
-        // Constructor required by Il2CppInterop for any type injected in IL2CPP.
+        // Required by Il2CppInterop for any injected type.
         public DebugHotkeys(IntPtr ptr) : base(ptr)
         {
         }
 
-        // Diagnostic 2026-09-11: the clone spawned by P has all Unity flags
-        // green at the very moment of spawning (enabled, isVisible,
-        // activeInHierarchy), but is already gone from an F9 dump taken just
-        // a few seconds later — suspicion that something disables/destroys
-        // it shortly afterward rather than a genuine frozen-rendering issue.
-        // Rechecked here 3s later to confirm/refute without guessing further.
         private GameObject _lastCosmeticPickup;
         private float _lastCosmeticPickupCheckTime = -1f;
         private const float CosmeticPickupRecheckDelaySeconds = 3f;
@@ -45,27 +36,12 @@ namespace BigWalkArchipelago.Debug
                 _lastCosmeticPickupCheckTime = -1f;
             }
 
-            // Every hotkey below is a single plain letter with no modifier
-            // (ApplyBigKeyOverflowKey = O, SpawnCosmeticPickupKey = P, and
-            // so on — predating the "<letter>+LeftControl" convention this
-            // file's own Config.cs comments now recommend for new keys).
-            // Typing a host address or slot name that happens to contain
-            // one of those letters fires the matching debug tool while the
-            // player is only trying to type — measured in-game, 2026-09-22:
-            // typing "localhost:38281" into the host field's two 'o's each
-            // fired ApplyBigKeyOverflowKey, and the resulting exception
-            // permanently broke GourdRegistry's static state for the rest
-            // of the process (a failed .NET type initializer never runs
-            // again — every later call to it rethrows), silently failing
-            // every item received for the rest of that session. Skipping
-            // every hotkey below while a text input has focus is the fix.
+            // Plain-letter keys would fire while typing: skip them while a field has focus.
             var focused = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
             if (focused != null && focused.GetComponent<TMP_InputField>() != null)
                 return;
 
-            // The loopback guest without the mod loaded none of what the other
-            // tools reach into; it keeps the keys that look at the network or
-            // move between windows, and nothing that acts on the world.
+            // The loopback guest without the mod only keeps the keys that do not touch the world.
             if (LoopbackGuest.IsVanilla)
             {
                 UpdateLoopbackKeys();
@@ -130,8 +106,7 @@ namespace BigWalkArchipelago.Debug
             if (ModConfig.FireRemotePeckSwitchKey.Value.IsDown())
                 DebugPeckFire.FireByName(ModConfig.RemotePeckSwitchName.Value);
 
-            // Polled with IsPressed, not IsDown: this one is a hold, and
-            // the tool needs the frames in between, plus the release.
+            // IsPressed, not IsDown: this tool needs every held frame and the release.
             DebugTrackedStateHold.Update(
                 ModConfig.HoldTrackedStateKey.Value.IsPressed(),
                 ModConfig.HoldTrackedStateName.Value,
@@ -168,14 +143,7 @@ namespace BigWalkArchipelago.Debug
 
             if (ModConfig.ForceNearbyCombinatorKey.Value.IsDown())
             {
-                // Logged BEFORE the call, and on purpose. On 2026-09-18 four
-                // different keys bound to the two PeckCombinator tools
-                // produced nothing at all — no output, no exception — while
-                // other debug keys in the same Update answered normally.
-                // "The tool printed nothing" has two very different causes
-                // (the key was never seen, or the call died before its first
-                // log line) and no way to tell them apart from the outside.
-                // This line does exactly that and nothing else.
+                // Logged before the call, to tell a key never seen from a call that died early.
                 Plugin.Log.LogInfo($"[{nameof(DebugHotkeys)}] Combinator force key pressed; calling ForceNearby...");
                 DebugPeckCombinatorForce.ForceNearby(120f);
                 Plugin.Log.LogInfo($"[{nameof(DebugHotkeys)}] ForceNearby returned.");
@@ -204,9 +172,7 @@ namespace BigWalkArchipelago.Debug
 
             if (ModConfig.DumpRadioKey.Value.IsDown())
             {
-                // Bracketed, like the combinator key above: "the tool printed
-                // nothing" and "the key was never seen" look identical from
-                // the outside, and hours went into that confusion twice.
+                // Logged before the call, like the combinator key above.
                 Plugin.Log.LogInfo($"[{nameof(DebugHotkeys)}] Radio dump key pressed; calling Dump...");
                 DebugRadioLookup.Dump();
                 Plugin.Log.LogInfo($"[{nameof(DebugHotkeys)}] Dump returned.");
@@ -265,7 +231,6 @@ namespace BigWalkArchipelago.Debug
 
             if (ModConfig.LockButtonsKey.Value.IsDown())
             {
-                // All needs at once: if any is open, lock them all, else open them all.
                 var lockThem = PuzzleNeeds.All.Any(need => !PuzzleNeeds.IsLocked(need));
                 foreach (var need in PuzzleNeeds.All)
                     PuzzleNeeds.SetLocked(need, lockThem);
@@ -355,7 +320,6 @@ namespace BigWalkArchipelago.Debug
 
             if (ModConfig.LockNextNeedKey.Value.IsDown())
             {
-                // One need at a time, in order, to try each in turn.
                 var need = PuzzleNeeds.All[_nextNeed % PuzzleNeeds.All.Length];
                 _nextNeed++;
                 var lockIt = !PuzzleNeeds.IsLocked(need);
@@ -367,8 +331,7 @@ namespace BigWalkArchipelago.Debug
             UpdateLoopbackKeys();
         }
 
-        // The network dump and the loopback keys, shared with the loopback
-        // guest without the mod, which runs nothing else from this file.
+        // Shared with the loopback guest without the mod, which runs nothing else from this file.
         private static void UpdateLoopbackKeys()
         {
             if (ModConfig.DumpNetworkKey.Value.IsDown())
@@ -422,13 +385,13 @@ namespace BigWalkArchipelago.Debug
             var clone = _lastCosmeticPickup;
             if (clone == null)
             {
-                Plugin.Log.LogInfo($"[{nameof(DebugHotkeys)}] Recheck {CosmeticPickupRecheckDelaySeconds}s after spawn — clone == null (destroyed, or Unity reference invalidated).");
+                Plugin.Log.LogInfo($"[{nameof(DebugHotkeys)}] Recheck {CosmeticPickupRecheckDelaySeconds}s after spawn, clone == null (destroyed, or Unity reference invalidated).");
                 return;
             }
 
             var renderer = clone.GetComponentInChildren<Renderer>(true);
             Plugin.Log.LogInfo(
-                $"[{nameof(DebugHotkeys)}] Recheck {CosmeticPickupRecheckDelaySeconds}s after spawn — clone still referenced: " +
+                $"[{nameof(DebugHotkeys)}] Recheck {CosmeticPickupRecheckDelaySeconds}s after spawn, clone still referenced: " +
                 $"name={clone.name}, activeSelf={clone.activeSelf}, activeInHierarchy={clone.activeInHierarchy}, " +
                 $"position={clone.transform.position}, renderer.enabled={(renderer != null ? renderer.enabled.ToString() : "<no renderer>")}, " +
                 $"renderer.isVisible={(renderer != null ? renderer.isVisible.ToString() : "n/a")}.");

@@ -6,12 +6,12 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Tunnel sanity recon: lists the states under TunnelSystem and opens one at a time.
+    // Lists the states under TunnelSystem and opens one at a time.
     internal static class DebugTunnelDoors
     {
         private static float _nextRequestCheck;
 
-        // BepInEx/tunnel-dump.request dumps; tunnel-open.request holds a path suffix to open.
+        // tunnel-dump.request dumps; tunnel-open.request holds a path suffix to open.
         internal static void TickRequests()
         {
             if (Time.unscaledTime < _nextRequestCheck)

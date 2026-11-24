@@ -3,24 +3,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Net
 {
-    // The short-lived lines the overlay shows under the connection status:
-    // a check going out, an item coming in, a resync being pressed.
-    //
-    // Until now the only record of any of that was BepInEx's log, which
-    // nobody reads while playing — so the one question a player actually has
-    // ("did that puzzle count?") had no answer on screen at all, and a
-    // report of "nothing happened" could not be told apart from "it happened
-    // and I could not see it".
-    //
-    // Repeats collapse instead of scrolling: connecting to a slot that is
-    // owed forty gourds posts forty items in one frame, and forty identical
-    // lines would push everything else off the screen for no information.
-    // "Gourd x40" is the same fact, and it leaves room for the rest.
-    //
-    // Main thread only. Everything that posts here — the check flush, the
-    // item pump, the resync key — already runs in ApRuntime.Update; the
-    // socket callbacks deliberately do not, and report themselves through
-    // the status line instead.
+    // Short overlay lines for checks sent and items received. Main thread only.
     internal static class ApNotices
     {
         internal const int MaxLines = 6;
@@ -39,7 +22,7 @@ namespace BigWalkArchipelago.Core.Net
 
         internal static IReadOnlyList<Notice> Lines => Live;
 
-        // A check this slot sent (ApConnection, from the socket's thread): shown for a short while only.
+        // A check this slot sent, posted from the socket's thread: shown for a short while only.
         private const float CheckSeconds = 6f;
         private static readonly System.Collections.Concurrent.ConcurrentQueue<string> FromSocket = new();
 
@@ -52,9 +35,7 @@ namespace BigWalkArchipelago.Core.Net
 
             var expiry = Time.unscaledTime + (seconds > 0f ? seconds : ModConfig.NoticeSeconds.Value);
 
-            // Only the last line collapses, never one further up: two
-            // different items arriving either side of a third would
-            // otherwise be merged into a count that never happened.
+            // Only the last line collapses, so two different items are never merged into one count.
             if (Live.Count > 0)
             {
                 var last = Live[Live.Count - 1];
@@ -80,8 +61,7 @@ namespace BigWalkArchipelago.Core.Net
                 Live.RemoveAt(0);
         }
 
-        // Called once a frame from ApRuntime.Update, not from OnGUI: OnGUI
-        // runs several times per frame and must stay pure presentation.
+        // Called from Update, not OnGUI: OnGUI runs several times per frame.
         internal static void Prune()
         {
             while (FromSocket.TryDequeue(out var sent))
@@ -92,9 +72,6 @@ namespace BigWalkArchipelago.Core.Net
                 Live.RemoveAt(0);
         }
 
-        // Dropped wholesale when a session ends: these lines belong to the
-        // world that produced them, and carrying them across a return to the
-        // main menu would be reporting on a game that is no longer running.
         internal static void Clear()
         {
             Live.Clear();

@@ -1,16 +1,4 @@
-"""
-The island is not as open as this world assumed until 2026-09-21.
-
-The chairlift and the tunnels are doors, and the world modelled neither — so
-nothing stopped generation placing the Green Cup Key past the chairlift that
-key opens, which is an unbeatable seed. These tests are what stops that
-coming back.
-
-Two of them are deliberately vacuous while `data.CHAIRLIFT_PUZZLES` and the
-two radio constants are still empty: the membership is measured in game and
-has not been yet. They bite the moment it is filled, which is the point of
-writing them now rather than then.
-"""
+"""The chairlift and the tunnels are doors: no key may be placed past the door it opens."""
 
 from .. import data, regions
 from .bases import BigWalkTestBase
@@ -21,8 +9,7 @@ class TestGatedRegions(BigWalkTestBase):
     run_default_tests = False
 
     def test_the_doors_exist_and_cost_their_key(self) -> None:
-        # Non-vacuous today: it guards the mechanism itself, whatever the
-        # membership turns out to be.
+        # Guards the mechanism itself, whatever the membership is.
         for entrance_name, item_name in (
             (regions.CHAIRLIFT_ENTRANCE, data.GREEN_CUP.item_name),
             (regions.TUNNEL_ENTRANCE, data.YELLOW_TWIST.item_name),
@@ -66,16 +53,12 @@ class TestGatedRegions(BigWalkTestBase):
             self.assertTrue(self.can_reach_location(location_name), location_name)
 
     def test_a_gated_location_is_gated_once(self) -> None:
-        # A name in both lists would be placed twice and the second call would
-        # win silently, which is exactly the kind of drift the single source in
-        # data.py exists to prevent.
+        # A name in both lists would be placed twice, the second call winning silently.
         overlap = set(data.chairlift_locations()) & set(data.tunnel_locations())
         self.assertFalse(overlap, overlap)
 
     def test_every_gated_name_is_a_real_location(self) -> None:
-        # A typo in the measured lists would otherwise gate nothing at all, and
-        # look exactly like a correct list on a world where the option that
-        # creates that location is off.
+        # A typo would gate nothing, and look like a correct list when the option is off.
         from ..locations import LOCATION_NAME_TO_ID
 
         for location_name in data.chairlift_locations() + data.tunnel_locations():

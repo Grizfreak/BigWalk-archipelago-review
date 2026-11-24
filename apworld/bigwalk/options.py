@@ -27,16 +27,12 @@ class Goal(Choice):
     """
 
     display_name = "Goal"
-    # Named after the game's achievements, in order of base-game effort;
-    # big_collection has no achievement and comes last as the one goal only
-    # Archipelago offers.
+    # Named after the game's achievements, in order of effort; big_collection is Archipelago's.
     option_big_wall = 0
     option_big_goodbye = 1
     option_big_game = 2
     option_big_collection = 3
-    # Every name this option has had before, so an older YAML still reads:
-    # the first alpha's (which are also what the mod receives, see
-    # GOAL_ON_THE_WIRE) and the short-lived ones of 2026-09-25.
+    # Older names, so an older YAML still reads; the first ones are also GOAL_ON_THE_WIRE's.
     alias_ending = option_big_wall
     alias_gauntlet = option_big_goodbye
     alias_second_ending = option_big_game
@@ -52,21 +48,14 @@ GOAL_ON_THE_WIRE = {
     "big_game": "second_ending",
     "big_collection": "deposits",
 }
-"""
-The string slot_data carries for each goal, which is what the mod compares.
-
-Frozen at the names the mod was built against: the YAML is free to follow
-players' words, but a released mod must keep recognising its goal. The old
-names are also aliases of the option, so the tracker reads them back.
-"""
+"""The string slot_data sends for each goal. Frozen: a released mod must keep reading it."""
 
 
 OBJECTIVE_ENDINGS = ("big_goodbye", "big_game", "big_wall")
-"""What can end a list: the Gauntlet's bell, the secret ending, and the chapel's bell for a short seed without the
-Gauntlet (the player, 2026-10-12)."""
+"""What can end a list: the Gauntlet's bell, the secret ending, or the chapel's bell."""
 
 EXCLUSIVE_ENDINGS = ("big_goodbye", "big_game")
-"""The endings a save plays only one of: a list holds at most one of these (the chapel's bell can go beside either)."""
+"""The endings a save plays only one of; the chapel's bell can go beside either."""
 
 OBJECTIVE_KEYS = (
     "big_wall", "big_goodbye", "big_game", "big_collection", "big_keys", "big_radio", "big_towers",
@@ -75,9 +64,9 @@ OBJECTIVE_KEYS = (
 """Every objective, in the order the slot data lists them. Frozen: the mod reads these strings."""
 
 OBJECTIVE_ALIASES = {
-    # big_club is the club it was first meant to be (the player, 2026-10-22).
+    # The Doof Chamber was first meant to be a club.
     "big_club": "big_doof",
-    # big_fiesta was the party's name until 1.0.2 (the player, 2026-10-22); the mod still reads it in an older seed.
+    # The party's old name; the mod still reads it in an older seed.
     "big_fiesta": "big_party",
 }
 """An objective's older names, still read in a YAML, and what each one is now."""
@@ -108,8 +97,7 @@ class Objectives(OptionSet):
     """
 
     display_name = "Objectives"
-    # The endings are accepted only to be refused with a clear word (world._check_the_objectives); the old names
-    # are read as the new ones (world._check_the_objectives).
+    # world._check_the_objectives refuses the endings clearly and maps the old names.
     valid_keys = frozenset(OBJECTIVE_KEYS) | set(OBJECTIVE_ALIASES)
     default = frozenset()
 
@@ -235,8 +223,7 @@ class GourdSanity(Choice):
     alias_none = option_off
     alias_milestones = option_every_5
     alias_all = option_every_gourd
-    # A bare `on` / `true` in a YAML reads as a boolean; take it to mean the
-    # default rather than refuse it. (`off` / `false` already land on 0.)
+    # A bare `on` / `true` reads as a boolean: take it as the default rather than refuse it.
     alias_on = option_every_5
     alias_true = option_every_5
     default = 1
@@ -258,9 +245,6 @@ class RadioSanity(DefaultOnToggle):
     display_name = "Radio Sanity"
 
 
-# Stations are named after the music they actually play, not the game's
-# internal names, and numbered by their light on the dial, which carries no
-# labels at all (see data.RADIO_STATIONS).
 class PackSanity(Choice):
     """
     The island's backpacks, belts and gourd carton (12 in all) as checks.
@@ -278,7 +262,7 @@ class PackSanity(Choice):
     option_on = 1
     option_junk = 2
     option_vanilla = 3
-    # A toggle until 0.7.1: `true` / `false` still read; `self` is what the slot data says for vanilla (the tracker).
+    # Old toggle values still read; `self` is what slot_data sends for vanilla.
     alias_true = option_on
     alias_false = option_off
     alias_self = option_vanilla
@@ -470,7 +454,7 @@ class FlareGunSanity(Choice):
     option_off = 0
     option_on = 1
     option_junk = 2
-    # A toggle until 0.7.1: `true` / `false` still read.
+    # Old toggle values still read.
     alias_true = option_on
     alias_false = option_off
     default = option_on
@@ -594,9 +578,7 @@ class ShuffleRadioMusic(DefaultOnToggle):
     display_name = "Shuffle Radio Music"
 
 
-# Off by default since 2026-09-22: the drawbridge turned out not to be the only
-# way out of the tutorial (the mod opens the hub's arch doors on a save's first
-# session), so shuffling it can no longer lock anyone in.
+# Off by default: the mod opens the hub's arch doors, so the drawbridge is not the only way out.
 class StartWithDrawbridgeOpen(Toggle):
     """
     If on, you start with the Drawbridge open instead of finding it in the
@@ -665,7 +647,7 @@ class LinearTowers(Choice):
     option_off = 0
     option_all_deposit_boxes = 1
     option_one_deposit_box = 2
-    # A toggle until 0.7.1: `true` / `false` still read; `disabled` is the community document's word.
+    # Old toggle values still read; `disabled` is the community document's word.
     alias_true = option_all_deposit_boxes
     alias_on = option_all_deposit_boxes
     alias_false = option_off
@@ -715,12 +697,7 @@ class CutKeySanity(Choice):
     default = option_on
 
 
-# From the proposed options of the first alpha's players (2026-09-25), less
-# its mention of `lock_map_room`, which this world does not have. The first
-# door is the starting zone's other way out besides the drawbridge; the two
-# far ones are shortcuts, so locking them changes the walk and not the logic.
-# A set rather than a Choice since 2026-09-26: a player asked to lock the first
-# door alone, and naming every combination took eight values.
+# The first door is the starting zone's other way out; the two far ones are only shortcuts.
 class StartWithArchDoorsOpen(OptionSet):
     """
     The hub's arch doors open from the start; the others are items to find.
@@ -1373,7 +1350,7 @@ class IslandObjectLimits(OptionCounter):
     """
 
     display_name = "Island Object Limits"
-    # "X-Ray Goggles" is the Scanner's name before 0.5.0, still read (items.island_object_limits).
+    # "X-Ray Goggles" is the Scanner's old name, still read (items.island_object_limits).
     valid_keys = frozenset(name for name, _ in data.FILLER_ITEMS if name not in ("Backpack", "Belt", "Gourd Carton")) | {
         "X-Ray Goggles"}
     min = 0
@@ -1675,14 +1652,12 @@ option_groups = [
 ]
 
 option_presets = {
-    # Everything on: the full alpha experience.
     "Full Run": {
         "goal": Goal.option_big_goodbye,
         "gourd_sanity": GourdSanity.option_every_gourd,
         "radio_sanity": True,
         "shuffle_radio_music": True,
     },
-    # Trimmed down: the bell inside the Big Wall, and a check every five gourds placed.
     "Short": {
         "goal": Goal.option_big_wall,
         "gourd_sanity": GourdSanity.option_every_5,

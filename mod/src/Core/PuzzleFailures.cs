@@ -5,47 +5,17 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // A failed puzzle, as a DeathLink trigger (`puzzle_failed`, Core/Traps). Three signs, read with
-    // Ghidra and the state log on 2026-10-05:
-    //
-    //   A validator's screen goes to Failure. ValidatorDisplay shows Off 0, Blank 1, Success 2,
-    //   Failure 3, Thinking 4 through a TrackedPeckState of its own; the tile validators
-    //   (PegTileValidator.AfterDrumRoll) and the timers (TimerDialController: the timed tomato's
-    //   dial among them) set it. Their own `onFailure` switch is often not wired (Indoor
-    //   Semaphore's is not), the screen always is.
-    //
-    //   A failure switch fires: PressInOrder and CountingController have one (PeckSwitch.Peck).
-    //   Not PressInOrder's reset (player on Discord, 2026-10: opening the door of Pointer's Paradise killed
-    //   everyone, "as a button pressed in the wrong order"). Read with Ghidra on 2026-10-20: a
-    //   wrong press (OnInput) pecks the failure switch with the presser's context, and SetOff,
-    //   when the puzzle goes inactive with `resetWhenInactive`, pecks it too, with an empty one
-    //   (no player, action -1): the game's way of putting the lights out.
-    //
-    //   A timed tomato runs out with its puzzle not done (state log, 2026-10-05): the Pomodoro's own
-    //   state goes 1 when it starts and back to 0 when its time is up. Only the tomatoes that sit
-    //   in a PomodoroDispenser when the world loads (player: a tomato given some other way, by a
-    //   trap one day, is no puzzle's); its puzzle is the one nearest that dispenser. Solved in
-    //   the meantime (its check made), it was no failure.
-    //
-    //   A synchronised button lets go with its puzzle not done (player, 2026-10-05): the buttons of a
-    //   SimPressController spring back on their own after a while, and one springing back while
-    //   the controller has not succeeded means the press was missed. Once its success switch has
-    //   fired, a controller's buttons no longer count. (Not the buttons two players hold together:
-    //   those are another class.)
-    //
-    // Everything is listed once per world, by instance, with the nearest puzzle for the log. Only
-    // the host acts: it holds the connection and the puzzles' states are its own.
+    // Failed puzzles as a DeathLink trigger (`puzzle_failed`); only the host acts on them.
     internal static class PuzzleFailures
     {
         private const string Tag = "[" + nameof(PuzzleFailures) + "]";
 
-        // One failure per puzzle part per few seconds, and none in the first seconds of a world,
-        // when every state re-asserts itself.
+        // One failure per part per few seconds, none while a new world re-asserts its states.
         private const float Cooldown = 3f;
         private const float WorldSettleSeconds = 8f;
         private const int ScreenFailure = 3;
 
-        // A clamp opens slowly; the check goes once the gourd is loose (Tyrope, Window Labyrinth).
+        // A clamp opens slowly; the check goes once the gourd is loose.
         private const float TomatoGraceSeconds = 15f;
 
         // A door closing pecks the failure switch and turns the puzzle off, in either order.
@@ -106,7 +76,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // From the PeckSwitch.Peck patches; `byNobody` when the context names no player and no action.
+        // `byNobody` when the context names no player and no action.
         internal static void OnPeck(PeckSwitch peckSwitch, bool byNobody)
         {
             if (peckSwitch == null || !NetworkServer.active)
@@ -133,7 +103,7 @@ namespace BigWalkArchipelago.Core
                 return;
             }
 
-            // Pointer's Paradise (2026-11-01): the door's peck carries the closer's context.
+            // Pointer's Paradise: a door closing pecks the switch with the closer's context.
             if (world.ResetBySetOff.Contains(id))
             {
                 if (world.OffFrame.TryGetValue(id, out var off) && Time.frameCount - off <= ResetFrames)
@@ -149,7 +119,6 @@ namespace BigWalkArchipelago.Core
             Fail(id, puzzle, world);
         }
 
-        // From the TrackedPeckState.SetState patch (Patches/WorldButtonPatch), every state change.
         internal static void OnState(TrackedPeckState state, int value)
         {
             if (state == null || !NetworkServer.active)
@@ -198,7 +167,7 @@ namespace BigWalkArchipelago.Core
                 Fail(id, world.SyncControllers[controller] + " (a synchronised button let go)", world);
         }
 
-        // Every frame (ApRuntime): a wrong press waits a few frames for a door.
+        // A wrong press waits a few frames for a door that may be the real cause.
         internal static void TickPresses()
         {
             var world = _world;
@@ -215,7 +184,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Every couple of seconds: a tomato that ran out fails if still unsolved after its grace.
+        // A tomato that ran out fails if still unsolved after its grace.
         internal static void Tick()
         {
             var world = _world;
@@ -264,9 +233,7 @@ namespace BigWalkArchipelago.Core
             Traps.Trigger("puzzle_failed", Describe(puzzle));
         }
 
-        // How a failure reads for the other games (player, 2026-10-06): the slot's name goes in
-        // front (ApRuntime.SendDeathLink), then the puzzle by its location name as the server
-        // knows it, and how it was failed. `puzzle` is "gourdX (Kind)" or "gourdX (what happened)".
+        // `puzzle` is "gourdX (Kind)" or "gourdX (what happened)"; the slot name goes in front.
         private static readonly Dictionary<string, string> Hows = new()
         {
             { "PressInOrder", "buttons pressed out of order" },
@@ -324,7 +291,6 @@ namespace BigWalkArchipelago.Core
             var world = new World { ReadyAt = Time.unscaledTime + WorldSettleSeconds };
             try
             {
-                // Each puzzle by its gourd: its name, its check, where it is.
                 var gourds = new List<(string name, string location, Vector3 at)>();
                 foreach (var gourd in UnityEngine.Object.FindObjectsByType<RewardGourd>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 {

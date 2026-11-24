@@ -4,19 +4,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Dumps the full hierarchy of the hosting screen (HostMenuConfirm) while
-    // it is displayed — a prerequisite requested before touching the real
-    // game-creation screen (cf. big-walk-archipelago-notes.md, plan to add
-    // an AP host:port field): unlike in-game scene mechanisms (Peck/
-    // PropHome), a Unity UI breaks easily if you clone/insert blindly
-    // (RectTransform/layout/keyboard navigation) — we look at the real
-    // layout first before touching it, same philosophy as
-    // DebugComponentLookup for unknown Peck mechanisms.
-    //
-    // No player-proximity filter here (unlike DebugComponentLookup): this
-    // screen exists in the main menu, before any local PlayerCharacter
-    // exists. We start directly from the root GameObject of the active
-    // HostMenuConfirm instance.
+    // Dumps the hosting screen's UI hierarchy while it is shown.
     internal static class DebugMenuLookup
     {
         internal static void DumpHostMenuConfirm()
@@ -25,7 +13,7 @@ namespace BigWalkArchipelago.Debug
             if (menu == null)
             {
                 Plugin.Log.LogInfo(
-                    $"[{nameof(DebugMenuLookup)}] No active HostMenuConfirm — open the game-creation screen first.");
+                    $"[{nameof(DebugMenuLookup)}] No active HostMenuConfirm, open the game-creation screen first.");
                 return;
             }
 
@@ -37,9 +25,7 @@ namespace BigWalkArchipelago.Debug
             Plugin.Log.LogInfo(
                 $"[{nameof(DebugMenuLookup)}]   passwordRequired = {menu.passwordRequired}");
 
-            // Root = the highest ancestor with a RectTransform (the Canvas or
-            // the screen itself): we want to see the whole panel, not just
-            // HostMenuConfirm's subtree.
+            // Start from the highest RectTransform ancestor to see the whole panel.
             var root = menu.transform;
             var current = root;
             var guard = 0;
@@ -49,32 +35,18 @@ namespace BigWalkArchipelago.Debug
             Dump(current, 0);
         }
 
-        // anchoredPosition and sizeDelta alone are not enough to say where a
-        // thing IS, and two wrong guesses on 2026-09-22 paid for this method.
-        // The hosting screen mixes anchors and pivots freely — Continue does
-        // not share either with the fields beside it — so two children of one
-        // parent can carry coordinates that look far apart and render on top
-        // of each other, which is exactly what happened to the Archipelago
-        // toggle and the game's delete button.
-        //
-        // The world span below settles it with no inference at all: left and
-        // right edges in world units, directly comparable between any two
-        // rows of this dump. If two spans overlap, the elements overlap.
+        // Anchors and pivots vary, so compare world-space spans to tell if two elements overlap.
         private static string Describe(RectTransform rect)
         {
             var size = rect.rect;
             var scale = rect.lossyScale;
             var centre = rect.position;
 
-            // rect.rect is local and already expressed relative to the pivot
-            // (its x is -pivot.x * width), so the pivot must NOT be applied a
-            // second time here — adding it was wrong in the first draft of
-            // this method and would have produced exactly the kind of
-            // plausible, wrong number this is meant to replace.
+            // rect.rect is already relative to the pivot: do not apply the pivot again.
             var left = centre.x + size.x * scale.x;
             var bottom = centre.y + size.y * scale.y;
 
-            return $" — anchoredPosition={rect.anchoredPosition} sizeDelta={rect.sizeDelta}"
+            return $", anchoredPosition={rect.anchoredPosition} sizeDelta={rect.sizeDelta}"
                  + $" pivot={rect.pivot} anchors={rect.anchorMin}..{rect.anchorMax}"
                  + $" worldX=[{left:0.#}..{left + size.width * scale.x:0.#}]"
                  + $" worldY=[{bottom:0.#}..{bottom + size.height * scale.y:0.#}]";
@@ -89,7 +61,7 @@ namespace BigWalkArchipelago.Debug
             var rectInfo = rect != null ? Describe(rect) : string.Empty;
 
             Plugin.Log.LogInfo(
-                $"[{nameof(DebugMenuLookup)}] {new string(' ', depth * 2)}{t.name} — components: {DescribeComponents(t.gameObject)}{rectInfo}");
+                $"[{nameof(DebugMenuLookup)}] {new string(' ', depth * 2)}{t.name}, components: {DescribeComponents(t.gameObject)}{rectInfo}");
 
             for (var i = 0; i < t.childCount; i++)
                 Dump(t.GetChild(i), depth + 1);

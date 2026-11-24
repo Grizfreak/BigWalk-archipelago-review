@@ -1,21 +1,4 @@
-"""
-The world's logic, written into slot_data for the mod (R7, `tracker_board`, player 2026-10-13): a board in
-the hub names the checks in logic, so the mod has to know the logic. Every rule of this world is built with the
-rule builder, which is data, so it travels as data and the mod evaluates it again with the items it has received.
-Sent in every seed since 1.0.13, for outside trackers (PopTracker) as well.
-
-The format (`slot_data["logic"]`, documented in ../protocol.md):
-
-    "origin":    the region the players start in
-    "rules":     every distinct rule once, as nested lists:
-                   ["true"] ["false"] ["and", [r, ...]] ["or", [r, ...]] ["has", item, count]
-                   ["all", [items]] ["any", [items]] ["from", [items], count]
-                   ["loc", location] ["reg", region]
-    "exits":     [from region, to region, rule index] for every entrance
-    "locations": [name, id (0 for an event), region, rule index, event item ("" for a real check)]
-
-Items and locations go by name: the rules name them, and the mod reads names off the data package.
-"""
+"""The world's rule-builder logic as data in slot_data, for the mod and outside trackers."""
 
 from __future__ import annotations
 
@@ -31,7 +14,7 @@ if TYPE_CHECKING:
 
 
 def compact(rule: Rule) -> list[Any]:
-    """One rule as the nested lists above. A rule of another kind is an error: the mod would not know it."""
+    """One rule as nested lists; any other rule kind is an error, the mod could not evaluate it."""
     if isinstance(rule, True_):
         return ["true"]
     if isinstance(rule, False_):

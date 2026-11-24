@@ -1,7 +1,4 @@
-"""
-`object_sanity` (ROADMAP S7, 0.6): the island's gadgets stay on the map and their pick-ups are checks,
-every one of them or the first of each kind.
-"""
+"""`object_sanity`: the gadgets stay on the map and their pick-ups are checks."""
 
 from BaseClasses import LocationProgressType
 

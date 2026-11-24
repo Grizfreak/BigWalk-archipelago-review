@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""
-Package `bigwalk/` into `dist/bigwalk.apworld`.
-
-An .apworld is a plain zip holding the world's package directory, so the
-archive paths must all start with `bigwalk/`. Run it with any Python 3.10+;
-it needs nothing installed.
-
-    python build.py
-"""
+"""Package `bigwalk/` into `dist/bigwalk.apworld`."""
 
 from __future__ import annotations
 
@@ -20,12 +12,7 @@ HERE = Path(__file__).parent
 PACKAGE = HERE / "bigwalk"
 DEFAULT_OUTPUT = HERE / "dist" / "bigwalk.apworld"
 
-# What Archipelago's own packager writes into the manifest of an .apworld
-# (worlds/Files.py: container_version and compatible_version). They belong in
-# the PACKAGE, not in the source archipelago.json — Archipelago's
-# test_world_manifest refuses a source manifest that defines `version` — and
-# 0.6.7 refuses to read the world's version without them: it loads the world
-# as 0.0.0 and rejects any YAML with a `requires` line.
+# Archipelago reads the world version only with these set, and only in the packaged manifest.
 CONTAINER_VERSION = 7
 COMPATIBLE_VERSION = 7
 

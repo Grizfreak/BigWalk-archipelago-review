@@ -1,7 +1,4 @@
-"""
-`require_arch_doors` puts what lies past the Left and Right Arch Doors behind them in
-logic, so that the generator does not ask for a place on foot and then send the shortcut.
-"""
+"""`require_arch_doors`: what lies past the Left and Right Arch Doors needs them in logic."""
 
 from .. import data, locations, regions
 from .bases import BigWalkTestBase
@@ -124,7 +121,7 @@ class TestTheOptionOff(BigWalkTestBase):
 
 
 class TestTheFarDoorsComeEarly(BigWalkTestBase):
-    """A door in logic is only worth having if it comes first, so it is asked for as an early item."""
+    """A door in logic is only worth having if it comes first, so it is an early item."""
 
     options = {"require_arch_doors": True, "start_with_arch_doors_open": [data.FIRST_ARCH_DOOR.item_name]}
     run_default_tests = False
@@ -154,7 +151,7 @@ class TestNoEarlyDoorsWhenThePartsAreLocked(BigWalkTestBase):
 
 
 class TestNoEarlyDoorsWhenTheFirstDoorIsShut(BigWalkTestBase):
-    """With the first door shut the starting zone is too small to hold them as well as the way out."""
+    """With the first door shut the starting zone is too small for them and the way out."""
 
     options = {"require_arch_doors": True, "start_with_arch_doors_open": []}
     run_default_tests = False

@@ -3,16 +3,7 @@ using BigWalkArchipelago.Core;
 
 namespace BigWalkArchipelago.Core.Net
 {
-    // Translation between the game's own identifiers and Archipelago's
-    // numeric ids. The apworld derives its ids from the same game enums on
-    // purpose (see apworld/protocol.md §3), precisely so this side can do
-    // arithmetic instead of shipping a copy of the Python tables that would
-    // silently drift the first time either side changed.
-    //
-    // The offsets are not hardcoded as the only source: they arrive in
-    // slot_data on every connection (Configure below), with the constants
-    // here as the values to fall back on. That way a future apworld can move
-    // its id block without this file needing a matching release.
+    // Maps game identifiers to Archipelago ids by the same arithmetic as the apworld.
     internal static class ApLocationIds
     {
         internal const long DefaultBase = 8_600_000;
@@ -22,11 +13,7 @@ namespace BigWalkArchipelago.Core.Net
         internal const int DefaultTeleportOffset = 2_700;
         internal const long DefaultCutOffset = 3_000;
 
-        // The KEY items, which are a different thing from the FEATURE items
-        // even though both are one-per-tower. A feature id is `B + propName`
-        // and opens a door; a key id is `B + 4000 + propName` and is the
-        // physical key a player carries, cuts and places. They had to stop
-        // sharing a number the moment the keys became items of their own.
+        // Key items (the physical key) sit apart from feature items (the door it opens).
         internal const long DefaultKeyItemOffset = 4_000;
         internal const long DefaultArchDoorOffset = 5_000;
         internal const long DefaultGourdItemId = DefaultBase + 1;
@@ -40,25 +27,11 @@ namespace BigWalkArchipelago.Core.Net
         private static long _archDoorOffset = DefaultArchDoorOffset;
         private static long _gourdItemId = DefaultGourdItemId;
 
-        // A cut segment has no identifier of the game's own — `cuts` is an
-        // anonymous Mirror SyncList of bools — so one is made here out of the
-        // two things that do identify it: the key it belongs to and its index
-        // in that list. The separator is a character no C# enum name can
-        // contain, which is what lets TryResolveLocation tell a cut from the
-        // plain `SaveablePropName` of the key's own placement location.
+        // A cut has no game identifier: key + separator + index, a character no enum name contains.
         private const string CutSeparator = "#cut";
 
-        // Room for ten segments per key, which is twice what the widest one
-        // has. Spacing them by the key's own enum value keeps the arithmetic
-        // to one line on the Python side too (apworld/protocol.md §3).
+        // Room for ten segments per key, twice the widest one.
         private const long CutStride = 10;
-
-        // Which SavableSystem values are real stations lives in
-        // Core/RadioStations.cs, next to the code that unlocks them —
-        // SavableSystem also declares FmStation7/8/9, which the apworld leaves
-        // out (no names, never seen written), so an id resolving to one of
-        // those would be a check nothing listens for and an item nothing can
-        // grant. One list, asked twice.
 
         internal static long GourdItemId => _gourdItemId;
 
@@ -97,37 +70,29 @@ namespace BigWalkArchipelago.Core.Net
             _monumentKeyOffset = slotData.MonumentKeyIdOffset;
         }
 
-        // The packs and fireworks (Core/PackChecks): reported as "pickup:<guid>" and
-        // "firework:<landmark>", their id the position in the slot's lists. Whether the slot has
-        // them at all is the slot's business, as for every location (BelongsToSlot).
+        // Packs and fireworks: their id is the position in the slot's lists.
         internal const string PickupPrefix = "pickup:";
         internal const string FireworkPrefix = "firework:";
         private static string[] _pickupGuids = Array.Empty<string>();
         private static long _pickupOffset = 13_000;
 
-        // A pack's pick-up location of this slot (`pack_sanity`), by its id.
         internal static bool IsPickupLocation(long id) =>
             id >= _base + _pickupOffset && id < _base + _pickupOffset + _pickupGuids.Length;
         private static string[] _fireworkKeys = Array.Empty<string>();
         private static long _fireworkOffset = 13_100;
-        // A tower reached (ROADMAP S8): reported as "tower:<big key's prop name>".
         internal const string TowerPrefix = "tower:";
         private static string[] _towerKeys = Array.Empty<string>();
         private static long _towerOffset = 13_200;
         internal const string FlareGunPrefix = "flaregun:";
         private static string[] _flareGunGuids = Array.Empty<string>();
         private static long _flareGunOffset = 13_050;
-        // The island's gadgets (ROADMAP S7): "object:<guid>" with `every`, "objectkind:<the game's name>" with
-        // `first_pickup`.
         internal const string ObjectPrefix = "object:";
         private static string[] _objectGuids = Array.Empty<string>();
         private static long _objectOffset = 13_500;
         internal const string ObjectKindPrefix = "objectkind:";
         private static string[] _objectKinds = Array.Empty<string>();
         private static long _objectKindOffset = 13_700;
-        // A monument full (ROADMAP L1): "monument:<the tower's big key prop>". Its id is the tower's position in the
-        // apworld's TOWERS (the order MonumentOrder keeps), not in the slot's list, which may leave a tower out.
-        // A light switched on (light_sanity): "light:<a lamp's guid or a switch's state path>".
+        // A monument's id is the tower's position in the apworld's TOWERS, not in the slot's list.
         internal const string LightPrefix = "light:";
         private static string[] _lightKeys = Array.Empty<string>();
         private static long _lightOffset = 14_000;
@@ -136,8 +101,6 @@ namespace BigWalkArchipelago.Core.Net
         private static string[] _monumentKeys = Array.Empty<string>();
         private static long _monumentOffset = 13_800;
 
-        // A monument key (`linear_towers: one_deposit_box`): "monumentkey:<the tower's big key prop>", by the same
-        // position.
         internal const string MonumentKeyPrefix = "monumentkey:";
         private static string[] _monumentKeyKeys = Array.Empty<string>();
         private static long _monumentKeyOffset = 13_850;
@@ -173,11 +136,6 @@ namespace BigWalkArchipelago.Core.Net
             return true;
         }
 
-        // Resolves what ICheckReporter.ReportCheck already receives: the
-        // game's own enum name, as written into SaveManager. Both detection
-        // paths funnel through here — SaveablePropName for puzzles and big
-        // keys (GourdStatePatch/SaveValuePatch), SavableSystem for radio
-        // stations (SaveValuePatch).
         internal static bool TryResolveLocation(string locationName, out long locationId)
         {
             if (Enum.TryParse<SaveablePropName>(locationName, out var propName)
@@ -194,8 +152,6 @@ namespace BigWalkArchipelago.Core.Net
                 return true;
             }
 
-            // A Gauntlet stage's puzzle, written as its own chamber system.
-            // The slot decides whether the stage is a location at all.
             if (Enum.TryParse<SavableSystem>(locationName, out var chamber)
                 && GauntletStairways.IsChamber(chamber))
             {
@@ -220,11 +176,7 @@ namespace BigWalkArchipelago.Core.Net
             return false;
         }
 
-        // The name a cut segment is reported and remembered under. Kept here
-        // rather than in the patch that produces it, next to the parsing that
-        // has to undo it: the two are one format, and CheckTracker replays
-        // these strings from the save on every connection, so a change to one
-        // without the other silently loses every cut this save ever made.
+        // Keep in step with the parsing: CheckTracker replays these names from the save.
         internal static string CutLocationName(SaveablePropName propName, int index)
         {
             return $"{propName}{CutSeparator}{index}";
@@ -255,11 +207,7 @@ namespace BigWalkArchipelago.Core.Net
             return _base + _depositOffset + depositedCount;
         }
 
-        // A Broadcast item carries the station's SavableSystem value in the
-        // same slot its location id does — item and location ids are separate
-        // namespaces in Archipelago, so the apworld reuses the number rather
-        // than inventing a second rule (see apworld/protocol.md §4). Anything
-        // that does not land on one of the seven real stations is not ours.
+        // Item and location ids are separate namespaces: a Broadcast item reuses the station's id.
         internal static bool TryResolveRadioItem(long itemId, out SavableSystem system)
         {
             var value = itemId - _base - _radioOffset;
@@ -279,8 +227,6 @@ namespace BigWalkArchipelago.Core.Net
             return true;
         }
 
-        // An arch door item carries the door's SavableSystem value, as a
-        // Broadcast item does, one offset further on (apworld/protocol.md §4).
         internal static bool TryResolveArchDoorItem(long itemId, out SavableSystem system)
         {
             var value = itemId - _base - _archDoorOffset;
@@ -297,11 +243,7 @@ namespace BigWalkArchipelago.Core.Net
             return true;
         }
 
-        // A Gauntlet stairway item carries its stage's chamber system, like the
-        // stage's own check does (apworld/protocol.md §14). Returns the level,
-        // 0..6, which is its position in GauntletStairways.Chambers.
-        // Each Progressive Gauntlet Door (apworld data.PROGRESSIVE_GAUNTLET_VALUE) opens the lowest
-        // stage still shut.
+        // Returns the stage level 0..6, its position in GauntletStairways.Chambers.
         private const long ProgressiveGauntletValue = 60;
 
         internal static bool TryResolveGauntletItem(long itemId, out int level)
@@ -321,34 +263,18 @@ namespace BigWalkArchipelago.Core.Net
             return level >= 0;
         }
 
-        // The physical key for a tower, as opposed to the door it fits.
-        // Same shape as TryResolveBigKeyItem below, one offset apart, and
-        // deliberately a separate method rather than a flag: a caller that
-        // confused the two would hand a door to KeyCustody or a key to
-        // KeyFeatures, and both would look like nothing happening.
+        // Separate from TryResolveBigKeyItem on purpose: mixing the two would fail silently.
         internal static bool TryResolveKeyItem(long itemId, out SaveablePropName propName)
         {
             return TryResolveProp(itemId - _base - _keyItemOffset, out propName);
         }
 
-        // Received big keys are 1:1 with a SaveablePropName, so the item id
-        // carries the enum value directly and this is just the inverse of
-        // ApLocationIds' own arithmetic. Anything that does not land on a
-        // real big key is not ours to apply (filler, traps, another game's
-        // item echoed back) and the caller ignores it.
         internal static bool TryResolveBigKeyItem(long itemId, out SaveablePropName propName)
         {
             return TryResolveProp(itemId - _base, out propName);
         }
 
-        // Filler gadget items live at a flat B + 9001..9005, exactly the
-        // ids data.py's FILLER_ITEMS assigns them directly (no separate
-        // offset in slot_data, unlike radio/deposit/cut/key — these ids
-        // were never anything but B + a fixed number, even back when the
-        // filler was the inert Postcard/Pebble/Keychain trio). The order
-        // here has to match data.py's FILLER_ITEMS order exactly, since the
-        // apworld and the mod each derive it independently rather than one
-        // shipping a table to the other.
+        // Flat B + 9001..9005, in data.py's FILLER_ITEMS order, which this must match.
         private const long GadgetItemBaseOffset = 9_001;
 
         private static readonly GadgetKind[] GadgetItemOrder =

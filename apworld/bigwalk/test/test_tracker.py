@@ -1,12 +1,4 @@
-"""
-Universal Tracker support.
-
-UT re-runs this world's generation inside the tracker and compares the result
-against the server. What these tests guard is that it re-runs it with the
-SEED's options and not with whatever YAML the tracking player happens to have
-— the whole of that mechanism is `interpret_slot_data` plus the passthrough
-block in `generate_early`, and both are silent when they break.
-"""
+"""Universal Tracker support: UT must rebuild a world with the seed's options, not a YAML."""
 
 from __future__ import annotations
 
@@ -16,8 +8,7 @@ from .. import world as bigwalk_world
 from ..world import BigWalkWorld
 from .bases import BigWalkTestBase, build_like_universal_tracker, world_shape
 
-# A seed that differs from the defaults in every way that can move a location,
-# a region or a number a rule is written against.
+# A seed that differs from the defaults in all that can move a location, region or rule.
 UNLIKE_THE_DEFAULTS = {
     "goal": "big_game",
     "gourd_sanity": "every_gourd",
@@ -36,19 +27,12 @@ class TestTheTrackerRebuildsTheSeed(BigWalkTestBase):
     options = UNLIKE_THE_DEFAULTS
 
     def test_it_lands_on_this_exact_world(self) -> None:
-        """
-        The tracker generates with an empty YAML — every option at its default
-        — and then again with the seed's slot_data. The second pass must land
-        on the world that was really generated.
-        """
+        """Fed the seed's slot_data, the tracker's second pass lands on the generated world."""
         tracked = build_like_universal_tracker({}, self.world.fill_slot_data())
         self.assertEqual(world_shape(tracked), world_shape(self.multiworld))
 
     def test_and_without_the_passthrough_it_would_not(self) -> None:
-        """
-        The control. Without slot_data the tracker keeps the default YAML and
-        shows a different world, which is what the test above is worth.
-        """
+        """Without slot_data the tracker would show a different world."""
         untracked = build_like_universal_tracker({})
         self.assertNotEqual(world_shape(untracked), world_shape(self.multiworld))
 
@@ -72,10 +56,7 @@ class TestSlotDataCarriesEveryTrackedOption(BigWalkTestBase):
 
 
 class TestTheModStillReadsTheSameStrings(BigWalkTestBase):
-    """
-    The options were renamed after players' words on 2026-09-25, and the mod
-    was not: slot_data must keep the strings a released mod compares.
-    """
+    """slot_data keeps the option strings a released mod compares."""
 
     options = UNLIKE_THE_DEFAULTS
 
@@ -87,8 +68,7 @@ class TestTheModStillReadsTheSameStrings(BigWalkTestBase):
     def test_every_value_has_a_wire_name(self) -> None:
         from ..options import GOAL_ON_THE_WIRE, GOURD_SANITY_ON_THE_WIRE, Goal, GourdSanity
 
-        # name_lookup holds each value's canonical name only, not its aliases
-        # (Archipelago adds `false` to any Choice with an `off` on its own).
+        # name_lookup has canonical names only; Archipelago adds `false` to a Choice with `off`.
         self.assertEqual(set(GOAL_ON_THE_WIRE), set(Goal.name_lookup.values()))
         self.assertEqual(set(GOAL_ON_THE_WIRE.values()), {"gauntlet", "ending", "deposits", "second_ending"})
         self.assertEqual(set(GOURD_SANITY_ON_THE_WIRE), set(GourdSanity.name_lookup.values()))
@@ -109,12 +89,7 @@ class TestAnAlphaYamlStillReads(BigWalkTestBase):
 
 class TestTheHooksAreShapedTheWayUTChecksThem(BigWalkTestBase):
     def test_interpret_slot_data_is_static(self) -> None:
-        """
-        UT reads it with `inspect.getattr_static` and only skips its first
-        generation when it finds a staticmethod or a classmethod there
-        (`TrackerCore.initalize_tracker_core`). A plain method would quietly
-        cost the yaml-less path.
-        """
+        """UT skips its first pass only for a staticmethod or a classmethod."""
         hook = inspect.getattr_static(BigWalkWorld, "interpret_slot_data", None)
         self.assertIsInstance(hook, staticmethod)
 
@@ -129,11 +104,7 @@ class TestTheHooksAreShapedTheWayUTChecksThem(BigWalkTestBase):
 
 
 class TestASeedFromBeforeProgressiveDoors(BigWalkTestBase):
-    """
-    A seed generated before `gauntlet_stage_items` existed has one door per stage and no
-    such field: the tracker must not rebuild it with progressive doors (E2, 2026-10-05:
-    the end of the game reached, and the tracker never in go mode).
-    """
+    """A seed from before `gauntlet_stage_items` has one door per stage, not progressive ones."""
 
     options = {"goal": "big_goodbye", "gauntlet_mode": "locked_stages", "gauntlet_stage_items": "individual"}
 

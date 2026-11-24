@@ -6,36 +6,15 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // The in-world teleport buttons (ROADMAP U4/U10): in the hub one for each of eight
-    // destinations, and in each destination one that leads back to the hub. Which of them exist
-    // is the slot's `teleport_buttons` option:
-    //
-    //   off          no buttons.
-    //   free         every button, from the start.
-    //   with_towers  a tower's hub button once its door has been opened by the button at its foot
-    //                (the game's LookoutLight flag); the Black Tower's once the two buttons at its
-    //                top have been held together; the Gauntlet's once the chapel has been opened
-    //                (its two buttons held together); the Drawbridge's and the Green Dome's once a
-    //                player has stood there.
-    //   items        as with_towers, and each hub button also needs its own Teleporter item.
-    //
-    // The way back to the hub is there whenever the option is not off. A teleport can skip a
-    // locked door, which the logic does not count on, so none of this is ever logic.
-    //
-    // Every machine builds the same buttons from the same table (a button is a native game
-    // button with a fixed ticket per slot, see WorldButtons), so nothing is networked but the
-    // set of buttons that exist: the host works it out and sends it to the guests in the
-    // snapshot as a bit mask (ModChannel).
+    // Hub teleport buttons per `teleport_buttons`; never logic, since a teleport can skip doors.
     internal static class TeleportButtons
     {
         private const string LedgerPrefix = "ap_tp_";
 
-        // Bit 0..5 of the mask: the first six hub buttons, by `Destinations` (the others: 8, 9).
-        // This bit: the way back, in every destination.
+        // Bits 0..5: the first six hub buttons (the others are 8 and 9). This bit: the way back.
         private const int ReturnBit = 1 << 6;
 
-        // The resync stations (Core/ResyncStations): there when the host runs Archipelago, which a
-        // guest does not, so its own config cannot say.
+        // Only the host knows whether Archipelago runs, so a guest's config cannot say.
         private const int ToolsBit = 1 << 7;
 
         // Latched by the host: the save has no mark of its own for these places.
@@ -46,11 +25,9 @@ namespace BigWalkArchipelago.Core
             internal string Key;
             internal string Label;
 
-            // Set for a place reached by standing there, as TowerReach knows it.
             internal string ReachProp;
 
-            // Where the hub's button for this destination is: a point on a wall and the way the
-            // wall faces. The return button inside the destination is `ReturnSpot`.
+            // Where the hub's button sits: a point on a wall and the way the wall faces.
             internal Spot HubSpot;
             internal Spot ReturnSpot;
         }
@@ -67,10 +44,7 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // The order is the apworld's `TELEPORT_DESTINATIONS`, which is also the order of the
-        // Teleporter item ids. The hub's spots are a row on its red wall,
-        // 1.2 m apart, left to right as the player faces the wall.
-        // The return spots are the marks of the same night, one inside each destination.
+        // In the apworld's `TELEPORT_DESTINATIONS` order, which is the Teleporter item id order.
         private static readonly Destination[] Destinations =
         {
             new Destination { Key = "red", Label = "Red Funnel Tower",
@@ -99,10 +73,10 @@ namespace BigWalkArchipelago.Core
                 ReturnSpot = new Spot(-133.47f, 46.79f, -442.94f, 0.81f, -0.58f) },
         };
 
-        // The slots of the buttons in WorldButtons: 0..5 the hub's, 6..11 the returns.
+        // WorldButtons slots: 0..5 the hub's, 6..11 the returns.
         private const int ReturnSlotBase = 6;
 
-        // The destinations added later: 12..26 were taken, so 27/28 and 29/30 (hub, return).
+        // Added later: 12..26 were taken, so 27/28 and 29/30 (hub, return).
         private const int FirstLateDestination = 6;
         private const int LateSlotBase = 27;
 
@@ -114,18 +88,15 @@ namespace BigWalkArchipelago.Core
         private static int ReturnSlot(int i) =>
             i < FirstLateDestination ? ReturnSlotBase + i : HubSlot(i) + 1;
 
-        // How far in front of a button a player lands.
         private const float ArrivalDistance = 1.6f;
 
         private static string _mode = "off";
         private static int _idOffset = ApLocationIds.DefaultTeleportOffset;
         private static string[] _keys = Array.Empty<string>();
 
-        // On a guest: the mask the host last sent.
         private static int _mirroredMask;
         private static bool _mirrored;
 
-        // Whether each destination has its button back to the hub (`teleport_back_to_hub`).
         private static bool _backToHub = true;
 
         internal static void Configure(string mode, int idOffset, string[] keys, bool backToHub)
@@ -175,7 +146,7 @@ namespace BigWalkArchipelago.Core
             return keys;
         }
 
-        // Which buttons are there, as the host sees it. On a guest, as the host last said.
+        // On a guest, as the host last said.
         internal static int Mask()
         {
             if (NetworkClient.active && !NetworkServer.active)
@@ -222,14 +193,13 @@ namespace BigWalkArchipelago.Core
                 case "with_towers":
                     return Reached(key);
                 case "items":
-                    // The place reached on foot AND its Teleporter received (player, 2026-10-05).
+                    // Reached on foot and its Teleporter received.
                     return Reached(key) && SaveManager.GetIntValue(LedgerPrefix + key, 0, false) != 0;
                 default:
                     return false;
             }
         }
 
-        // Whether a destination has been reached on foot, by the game's own record of it.
         private static bool Reached(string key)
         {
             switch (key)
@@ -246,21 +216,16 @@ namespace BigWalkArchipelago.Core
                 case "dome":
                     return SaveManager.GetIntValue(ReachedPrefix + key, 0, false) != 0;
                 case "black":
-                    // Like the other towers, the tower's own button: the two at the top held
-                    // together write BlackTowerInteriorDoor (measured 2026-10-05).
+                    // The two buttons at the top held together write BlackTowerInteriorDoor.
                     return SaveManager.GetIntValue("BlackTowerInteriorDoor", 0, false) != 0;
                 default:
-                    // The Silent Gauntlet lies behind the chapel. The game writes EndingGate = 2
-                    // when its two buttons have been held together (measured 2026-10-05), and the
-                    // mod keeps its own latch of that (ApGoalFlags).
+                    // The Gauntlet is behind the chapel: EndingGate = 2 once its buttons are held.
                     return SaveManager.GetIntValue("EndingGate", 0, false) >= 2
                            || SaveManager.GetIntValue("ap_flag_EndingGate", 0, false) != 0;
             }
         }
 
-        // Puts into the world the buttons the mask says are there and takes out the others.
-        // Cheap enough to run every couple of seconds, which is how a button whose world
-        // loaded late (or was destroyed by a reload) comes back.
+        // Runs every couple of seconds so a button whose world loaded late comes back.
         internal static void Sync()
         {
             LatchReached();
@@ -301,13 +266,11 @@ namespace BigWalkArchipelago.Core
             if (WorldButtons.Has(slot))
                 return;
 
-            // A destination whose landing has not been marked yet still gets its button; it
-            // does nothing but say so in the log.
+            // A destination with no marked landing yet still gets a button that only logs.
             WorldButtons.Add(slot, label, spot.Point + spot.Normal * 0.02f, Quaternion.LookRotation(spot.Normal, Vector3.up),
                 presser =>
                 {
-                    // Worked out now, not when the button was made: the floor of the other
-                    // place is only there to be found once the player is near it.
+                    // Found now: the other place's floor only exists once the player is near it.
                     var landing = arrival(destination);
                     if (landing == null)
                         Plugin.Log.LogInfo($"[{nameof(TeleportButtons)}] '{label}': no landing marked yet.");
@@ -316,8 +279,7 @@ namespace BigWalkArchipelago.Core
                 }, icon, tint);
         }
 
-        // Big Trip's places among these (Core/Traps.cs): the hub, and each tower reached on foot,
-        // whatever the `teleport_buttons` option. Not the Gauntlet, the Drawbridge, the Dome.
+        // Big Trip landings: the hub and each tower reached on foot, whatever `teleport_buttons`.
         internal static IEnumerable<KeyValuePair<string, Vector3>> TripLandings()
         {
             yield return new KeyValuePair<string, Vector3>("the hub", InFrontOf(Destinations[0].HubSpot));
@@ -329,8 +291,6 @@ namespace BigWalkArchipelago.Core
             }
         }
 
-        // Where the hub's button for a destination sends a player: in front of that
-        // destination's return button; nowhere until that button is marked.
         private static Vector3? ArrivalOf(int destination)
         {
             var spot = Destinations[destination].ReturnSpot;
@@ -340,30 +300,24 @@ namespace BigWalkArchipelago.Core
             return null;
         }
 
-        // Where a destination's return button sends a player: in front of the hub's button
-        // for that destination.
         private static Vector3? HubArrivalOf(int destination)
         {
             return InFrontOf(Destinations[destination].HubSpot);
         }
 
-        // The floor in front of a button, found by looking down from the height of the mark: a
-        // mark made higher or lower than a hand would otherwise put a player in the floor or
-        // in the air.
+        // Looks down from the mark's height so a player lands neither in the floor nor in the air.
         private static Vector3 InFrontOf(Spot spot)
         {
             var ahead = spot.Point + spot.Normal * ArrivalDistance;
             if (Physics.Raycast(ahead, Vector3.down, out var hit, 3f, ~0, QueryTriggerInteraction.Ignore))
                 return hit.point + Vector3.up * 0.8f;
 
-            // Nothing to find (the other place is not loaded yet): land at the height of the mark
-            // and fall the last metre, which is always above the floor, where a guess at the
-            // height of a hand could be inside it.
+            // Nothing found yet (not loaded): land at the mark's height and fall the last metre.
             return ahead + Vector3.up * 0.2f;
         }
     }
 
-    // The jobs of every couple of seconds, one a frame: run together they made a hitch every 2 s.
+    // Runs the periodic jobs one per frame: together they caused a hitch every 2 s.
     internal sealed class TeleportButtonRunner : MonoBehaviour
     {
         private const float Period = 2f;

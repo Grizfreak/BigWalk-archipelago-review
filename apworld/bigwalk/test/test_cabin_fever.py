@@ -1,5 +1,4 @@
-"""The waits of the two Cabin Fever puzzles: one number each, the game's own by default, a help button,
-and the dial's time hidden."""
+"""The two Cabin Fever waits: one number each, the game's by default, a help button."""
 
 from .bases import BigWalkTestBase
 

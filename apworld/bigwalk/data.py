@@ -1,109 +1,31 @@
-"""
-Static mirror of the Big Walk save data the mod reads and writes.
-
-Everything in this file comes from the game's own enums (`SaveablePropName`,
-`SaveableHomeName`, `SavableSystem`, extracted with Il2CppInspectorRedux) and
-from the reverse-engineering notes in `../../mod/reverse-engineering-notes.md`.
-It is the single source of truth shared by items.py, locations.py and rules.py.
-
-Archipelago ids are derived from the game's own enum values rather than being
-allocated sequentially. That is deliberate: the mod can then compute an id with
-plain arithmetic (`BASE_ID + (int)saveablePropName`) instead of shipping a
-duplicated table that would silently drift from this file. See `../protocol.md`.
-"""
+"""Static Big Walk data shared by items.py, locations.py and rules.py, with their ids."""
 
 from __future__ import annotations
 
 from typing import NamedTuple
 
-# All Big Walk ids live in a single contiguous block. Sub-ranges are offset so
-# that two categories can never collide even though they reuse the game's own
-# (per-enum) numbering.
+# Ids reuse the game's enum values, so the mod computes them instead of keeping a copy of this file.
 BASE_ID = 8_600_000
 
 RADIO_ID_OFFSET = 1_000
 DEPOSIT_ID_OFFSET = 2_000
 GAUNTLET_ID_OFFSET = 2_500
-"""
-The Silent Gauntlet's stages, location and item alike (separate namespaces, as
-for the radio): `BASE_ID + GAUNTLET_ID_OFFSET + SavableSystem.GauntletChamberN`,
-that is 2550..2556. Below the cuts' 6000, which the id tests keep as the
-highest location block, and clear of the deposits' 2001..2045.
-"""
+"""Gauntlet stages, location and item alike: `BASE_ID + 2_500 + GauntletChamberN` (2550..2556)."""
 CUT_ID_OFFSET = 3_000
 KEY_ITEM_ID_OFFSET = 4_000
 ARCH_DOOR_ID_OFFSET = 5_000
-# 9_000 and above is the item-only range for things the game has no enum for
-# (filler, traps); see FILLER_ITEMS / TRAP_ITEMS at the bottom of this file.
-# 10_000..10_159 held the per-puzzle Unlock items of `lock_puzzles`, removed
-# before it was ever released (2026-10-02: no puzzle sits behind an item of its
-# own). The range stays empty rather than being reused, and PUZZLE_NEED_ID_OFFSET
-# below keeps its number, so no id a seed may carry ever changes meaning.
+# 9_000 and up: item-only ids for filler and traps. 10_000..10_159 stay unused, never reuse them.
 PUZZLE_NEED_ID_OFFSET = 11_000
-"""
-Item-only: `lock_puzzle_needs`' items, numbered by their position in
-PUZZLE_NEEDS. Clear of the 9_000s' filler and traps.
-"""
+"""Item-only: the `lock_puzzle_needs` items, numbered by their position in PUZZLE_NEEDS."""
 
 CUT_STRIDE = 10
-"""
-Ids reserved per big key for its cut segments: `BASE_ID + CUT_ID_OFFSET +
-prop_value * CUT_STRIDE + index`.
-
-Ten where the widest key has five, so the block can absorb a longer key
-without every id below it moving. With `prop_value` in 300..306 the range
-works out to 6000..6064 above BASE_ID, which sits clear of the puzzles
-(100..159), the keys (300..306), the deposits (2001..2045), the radio
-(1030..1036) and the item-only 9000s.
-"""
+"""Ids reserved per big key for its cuts; ten where the widest key has five, room to grow."""
 
 GOURD_ITEM_NAME = "Gourd"
 GOURD_CARTON_ITEM_NAME = "Gourd Carton"
 """Renamed after the gourds by `gourd_name`: "<name> Carton"."""
 
-# --------------------------------------------------------------------------
-# Puzzles (SaveablePropName.gourdXxx)
-# --------------------------------------------------------------------------
-# 45 puzzles — every one that exists in the build people are playing. The enum
-# holds 58 gourd values (100-159, skipping 102 and 136), and thirteen of them
-# produce nothing: see ABSENT_FROM_THE_BUILD below for how that was settled,
-# and note that ../design-decisions.md read the same gap backwards for two
-# weeks, as a content update that had ADDED thirteen puzzles.
-#
-# Deliberately excluded:
-#   - gourdTesting00-39 / bigKeyTesting* (dev-only values, never triggered in
-#     normal play; the mod already filters them out in GourdRegistry).
-#   - gourdSecretZoneVice (290): the only gourd-prefixed value with no matching
-#     valetXxx home, never observed in play, purpose unknown. Including it
-#     would risk an unreachable location. The mod must not report it either.
-#   - THE 46TH GOURD, measured 2026-09-22 and not in this enum at all. A
-#     Ctrl+V roster taken beside it reads "46 RewardGourd(s) in the world"
-#     against the 45 below, and the extra one is 4.3m away while the next is
-#     115m — so it really is there, which the roster's distance sort is the
-#     only way to know (the game instantiates every gourd everywhere). It is
-#     a shiny white gourd in the zone behind the Spawn Secret Door, released by
-#     two buttons held at once (`NHoldLogic 2`, minimumMatches=2 — the bells'
-#     mechanism). It carries `saveablePropName = notSavable`.
-#     - It is NOT gourdSecretZoneVice: that value would have printed its own
-#       name. The exclusion above stands, for a still-unknown reason.
-#     - It is not a mod artefact either: that session had "0 received, 0
-#       deposited, 0 already spawned", so no cosmetic gourd existed.
-#     - **It is scenery, settled in game on 2026-09-22.** It sat next to the
-#       two buttons that end that zone, so it looked like the zone's
-#       conclusion and the goal was built on it for an afternoon. It is not:
-#       the buttons unlock its vise and the gourd STAYS IN PLACE.
-#       `RewardGourd.ServerSetGourdState` is never called for it, and a
-#       roster taken afterwards still reads `state=Locked`. That is also why
-#       it has no save identity and no enum value — nothing about it is meant
-#       to be recorded. `goal: second_ending` fires on the ending transition
-#       the buttons start instead (../protocol.md §6).
-#     - Worth keeping even so, because the obvious implementation is a trap:
-#       the mod's own cosmetic gourds are `notSavable` too, so "the gourd
-#       that is notSavable" would have goaled a seed the first time a player
-#       was sent one.
-#   - the thirteen in ABSENT_FROM_THE_BUILD below, cut on 2026-09-21: they are
-#     full enum entries with their own valet, but nothing in the shipped game
-#     produces them.
+# Puzzles (SaveablePropName.gourdXxx); dev-only values and gourdSecretZoneVice are left out.
 
 
 class Puzzle(NamedTuple):
@@ -112,7 +34,6 @@ class Puzzle(NamedTuple):
     prop_value: int
     """`SaveablePropName` enum value; the location id is BASE_ID + this."""
     location_name: str
-    """Player-facing Archipelago location name."""
 
 
 PUZZLES: tuple[Puzzle, ...] = (
@@ -190,21 +111,10 @@ PUZZLE_NEEDS: tuple[PuzzleNeed, ...] = (
     PuzzleNeed("coordinates_computer", "Coordinates Computer Unlock"),
     PuzzleNeed("eggs", "Terrain Pegs Unlock"),
 )
+"""The needs `lock_puzzle_needs` turns into items; keep the order, an item's id is its position."""
 
 EARLY_NEEDS: tuple[PuzzleNeed, ...] = PUZZLE_NEEDS[0:3]
 """Buttons, Synchronized Buttons, Icon Panels: the needs most puzzles share, asked for early."""
-"""
-What a puzzle can need that this world turns into an item (`lock_puzzle_needs`).
-The order is load-bearing: an item's id is its position here.
-
-The terrain pegs of Egg Hunt (the YAML key stays `eggs`) are a need of their own, like the tomato, the golf ball
-and the mask: objects belonging to one puzzle, hidden until the item arrives.
-
-Not in this list on purpose: `coop`, `throwable` and `item_pickup`. They are
-tags in PUZZLE_TAGS and nothing more. A second player is a head count, not
-something found, and throwing and picking up are abilities of the player,
-which belong to the `lock_*` options still on the roadmap (R2, R3).
-"""
 
 PUZZLE_NEED_KEYS: frozenset[str] = frozenset(need.key for need in PUZZLE_NEEDS)
 PUZZLE_NEEDS_BY_KEY: dict[str, PuzzleNeed] = {need.key: need for need in PUZZLE_NEEDS}
@@ -212,17 +122,6 @@ PUZZLE_NEEDS_BY_KEY: dict[str, PuzzleNeed] = {need.key: need for need in PUZZLE_
 NON_ITEM_TAGS: frozenset[str] = frozenset({"coop", "throwable", "item_pickup"})
 
 PUZZLE_TAGS: dict[str, frozenset[str]] = {
-    # Categorised in game by the player (2026-10-02), puzzle by puzzle.
-    # Wording kept from that pass where it was ambiguous:
-    #   - Carousel: "panel buttons, buttons" turned out, on site
-    #     (2026-10-02), to be buttons and icon panels.
-    #   - Tile Thief: "speaker panels" read as sound panels (answers), not
-    #     speakers (the tool), which it does not list separately.
-    #   - Coordinates and Coordinates Holding: "in logic with coordinates
-    #     computer" read as needing the computer itself.
-    #   - Cabin Fever (both), High Button, Perspective Counting: the
-    #     player noted they could be cheated or are not truly synced; the
-    #     need is kept as listed.
     "gourdCabinFever": frozenset({"coop", "buttons"}),
     "gourdHighButton": frozenset({"coop", "buttons"}),
     "gourdFielding": frozenset({"coop", "timed_tomato", "buttons"}),
@@ -232,11 +131,6 @@ PUZZLE_TAGS: dict[str, frozenset[str]] = {
     "gourdMediumSimPress": frozenset({"coop", "sync_buttons"}),
     "gourdEasySimPress": frozenset({"coop", "sync_buttons"}),
     "gourdRingRoom": frozenset({"coop", "speakers", "icon_panels", "lights", "buttons"}),
-    # Audited on 2026-10-05 against what the mod really hides in each puzzle's place (its own
-    # rules applied to a dump of the island, after E2 found the Obby and Fielding in logic too
-    # early): the validators' buttons were missing from Fielding, both Obbies, Blindfold Catwalk,
-    # Optical Telegraph and Indoor Semaphore, the Obby's tomato dispenser (fifth floor), Indoor
-    # Semaphore's icon panels and the Charades Rooms' pose panels.
     "gourdObby": frozenset({"coop", "sync_buttons", "timed_tomato", "buttons"}),
     "gourdCarousel": frozenset({"buttons", "icon_panels"}),
     "gourdCoordinates": frozenset({"coop", "sync_buttons", "coordinates_computer"}),
@@ -274,10 +168,7 @@ PUZZLE_TAGS: dict[str, frozenset[str]] = {
     "gourdCannonballCommute": frozenset({"golf_ball"}),
     "gourdPoetAndPontiff": frozenset({"coop", "buttons", "drawing_panels"}),
 }
-"""
-Every puzzle's requirements, by `prop_name`. A tag is either a PUZZLE_NEEDS key
-(which `lock_puzzle_needs` turns into an item) or one of NON_ITEM_TAGS.
-"""
+"""Every puzzle's needs, by `prop_name`: a PUZZLE_NEEDS key or one of NON_ITEM_TAGS."""
 
 GAUNTLET_STAGE_TAGS: tuple[frozenset[str], ...] = (
     frozenset({"coop", "icon_panels", "buttons"}),
@@ -288,12 +179,7 @@ GAUNTLET_STAGE_TAGS: tuple[frozenset[str], ...] = (
     frozenset({"coop", "icon_panels", "buttons", "ink_viewer"}),
     frozenset({"coop", "buttons"}),
 )
-"""
-The Silent Gauntlet's seven stages, in order: what each stage's puzzle is built
-from. With `gauntlet_mode: locked_stages` a stage's check needs these (rules.py,
-set_gauntlet_rules), and so does every stage after it, which can only be
-reached by solving it.
-"""
+"""The needs of the Silent Gauntlet's seven stages, in order."""
 
 
 class GauntletStage(NamedTuple):
@@ -316,13 +202,10 @@ class GauntletStage(NamedTuple):
 
     @property
     def item_name(self) -> str:
-        """Opens the stairway out of this stage, the collective door `GourdTower_Gate All Hold`."""
+        """Opens the stairway out of this stage, the door `GourdTower_Gate All Hold`."""
         return f"Gauntlet Stage {self.number} Door"
 
 
-# Measured in game on 2026-10-03 (the mod's Keypad 5 dump): solving a stage's
-# puzzle writes `ChallengeCompletedSystem`, whose savable system is
-# GauntletChamber<N> for `Level<N>`. The chamber names are the game's own.
 GAUNTLET_STAGES: tuple[GauntletStage, ...] = (
     GauntletStage(0, "GauntletChamber0", 50, "Peg Board"),
     GauntletStage(1, "GauntletChamber1", 51, "Pointers"),
@@ -336,8 +219,7 @@ GAUNTLET_STAGES: tuple[GauntletStage, ...] = (
 
 PROGRESSIVE_GAUNTLET_ITEM_NAME = "Progressive Gauntlet Door"
 PROGRESSIVE_GAUNTLET_VALUE = 60
-"""Past the seven `GauntletChamberN` values (50..56): `BASE_ID + GAUNTLET_ID_OFFSET + 60`. Each copy
-received opens the lowest stage still shut (`gauntlet_stage_items: progressive`)."""
+"""Past the stage values (50..56); each copy opens the lowest stage still shut."""
 
 
 def progressive_gauntlet_id() -> int:
@@ -349,33 +231,25 @@ def gauntlet_stage_id(stage: GauntletStage) -> int:
 
 
 def gauntlet_needs_through(stage: GauntletStage) -> tuple[PuzzleNeed, ...]:
-    """
-    The items `lock_puzzle_needs` asks for before this stage's puzzle can be
-    solved when every puzzle below it must be solved on the way up: its own,
-    and those of every stage before it.
-    """
+    """The needs of this stage and of every stage below it."""
     tags = frozenset().union(*GAUNTLET_STAGE_TAGS[:stage.index + 1])
     return tuple(need for need in PUZZLE_NEEDS if need.key in tags)
 
 
 def gauntlet_needs_of(stage: GauntletStage) -> tuple[PuzzleNeed, ...]:
-    """The same for this stage's puzzle alone, when the stages below it can be skipped."""
+    """The needs of this stage alone, for when the stages below it can be skipped."""
     tags = GAUNTLET_STAGE_TAGS[stage.index]
     return tuple(need for need in PUZZLE_NEEDS if need.key in tags)
 
 
 def puzzle_needs(puzzle: Puzzle) -> tuple[PuzzleNeed, ...]:
-    """The items `lock_puzzle_needs` asks for before this puzzle is in logic, in PUZZLE_NEEDS order."""
+    """The needs of this puzzle, in PUZZLE_NEEDS order."""
     tags = PUZZLE_TAGS[puzzle.prop_name]
     return tuple(need for need in PUZZLE_NEEDS if need.key in tags)
 
 
 def tutorial_footholds(started: frozenset[str] | set[str]) -> tuple[PuzzleNeed, ...]:
-    """
-    The needs that, added to `started`, make one of the tutorial's puzzles
-    doable on their own: the candidates for `start_with_random_puzzle_need`.
-    Empty when `started` already opens one.
-    """
+    """Needs that, added to `started`, open a tutorial puzzle; empty if one is already open."""
     def opens(have: set[str]) -> bool:
         return any(all(need.key in have for need in puzzle_needs(puzzle))
                    for puzzle in PUZZLES if puzzle.prop_name in START_ZONE_PUZZLES)
@@ -400,62 +274,10 @@ ABSENT_FROM_THE_BUILD: tuple[str, ...] = (
     "gourdScoutTiles",
     "gourdScoutCounting",
 )
-"""
-Thirteen `SaveablePropName` values that exist in the game's metadata and
-produce nothing in the build people are playing. They were locations here
-until 2026-09-21, which meant a seed could put progression on a check that
-can never be sent — the same class of bug as the chairlift, and beyond the
-reach of any region to fix.
-
-They are not the dev-only values: `gourdTesting00-39` and `gourdSecretZoneVice`
-have no `valetXxx` home, and every one of these thirteen has one. They look
-like cut or unreleased content, not scaffolding.
-
-Four independent readings agree, and no measurement contradicts them:
-
-- **A finished save.** A vanilla playthrough of 2026-08-23 holds exactly 45
-  `gourd*` entries and not one of these. A gourd entry's value is the
-  `SaveableHomeName` it sits in — `gourdHighButton = 1012` is `valetHighButton`,
-  a gourd still at home — and all 45 of that save's values are monument slots,
-  spread 4/5/5/5/5/6/15. That is every slot in the game, the Green Dome's
-  fifteen included: the run went to the end and filled the island with 45
-  gourds.
-- **The economy.** 45 is also the total number of monument slots that exist.
-  A 58-puzzle game would have thirteen gourds with nowhere to go.
-- **A third party's inventory.** The document of 2026-08 listed 45 puzzles,
-  and its 45 are exactly these 45 (see ../design-decisions.md, which read the
-  difference as a content update adding thirteen — the opposite of what the
-  save shows).
-- **Every dump.** Ctrl+V instantiated 45 wherever it was pressed and never
-  these, in zones that included the postgame.
-
-The player, who has played the game, recognises none of the thirteen names.
-
-**Checked against both builds on this machine (2026-09-22)**, because the
-save above was played on one and the dumps were taken on the other: the game
-of 2026-08-10 (the version the co-op sessions run on) and the game of
-2026-09-07 carry an identical gourd inventory — 64 `gourd*` names in
-`global-metadata.dat`, not one of them present in only one build. So the
-thirteen are not content the September update added and the August save
-simply predates. They produce nothing in either.
-
-Kept here rather than deleted: if a future patch ships them, this is the list
-to paste back into PUZZLES, ids and all.
-"""
+"""Gourd values with a valet home that the shipped game never produces; kept in case it does."""
 
 
-# --------------------------------------------------------------------------
-# Towers, big keys and monuments
-# --------------------------------------------------------------------------
-# Cross-validated three ways (see ../../mod/reverse-engineering-notes.md, the
-# "reference mapping table" section): the plinth mapping was confirmed in-game
-# one key at a time, the tower names and deposit-box counts come from a
-# third-party document, and the slot counts were counted in-game with the F6
-# debug tool. All three agree.
-#
-# `slots` is the number of gourds that must be deposited in that tower's
-# monument for its big key to become available in the vanilla game — which, in
-# this world, is also how many `Gourd` items the logic requires.
+# Towers, big keys and monuments.
 
 
 class Tower(NamedTuple):
@@ -464,23 +286,9 @@ class Tower(NamedTuple):
     prop_value: int
     """`SaveablePropName` enum value; item id and location id are BASE_ID + this."""
     item_name: str
-    """
-    Player-facing name of the item that is the FEATURE this tower's key
-    opens — the chairlift, the train, the map room.
-
-    The physical key is a SECOND item, named from this one by
-    `key_item_name()` from `key_name`. The two are different things and
-    always have been: a key is a check carrier the players cut and place,
-    and a feature is what actually opens.
-    """
+    """The feature the key opens (chairlift, train...); the physical key is a second item."""
     key_name: str
-    """
-    What players call the tower this key belongs to — "Red Funnel Tower", "Green
-    Dome Tower" — and so the prefix of the key item and of its checks: "Red Funnel
-    Tower Key", "Red Funnel Tower Key Cut 1", "Red Funnel Tower Key Deposit". These
-    are the community document's names (renamed 2026-10-03, ROADMAP U9); ids did not move. The drawbridge has
-    no tower and no colour, so its key keeps the drawbridge's name.
-    """
+    """The tower's name as players say it, prefix of the key item and its checks."""
     location_name: str
     """Player-facing name of the location "this key was placed in its plinth"."""
     plinth_name: str
@@ -488,77 +296,12 @@ class Tower(NamedTuple):
     monument_prefix: str
     """`SaveableHomeName` prefix of the monument whose slots unlock this key."""
     slots: int
-    """Number of monument slots for this tower (F6 count, matches the doc)."""
+    """Gourds the tower's monument takes before its key is freed."""
     segments: int
-    """
-    Segments that must be cut out of this tower's key blank, each one a check.
-
-    Measured in game on 2026-09-21 with the mod's Ctrl+K dump, not taken from
-    the third-party document: five each on the drawbridge and the four
-    coloured towers, and **none** on the Black Monolith and Green Dome keys,
-    which are born finished with `covers = 0` and their Complete PropGroup
-    already in `propGroups`. 25 in all.
-    """
+    """Cuts on the key, each one a check; the Black and Green Dome keys come already cut."""
 
 
-# THE ITEM IS THE FEATURE, NOT THE KEY (decided 2026-09-21, see
-# ../design-decisions.md). One physical act used to carry three roles at once:
-# pinning a key in its plinth was the location, the effect of the item, and
-# what opened the door. The three are now split — the 25 cut segments and the
-# 7 placements are locations, the key is an inert check carrier the player
-# fores and places freely, and what arrives from Archipelago is the map room,
-# the chairlift, the train, the tunnels, the drawbridge, the dam or the Green
-# Dome itself.
-#
-# So these names are things, not keys. "Chairlift" is what the player receives
-# and "Chairlift Key Deposit" is where they put the key that no longer opens
-# it — the pairing is deliberate, and the old "Green Cup Key" style of name
-# would now be a lie about what the item does.
-#
-# One feature name per tower, and everything else is derived from it: the key
-# item is "<feature> Key", the five cuts are "<feature> Key Cut 1..5" and the
-# placement is "<feature> Key Deposit". Three of the deposits used to be named
-# after their PLINTH instead — "Train Station", "Tunnel", "Goodbye Keyhole" —
-# inherited from the third-party document that first listed them (see the
-# cross-validation table in ../../mod/reverse-engineering-notes.md, which
-# quotes that document and is left alone). Renamed on 2026-09-21, before the
-# datapackage was published and the names became awkward to change: a player
-# holding a "Tunnels Key" should not have to learn that it belongs in the
-# "Tunnel Key Deposit".
-#
-# A fourth was renamed the same way on 2026-09-22, and it is worth saying why
-# it was missed the first time. The Green Dome tower's feature was called
-# "Green Dome" — the only one of the seven named after its TOWER instead of
-# what it opens, which is the Hub Secret Door. It read as correct because the
-# tower really is called the Green Dome; it was caught when `goal:
-# second_ending` was added and the name propagated into a description of the
-# door that was simply wrong. The tower keeps its name everywhere it means
-# the tower (`GREEN_DOME`, its monument); only the
-# feature and the names derived from it moved.
-#
-# The fifth and last, on 2026-09-22: "Dam" became "Chapel Door". It was the
-# only feature name never derived from what its key opens — it came from the
-# third-party document's "Dam Key Deposit", which names where the key is PUT,
-# and "dam" appears nowhere in the game's own metadata (no `Dam*` identifier
-# exists in the il2cpp dump). What placing `bigKeyBoss` opens is the chapel
-# door, and everything past the bell inside it: the field, the Gauntlet and
-# the summit bell. Caught by the player, who read "Dam" in an item list and
-# could not tell what it named.
-#
-# Both doors renamed again after the first alpha (2026-09-25), from players'
-# feedback: "Chapel Door" became "Big Wall Door", since nobody called that
-# building a chapel and the game's own achievement calls it the Big Wall; and
-# "Hub Secret Door" became "Spawn Secret Door", since "hub" read as the Green
-# Dome Tower while the door is the one players spawn beside.
-#
-# KEYS ARE NAMED AFTER THEIR TOWER'S COLOUR (2026-09-25), reversing the
-# "<feature> Key" naming above for the keys and their checks only. The first
-# alpha's players found the item list did not read like the game: a key is
-# found at, cut along and placed at its TOWER, and the towers are what
-# players name by colour. The features keep their names — they are what
-# opens. The drawbridge has no tower, so its key stays the Drawbridge Key.
-# "Green Cup", "Yellow Twist" and "Black Monolith" were never players'
-# names; they survive only in the constants below.
+# The item is the feature a key opens; the key itself only carries checks.
 DRAWBRIDGE_ITEM_NAME = "Drawbridge"
 SPAWN_SECRET_DOOR_ITEM_NAME = "Spawn Secret Door"
 
@@ -580,11 +323,9 @@ TOWERS: tuple[Tower, ...] = (
 )
 
 TOTAL_CUT_SEGMENTS = sum(tower.segments for tower in TOWERS)
-"""25 — the drawbridge and the four coloured towers, five each."""
+"""25: the drawbridge and the four coloured towers, five each."""
 
-# monoument0-3 are known to be the four five-slot towers, but which of the four
-# is Red/Green/Blue/Yellow was never established in-game. It does not matter
-# here: they have identical slot counts, so no rule can tell them apart.
+# Which of monoument0-3 is which colour is unknown; their slot counts match, so it does not matter.
 
 GREEN_DOME = TOWERS[-1]
 """The Green Dome tower (`bigKeyOverflow`), the postgame/true-ending key."""
@@ -596,26 +337,12 @@ YELLOW_TWIST = TOWERS[4]
 """The Yellow Tower (`bigKeyYellowZone`); its feature is the tunnels."""
 
 BLACK_MONOLITH = TOWERS[5]
-"""The Black Tower (`bigKeyBoss`); its feature, the Big Wall Door, is the way to the ending."""
+"""The Black Tower (`bigKeyBoss`); its feature, the Big Wall Door, leads to the ending."""
 
 MAX_MONUMENT_SLOTS = sum(tower.slots for tower in TOWERS)
 """Every monument slot on the island: 4 + 5 + 5 + 5 + 5 + 6 + 15 = 45."""
 
-# --------------------------------------------------------------------------
-# Radio stations (SavableSystem.FmStation*)
-# --------------------------------------------------------------------------
-# The enum declares ten, but only seven were ever observed being written at
-# once by the game's own dev helper (`PeckDevHelper.Trigger(unlocks: true)`,
-# see the "Arch doors" section of the mod notes) — and those seven are exactly
-# the ones with real names. FmStation7/8/9 look like unused placeholders, so
-# they are left out: a location the game can never check makes a seed
-# unbeatable, which is a far worse failure than three missing checks.
-#
-# A station is both a location and an item. Switching one on in the game is
-# the check; the music itself only starts once the matching item arrives, so
-# the radio stops being the one check in this world that rewards itself. The
-# mod suppresses the local unlock for exactly as long as the item is missing
-# (see ../protocol.md and the BroadcastStation notes in the mod).
+# Radio stations: switching one on is the check, its music plays once the item arrives.
 
 
 class RadioStation(NamedTuple):
@@ -629,31 +356,7 @@ class RadioStation(NamedTuple):
     """Player-facing name of the item that actually starts the music playing."""
 
 
-# NAMES DO NOT FOLLOW THE ENUM. Measured in game on 2026-09-21 (the mod's
-# Ctrl+B dump): the `FmStation*` names are internal labels that mostly do not
-# describe the music the station plays. `FmStationBreathwork` broadcasts
-# `musicGroup_bobby`, `FmStationFourthSpace` broadcasts `musicGroup_breathwork`,
-# `FmStationSleuthFm` broadcasts `musicGroup_FourthSpace`, and so on — only
-# DanceFm and JourneyBeat line up with their own name.
-#
-# The names below are therefore taken from the MusicGroup each station really
-# plays, because that is what the player receives. The game itself shows no
-# station names at all, so nothing in the world contradicts this choice — it
-# is an Archipelago convention, and the honest one.
-#
-# THE NUMBER IS WHAT A PLAYER CAN SEE (first alpha's feedback, 2026-09-25:
-# "there is no way of telling what the station name is in-game"). The radio's
-# dial is a row of lights with no labels (player, 2026-09-26), so a station
-# is told apart by its place on it, counted from 1: `Radio Station 01: Bobby`
-# is the first light. Places measured by the mod, which learns them from the
-# world and keeps them in the save as position + 1: two of our saves
-# (BeltWalk, CoopWalk3) and the first alpha's guest log agree on all seven.
-#
-# `system_name` stays the enum value: it is the SaveManager key and the id
-# arithmetic, and it must never be "corrected" to match the display name. The
-# ids do not move with the renaming either, so a seed generated before it
-# still reports the same checks.
-
+# Named after the music each station plays and its place on the dial, not after the enum names.
 RADIO_STATIONS: tuple[RadioStation, ...] = (
     RadioStation("FmStationSleuthFm", 30, "Radio Station 02: Fourth Space", "Radio Music 02: Fourth Space"),
     RadioStation("FmStationKosmische", 31, "Radio Station 07: Bristol", "Radio Music 07: Bristol"),
@@ -664,42 +367,14 @@ RADIO_STATIONS: tuple[RadioStation, ...] = (
     RadioStation("FmStationFourthSpace", 36, "Radio Station 03: Breathwork", "Radio Music 03: Breathwork"),
 )
 
-# --------------------------------------------------------------------------
-# What sits behind a big key
-# --------------------------------------------------------------------------
-# Found in play on 2026-09-21, and it is why regions.py gained two regions.
-# Until then the world claimed the island was open apart from the ending,
-# which let generation place the Green Cup Key behind the chairlift that key
-# opens — an unbeatable seed, not a rough edge.
-#
-# These lists hold the game's own identifiers (`prop_name` for a puzzle,
-# `system_name` for a station), not the player-facing names, so a later
-# rename cannot silently empty them.
-#
-# MEASURED IN GAME on 2026-09-21, standing in each zone, with the mod's Ctrl+V
-# and Ctrl+B dumps sorted by distance to the player. Presence was useless —
-# the game instantiates every gourd and every station everywhere, so two dumps
-# taken in two different zones came back byte-identical. Only distance answers
-# "what is in here".
-
+# What sits behind a big key, by game id rather than display name so a rename cannot empty a list.
 START_ZONE_PUZZLES: tuple[str, ...] = (
     "gourdHighButton",
     "gourdEasySimPress",
     "gourdTellerWindow",
     "gourdTelescopeToBox",
 )
-"""
-`SaveablePropName` of each puzzle in the starting zone: the hub players spawn
-at and the tutorial beside it, everything short of the drawbridge and the
-first arch door.
-
-Measured 2026-09-25 by distance to the tutorial's monument (143m to 215m),
-and named by the player: the one you climb on each other for, the one of
-buttons pressed together, the telescope and the teller window. Microphone
-Array sits in the same band, at 173m, and is NOT in the zone — the player
-settled it. As with the chairlift, distance narrows the question and the
-player answers it.
-"""
+"""The puzzles of the starting zone, short of the drawbridge and the first arch door."""
 
 CHAIRLIFT_PUZZLES: tuple[str, ...] = (
     "gourdCannonballCommute",
@@ -710,37 +385,13 @@ CHAIRLIFT_PUZZLES: tuple[str, ...] = (
     "gourdCabinFeverLong",
     "gourdSpeedObby",
 )
-"""
-`SaveablePropName` of each puzzle past the chairlift: the seven purple
-"variant challenge" gourds, and exactly those.
-
-They were 57m to 293m from the player standing in the zone, and they are the
-only seven `isVariantChallenge` gourds in the game. Four ordinary gourds sit
-in the same band of distance — gourdTrapRoom, gourdPerspectiveCounting,
-gourdMemoryBombs and gourdSignalFlags, 225m to 320m — and the player confirmed
-all four are reachable without the chairlift, so they stay in the overworld.
-Distance alone does not draw this boundary; it only narrows the question.
-"""
+"""The puzzles past the chairlift: the seven purple "variant challenge" gourds."""
 
 CHAIRLIFT_RADIO: str | None = "FmStationSleuthFm"
-"""
-`SavableSystem` of the station past the chairlift.
-
-129m away with the next one at 548m. Note that it is dial position 2, not 7 —
-a first recollection of "position 7" would have gated FmStationKosmische, which
-the same dump put 1189m away, the furthest of the seven.
-"""
+"""The station past the chairlift (dial position 2)."""
 
 TUNNEL_RADIO: str | None = "FmStationDanceFm"
-"""
-`SavableSystem` of the station past the tunnels.
-
-7.6m away with the next at 252m, and independently confirmed from the server
-side: claiming it printed `RadioWalk sent Novelty Keychain to RadioWalk (Radio
-Station: Dance FM)`. That name means the same station in the old naming and the
-new one, so it pins the mapping with no room for doubt. (It has read `Radio
-Station 05: Dance FM` since the dial numbers were added.)
-"""
+"""The station past the tunnels."""
 
 
 def chairlift_locations() -> tuple[str, ...]:
@@ -759,27 +410,10 @@ def _locations_for(puzzle_prop_names: tuple[str, ...], radio_system: str | None)
     return tuple(names)
 
 
-# --------------------------------------------------------------------------
-# Goal flags (SavableSystem)
-# --------------------------------------------------------------------------
-# Both were confirmed in-game (mod notes, session of 2026-09-10):
-#   - EndingGate: written when the chapel bell is broken by two players.
-#     Careful, it is the door's live open/closed state, not a latching flag —
-#     it can go back to 0. The mod already treats the first non-zero write as
-#     the trigger and never re-reads it.
-#   - GauntletComplete: written when the second bell, at the top of the
-#     Gauntlet, is broken. This is the real end-of-game check.
-
+# EndingGate is the door's live state and can go back to 0: the mod latches its first write.
 ENDING_GATE_SYSTEM = "EndingGate"
 GAUNTLET_COMPLETE_SYSTEM = "GauntletComplete"
 
-# --------------------------------------------------------------------------
-# Filler and traps
-# --------------------------------------------------------------------------
-# The mod materializes three things today: a generic cosmetic gourd, a big key
-# and a radio station. Everything below is inert by design — the client applies
-# no effect for it — so these names exist purely to fill the pool with something
-# readable for the other players in the multiworld.
 
 FILLER_ITEMS: tuple[tuple[str, int], ...] = (
     ("Megaphone", 9_001),
@@ -795,42 +429,24 @@ FILLER_ITEMS: tuple[tuple[str, int], ...] = (
     ("Gourd Carton", 9_011),
     ("Torch", 9_012),
     ("Lamp", 9_013),
-    ("Scanner", 9_014),  # "X-Ray Goggles" until 0.5.0 (the player, 2026-10-12)
+    ("Scanner", 9_014),
     ("Blue Flare Gun", 9_015),
     ("Green Flare Gun", 9_016),
     ("Yellow Flare Gun", 9_017),
     ("Rainbow Flare Gun", 9_018),
 )
-"""
-The island's own hand props, cloned in and spawned near the player on
-receipt (mod/src/Core/GadgetItemSpawner.cs) rather than an invented object —
-player decision, 2026-09-22. The order here is load-bearing: the mod derives
-which gadget an id names from its position in this same list
-(ApLocationIds.GadgetItemOrder), not from the name, so re-ordering this tuple
-without a matching mod change silently swaps what two ids grant. Their
-vanilla instances are removed from the map on the mod side for the same
-reason a big key's plinth is emptied on pickup: a filler item must not also
-be findable for free outside the multiworld.
-
-The Rainbow Flare Gun (player, 2026-10-07) is the one object the island has none of: a white
-flare gun whose shots run through every colour. It is always in the pool, once, and never drawn
-as filler (FLARE_GUN_NAMES, items.py).
-"""
+"""The island's hand props, spawned on receipt; the mod maps ids by position, so keep the order."""
 
 FLARE_GUN_ITEM_NAMES: tuple[str, ...] = ("Flare Gun", "Blue Flare Gun", "Green Flare Gun", "Yellow Flare Gun")
-"""The island's four flare guns as items: in the pool with `flare_gun_sanity`, never as filler."""
+"""The four flare guns: in the pool with `flare_gun_sanity`, never drawn as filler."""
 
 RAINBOW_FLARE_GUN_ITEM_NAME = "Rainbow Flare Gun"
 
 PALETTE_SIZE = 10
-"""
-How many colours the mod's palette holds (mod/src/Core/Palette.cs): red, orange, yellow, lime,
-green, cyan, blue, purple, pink, white. With `random_colors`, a seed draws between 5 and all of
-them, by index, and the buoys and flare guns are painted from that draw.
-"""
+"""Colours in the mod's palette; `random_colors` draws 5 to 10 of them by index."""
 
 TELEPORT_ID_OFFSET = 2_700
-"""Item-only, like the filler: the teleporters of `teleport_buttons: items`, `BASE_ID + 2_700 + position`."""
+"""Item-only: the teleporters of `teleport_buttons: items`, by position."""
 
 TELEPORT_DESTINATIONS: tuple[tuple[str, str], ...] = (
     ("red", "Red Funnel Tower"),
@@ -842,11 +458,7 @@ TELEPORT_DESTINATIONS: tuple[tuple[str, str], ...] = (
     ("drawbridge", "Drawbridge"),
     ("dome", "Green Dome Tower"),
 )
-"""
-Where the in-world teleport buttons of the hub lead, by the key the mod knows each by and the
-player-facing name. New ones go at the end: the position is the Teleporter's item id.
-Every destination has a button back to the hub, always there.
-"""
+"""The hub's teleport buttons (mod key, name); add new ones at the end, the position is the id."""
 
 
 def teleport_item_name(destination: str) -> str:
@@ -857,14 +469,14 @@ def teleport_item_id(position: int) -> int:
     return BASE_ID + TELEPORT_ID_OFFSET + position
 
 
-# 9_201..9_213: the joke filler items (Baby, Boid, Plumbus...), retired so gourd_name can take those names. Not reused.
+# 9_201..9_213 are retired joke filler ids; never reuse them.
 
 
 class Pickup(NamedTuple):
-    """A backpack, belt or gourd carton of the island, whose first pick-up is a check (`pack_sanity`)."""
+    """A backpack, belt or gourd carton whose first pick-up is a check (`pack_sanity`)."""
 
     guid: str
-    """The prop's `savablePropGuid`: the game's own identity for it, the same on every machine."""
+    """The prop's `savablePropGuid`, the same on every machine."""
     location_name: str
     past_chairlift: bool = False
     past_tunnels: bool = False
@@ -887,14 +499,7 @@ PICKUPS: tuple[Pickup, ...] = (
     Pickup("3e944e74-2d2e-40e2-b1ba-a1afa8c937ee", "Blue Belt", past_chairlift=True),
     Pickup("5fa8468a-dfaa-48fe-8057-46d47b9e56a5", "Gourd Carton Pickup"),
 )
-"""
-Every backpack (6), belt (5, `HolsterProp`) and gourd carton (1) of the island, from the
-census of 2026-10-05 (Ctrl+F1): all twelve are in every map version (2, 3 and 4 players).
-Named by colour (player, 2026-10-05), the `_TintColor` each carries (census, pickup-colours.tsv):
-no two of a kind share one; the carton has none, and its location says Pickup so as not to read like the item. Every one walked to by the player on 2026-10-05: the far-east
-pair is past the chairlift (like the purple gourds), the belt at (63, 59, -390) in the
-tunnels, and nothing else has a way in other than the open island.
-"""
+"""Every backpack, belt (`HolsterProp`) and gourd carton, named by their `_TintColor`."""
 
 
 FLARE_GUN_ID_OFFSET = 13_050
@@ -906,22 +511,18 @@ FLARE_GUN_PICKUPS: tuple[Pickup, ...] = (
     Pickup("66de92ed-177d-49d5-aa97-e86d98083ac0", "Yellow Flare Gun Pickup"),
     Pickup("8b9fc973-4200-4934-8169-dde2de5b1d10", "Blue Flare Gun Pickup"),
 )
-"""
-The island's four flare guns (census of 2026-10-07, Ctrl+F1), whose first pick-up is a check with
-`flare_gun_sanity`: in every map version, all four on the open island (walked to by the player,
-2026-10-07). Named Pickup, like the carton, so as not to read like the items.
-"""
+"""The four flare guns; "Pickup" in the name so the location does not read like the item."""
 
 
 class Firework(NamedTuple):
-    """A firework launcher, whose first firing (the button at its foot) is a check (`firework_sanity`)."""
+    """A firework launcher whose first firing is a check (`firework_sanity`)."""
 
     key: str
-    """The landmark the launcher stands in, as the mod finds it among the launcher's parents."""
+    """The landmark among the launcher's parents that the mod finds it by."""
     location_name: str
     past_chairlift: bool = False
     tower: str | None = None
-    """The `prop_name` of the tower whose roof it stands on, opened by the button at the tower's foot."""
+    """The `prop_name` of the tower whose roof it stands on."""
 
 
 FIREWORK_ID_OFFSET = 13_100
@@ -937,31 +538,20 @@ FIREWORKS: tuple[Firework, ...] = (
     Firework("SouthPeak", "South Peak Fireworks"),
     Firework("FireworksPlatform_Intro", "Intro Platform Fireworks"),
 )
-"""
-The eight firework launchers (census of 2026-10-05), in every map version. The game saves
-nothing when one is fired: the mod sees its button go to state 1 (`PokeButtonPeckLogic`
-under `FireworkLauncher`), measured at the hub's. All on the open island, the hub's too: it is
-past the drawbridge or the First Arch Door (a solo seed put the Drawbridge there, 2026-10-30).
-"""
+"""The eight launchers; the game saves nothing, so the mod watches each one's button."""
 
 
 TOWER_REACHED_ID_OFFSET = 13_200
-"""`BASE_ID + TOWER_REACHED_ID_OFFSET + the tower's position in reached_towers()`: a check for reaching it."""
+"""A "reached" check per tower, by its position in reached_towers()."""
 
 
 def reachable_towers() -> tuple[Tower, ...]:
-    """
-    The towers a player can walk up to and be seen at: the four coloured ones and the Black Tower. Not the
-    drawbridge, which has no tower, nor the Green Dome, whose place in the world was never measured.
-    """
+    """The four coloured towers and the Black Tower: the ones with a button to reach."""
     return tuple(tower for tower in TOWERS if tower.prop_name not in ("bigKeyIntro", "bigKeyOverflow"))
 
 
 def reached_towers() -> tuple[Tower, ...]:
-    """
-    Every tower with a "reached" check, in the order of their ids: the five with a button, then the drawbridge and the
-    Green Dome, reached by position (measured in game, 2026-10-12). Appended, so the first five keep their ids.
-    """
+    """Every tower with a "reached" check, in id order; the last two are reached by position."""
     return (*reachable_towers(), tower_by_prop("bigKeyIntro"), tower_by_prop("bigKeyOverflow"))
 
 
@@ -970,7 +560,7 @@ def tower_reached_location_name(tower: Tower) -> str:
 
 
 MONUMENT_FULL_ID_OFFSET = 13_800
-"""`BASE_ID + 13_800 + the tower's position in TOWERS`: its monument full (ROADMAP L1, 0.6)."""
+"""A "monument full" check per tower, by its position in TOWERS."""
 
 
 def monument_full_location_name(tower: Tower) -> str:
@@ -982,10 +572,7 @@ def monument_full_location_id(tower: Tower) -> int:
 
 
 MONUMENT_KEY_ID_OFFSET = 13_850
-"""
-`BASE_ID + 13_850 + the tower's position in TOWERS`: with `linear_towers: one_deposit_box`, the gourd that frees the
-tower's key (the community document's "a random one of its deposit boxes"), drawn per seed. Always holds the key.
-"""
+"""With `linear_towers: one_deposit_box`, the slot that frees a tower's key, by TOWERS order."""
 
 
 def monument_key_location_name(tower: Tower) -> str:
@@ -1005,18 +592,18 @@ PROGRESSIVE_MONUMENT_ID_OFFSET = 13_300
 
 
 def progressive_monument_id() -> int:
-    """`BASE_ID + 13_300`: one id, for every copy (`tower_mode: by_item` holds one fewer than there are towers)."""
+    """One id shared by every copy."""
     return BASE_ID + PROGRESSIVE_MONUMENT_ID_OFFSET
 
 
 class Ability(NamedTuple):
-    """The player's body as an item, with `lock_abilities` (ROADMAP R3, 0.6)."""
+    """A part of the player's body as an item, with `lock_abilities`."""
 
     key: str
     """What slot_data calls it; the mod's AbilityLocks grants by it."""
     item_name: str
     copies: int
-    """How many the pool holds: a progressive arm has three, raising, then pointing, then extending."""
+    """Copies in the pool: a progressive arm raises, then points, then extends."""
     handed: bool
     """With `lock_abilities: handed` (one arm per item)."""
     ambidextrous: bool
@@ -1024,19 +611,16 @@ class Ability(NamedTuple):
 
 
 ABILITY_ID_OFFSET = 13_400
-"""Item-only: `BASE_ID + 13_400 + position` in ABILITIES. The order is load-bearing."""
+"""Item-only, by position in ABILITIES, so keep the order."""
 
 ABILITIES: tuple[Ability, ...] = (
-    # Decided by the player, 2026-10-12, over the community document's ten: fewer items, each one felt.
-    # Legs: jumping and crouching. Seat: a chair and the floor. An arm: raising (Q / E), then pointing
-    # (a click held, hand empty), then extending (raised and pointing), as measured in game.
+    # Legs: jumping and crouching. Seat: sitting on a chair or the floor.
     Ability("legs", "Legs", 1, True, True),
     Ability("seat", "Seat", 1, True, True),
     Ability("left_arm", "Progressive Left Arm", 3, True, False),
     Ability("right_arm", "Progressive Right Arm", 3, True, False),
     Ability("arms", "Progressive Arms", 3, False, True),
-    # Added the same day (player): throwing (a wound-up drop), carrying another player, and running, the last
-    # only with `lock_running`.
+    # Running is only in the pool with `lock_running`.
     Ability("throwing", "Throwing", 1, True, True),
     Ability("carrying", "Carrying", 1, True, True),
     Ability("running", "Running", 1, True, True),
@@ -1046,13 +630,10 @@ ABILITY_LOCK_KEYS: dict[str, str] = {
     "legs": "legs", "seat": "seat", "left_arm": "arms", "right_arm": "arms", "arms": "arms",
     "throwing": "throwing", "carrying": "carrying",
 }
-"""The `start_with_abilities` key each ability item answers to (Running has its own option, `lock_running`)."""
+"""The `start_with_abilities` key of each ability item; Running has `lock_running` instead."""
 
 LEGS_ITEM_NAME = "Legs"
-"""
-What leaving the starting zone asks for with `lock_abilities` (the player, 2026-10-12: jumping and crouching are
-needed nearly everywhere on the island). Asked for at the way out, it comes early.
-"""
+"""Needed to leave the starting zone with `lock_abilities`: jumping is needed almost everywhere."""
 SEAT_ITEM_NAME = "Seat"
 LEFT_ARM_ITEM_NAME = "Progressive Left Arm"
 RIGHT_ARM_ITEM_NAME = "Progressive Right Arm"
@@ -1075,15 +656,10 @@ ARM_RAISING, ARM_POINTING, ARM_EXTENDING = 1, 2, 3
 """How many copies of a progressive arm each gesture needs."""
 
 POSES = Body(seat=True, arms=ARM_EXTENDING)
-"""
-"Poses" (the player): sitting and the arm poses, raised and extended, both arms, by both players at once.
-Abilities go to every player, so one item is enough for both.
-"""
+"""Sitting and the arm poses, both arms; abilities go to every player, so one item covers both."""
 
 ABILITY_PUZZLES: dict[str, Body] = {
-    # The puzzle tour of 2026-10-12 (2 players, docs/PUZZLE-TOUR.md). Jumping and crouching (High Button,
-    # Obby, Speed Obby, Blindfold Catwalk) are covered by Legs at the way out. Basketball: carrying helps,
-    # it is not needed.
+    # Jumping and crouching are left out: Legs is already needed to leave the starting zone.
     "gourdHighButton": Body(carrying=True),
     "gourdFielding": Body(throwing=True),
     "gourdInvisibleInk": Body(arms=ARM_RAISING),
@@ -1094,9 +670,7 @@ ABILITY_PUZZLES: dict[str, Body] = {
     "gourdConcert": POSES,
     "gourdIndoorSemaphore": POSES,
     "gourdOpticalTelegraph": POSES,
-    # Checked in 3 and 4 players the same day: Charades and Pointer's Paradise ask for both arms pointing and the
-    # poses (in 2 players too), and Pointer's Paradise for carrying a player as well (3 and 4 players; the logic
-    # cannot tell the player count, so it asks for it always). The Gauntlet is the same in every version.
+    # Pointer's Paradise needs carrying only with 3 or 4 players; logic cannot see the player count.
     "gourdCharadesRooms": POSES,
     "gourdPointersParadise": Body(seat=True, arms=ARM_EXTENDING, carrying=True),
     "gourdKickUpPits": Body(throwing=True),
@@ -1108,18 +682,17 @@ ABILITY_PUZZLES: dict[str, Body] = {
 GAUNTLET_STAGE_ABILITIES: tuple[Body, ...] = (
     Body(arms=ARM_EXTENDING), Body(), Body(throwing=True), Body(), Body(throwing=True), Body(arms=ARM_EXTENDING), POSES,
 )
-"""The same, for the Silent Gauntlet's seven stages, in order (tour of 2026-10-12)."""
+"""The same, for the Silent Gauntlet's seven stages, in order."""
 
 
 OBJECT_ABILITIES: dict[str, Body] = {
-    # Every megaphone hangs on its holder above one player's reach: one climbs on another's shoulders (Tyrope,
-    # 2026-10-27; the player, 2026-10-28).
+    # Megaphones hang out of one player's reach: one climbs on another's shoulders.
     "MegaphoneProp": Body(carrying=True),
 }
 """What picking up an island object asks of the body with `lock_abilities`, by its kind."""
 
 OBJECT_GUID_ABILITIES: dict[str, Body] = {
-    # Only reached by riding the mini carousel's swings (Morgan, 2026-11-14).
+    # Only reached by riding the mini carousel's swings.
     "88942e8e-6fae-4d71-93f0-8500741a82d1": Body(seat=True),  # Binoculars (Carousel)
 }
 """The same for one object, on top of its kind's, keyed as IslandObject.guid."""
@@ -1130,7 +703,7 @@ def ability_item_id(ability: Ability) -> int:
 
 
 class IslandObject(NamedTuple):
-    """A gadget of the island whose pick-up is a check with `object_sanity` (ROADMAP S7, 0.6)."""
+    """A gadget of the island whose pick-up is a check with `object_sanity`."""
 
     guid: str
     """The prop's `savablePropGuid`, the same on every machine."""
@@ -1138,25 +711,16 @@ class IslandObject(NamedTuple):
     """The prop's name in the game, which the mod matches a pick-up by (`first_pickup`)."""
     location_name: str
     zone: str
-    """
-    Where it lies: start (the tutorial), overworld, chairlift, purple (past the chairlift and the purple hole,
-    by the purple puzzles), tunnels, big_wall (behind the Big Wall Door),
-    map_room (behind the Map Room's door, its item), or tower:<big key prop> (a tower's roof and stairs: the
-    far door of that tower).
-    """
+    """start, overworld, chairlift, purple, tunnels, big_wall, map_room or tower:<big key prop>."""
 
 
 OBJECT_ID_OFFSET = 13_500
-"""`object_sanity: every`: `BASE_ID + 13_500 + position` in ISLAND_OBJECTS."""
+"""`object_sanity: every`: by position in ISLAND_OBJECTS."""
 OBJECT_KIND_ID_OFFSET = 13_700
-"""`object_sanity: first_pickup`: `BASE_ID + 13_700 + position` in OBJECT_KINDS (13_500..13_699 left to the objects)."""
+"""`object_sanity: first_pickup`: by position in OBJECT_KINDS."""
 
 ISLAND_OBJECTS: tuple[IslandObject, ...] = (
-    # Every gadget of the island in all three versions of the map (object census, 2026-10-12, Ctrl+Shift+5),
-    # placed by the player: the Map Room's bench is inside its door, the Secret Salon and the tunnel outlets'
-    # torches are in the tunnels, the Spiral megaphone is past the chairlift, Ocean Treasure is not.
-    # Purple: only reachable through the purple hole, walked by the player on 2026-11-16.
-    # Not here: the packs and flare guns (`pack_sanity`, `flare_gun_sanity`), the lamps, the puzzles' tools.
+    # Packs, flare guns and the puzzles' own tools have their own checks or none.
     IslandObject("6364d493-5c48-4480-a02d-ae086ef06825", "BinocularsProp", "Binoculars (Blue Castle Tower)", "tower:bigKeyBlueZone"),
     IslandObject("88942e8e-6fae-4d71-93f0-8500741a82d1", "BinocularsProp", "Binoculars (Carousel)", "overworld"),
     IslandObject("16e1e4a2-aadf-43e1-a67b-f2513dd63303", "BinocularsProp", "Binoculars (Green Cup Tower)", "tower:bigKeyGreenZone"),
@@ -1218,13 +782,10 @@ ISLAND_OBJECTS: tuple[IslandObject, ...] = (
     IslandObject("a5992995-191a-45b7-aa23-e9a64a4fede7", "WalkieTalkieProp", "Walkie-Talkie (Peak, Yellow)", "overworld"),
     IslandObject("185e3864-0dcb-498b-baee-6da1a4b21a8e", "WalkieTalkieProp", "Walkie-Talkie (Red Cone Hill, Yellow)", "overworld"),
     IslandObject("f29614f5-0c70-4ed8-b152-9e57b371f20d", "WalkieTalkieProp", "Walkie-Talkie (Red Cone Valley, Blue)", "overworld"),
-    # The paintbrushes, back as a kind of their own (player, 2026-10-13): left out by default, and never taken
-    # off the island, picked up or left out (the Salon needs them).
+    # Paintbrushes are left out by default and never taken off the island: the Salon needs them.
     IslandObject("52fedcd9-caa6-4ec6-a285-f73e6ff40f50", "SalonBrushProp", "Paintbrush (Salon)", "overworld"),
     IslandObject("64d92f9a-e44c-4218-ab98-4ea48d0c9b33", "SalonBrushProp", "Paintbrush (Secret Salon)", "tunnels"),
-    # The lamps (ROADMAP S9, player 2026-10-13): the island's own, on their pedestals, the towers' and the tutorial's;
-    # never a puzzle's (a lamp under a puzzle's landmark is one of its tools). A pedestal is placed by the puzzle it
-    # stands nearest to; one nearest a puzzle past the chairlift counts as past it (the safe side).
+    # Lamps outside the puzzles, each placed in the zone of the puzzle it stands nearest to.
     IslandObject("1cdcd9a1-0343-4234-b1d9-7be646dec4ae", "BuoyProp", "Lamp (Blue Castle Tower)", "tower:bigKeyBlueZone"),
     IslandObject("24d2f9a5-5376-4a7c-b08c-17e9c060855b", "BuoyProp", "Lamp (Diffuser Peak)", "overworld"),
     IslandObject("fcda7d44-81af-4526-be44-f16a90e5b0ec", "BuoyProp", "Lamp (Green Cup Tower)", "tower:bigKeyGreenZone"),
@@ -1239,7 +800,7 @@ ISLAND_OBJECTS: tuple[IslandObject, ...] = (
     IslandObject("b5461e87-1a09-4f2c-b9b5-158f195adbf3", "BuoyProp", "Lamp (near Cannonball Commute)", "chairlift"),
     IslandObject("5d10fec3-7a2d-4bfd-be0e-6196152d88f5", "BuoyProp", "Lamp (near Cannonball 1)", "overworld"),
     IslandObject("12a7f64b-8175-4857-a371-77dc2989cd68", "BuoyProp", "Lamp (near Cannonball 2)", "overworld"),
-    # Behind the Big Wall, on the far side from the Centurion Song (Morgan, 2026-11-08).
+    # Behind the Big Wall, on the far side from the Centurion Song.
     IslandObject("b95078fd-d8f2-4fd9-b2aa-ecf8b84fdad7", "BuoyProp", "Lamp (Big Wall)", "big_wall"),
     IslandObject("59a73457-6368-4639-8ec7-335902797343", "BuoyProp", "Lamp (near Coordinates)", "overworld"),
     IslandObject("f7f2e9ed-14fd-4a54-a918-fc06b444a39e", "BuoyProp", "Lamp (near Easy Simultaneous Press)", "overworld"),
@@ -1262,8 +823,7 @@ ISLAND_OBJECTS: tuple[IslandObject, ...] = (
     IslandObject("d9f93a0a-19e3-4702-b5be-7b79e39d32c8", "BuoyRedProp", "Red Lamp (Tutorial 1)", "start"),
     IslandObject("1a014620-29dd-4517-8990-3854045129bd", "BuoyRedProp", "Red Lamp (Tutorial 2)", "start"),
     IslandObject("abc5a86c-4618-4bf6-bdba-e97e488ef81e", "BuoyRedProp", "Red Lamp (Tutorial 3)", "start"),
-    # The pedestal lamps (BuoyLight, on the red pedestals), found picked up in play on 2026-10-13: a second
-    # lamp model, the same rules as the lamps above.
+    # The pedestal lamps: a second lamp model, under the same rules.
     IslandObject("0537b69a-6e49-406a-b93c-d6bc7f6cc4b3", "BuoyLight", "Pedestal Lamp (Blue Castle Tower)", "tower:bigKeyBlueZone"),
     IslandObject("dab5cfc8-f4d9-44f2-abb0-90bc42b3cade", "BuoyLight", "Pedestal Lamp (Diffuser Peak)", "overworld"),
     IslandObject("eaa97883-12ad-4e8e-9f6d-cdf7f1a3a061", "BuoyLight", "Pedestal Lamp (Green Cup Tower 1)", "tower:bigKeyGreenZone"),
@@ -1331,18 +891,18 @@ OBJECT_KIND_KEYS: dict[str, str] = {
     "SalonBrushProp": "paintbrush",
     "BuoyProp": "lamp", "BuoyRedProp": "lamp", "BuoyLight": "lamp",
 }
+"""The `object_sanity_kinds` key of each kind (the three cowbells share one)."""
 
 OBJECT_KINDS_LEFT_OUT_BY_DEFAULT: frozenset[str] = frozenset({"paintbrush"})
 OBJECT_KINDS_NEVER_TAKEN: frozenset[str] = frozenset({"SalonBrushProp"})
-"""Kinds the mod never takes off the island, picked up (`every`) or left out (the Salon's paintbrushes)."""
-"""The `object_sanity_kinds` key of each kind (the three cowbells share one)."""
+"""Kinds the mod never takes off the island, picked up or left out."""
 
 
 class Light(NamedTuple):
-    """A light whose first switching on is a check with `light_sanity` (player, 2026-10-13, from a player's idea)."""
+    """A light whose first switching on is a check with `light_sanity`."""
 
     key: str
-    """What the mod reports: a lamp's `savablePropGuid`, or a wall switch's TrackedPeckState path."""
+    """A lamp's `savablePropGuid`, or a wall switch's TrackedPeckState path."""
     location_name: str
     zone: str
     """As IslandObject.zone, plus "train" (the train's headlights: the Train item)."""
@@ -1351,9 +911,10 @@ class Light(NamedTuple):
 
 
 LIGHT_ID_OFFSET = 14_000
-"""`light_sanity`: `BASE_ID + 14_000 + position` in LIGHTS (lamps, then switches; 14_000..14_199)."""
+"""`light_sanity`: by position in LIGHTS, up to 14_199."""
 
 LIGHT_EVENT_ITEM_NAME = "Light"
+"""The event every light holds beside its check, so the logic can count them for `big_lights`."""
 
 OBJECT_EVENT_ITEM_NAME = "Object"
 """The event each object check holds beside it, so the logic can count them for `big_objects`."""
@@ -1361,11 +922,9 @@ OBJECT_EVENT_ITEM_NAME = "Object"
 
 def object_event_name(location_name: str) -> str:
     return f"{location_name} (event)"
-"""The event every light holds beside its check, so the logic can count them for `big_lights`."""
 
 LIGHT_SWITCHES: tuple[tuple[str, str, str], ...] = (
-    # The wall switches outside the puzzles (light-switches.tsv, 2026-10-04): the puzzles' own lights are part of
-    # them, and the `lights` need hides them. (TrackedPeckState path, name, zone.)
+    # Wall switches outside the puzzles, as (path, name, zone); the puzzles' own come with `lights`.
     ("LandmarksNonChallenge/DoofChamber/Positioner/FXControls/BasicLightSwitchHouse/LightSwitchPeckLogic",
      "Light Switch (Doof Chamber, House)", "tunnels"),
     ("LandmarksNonChallenge/DoofChamber/Positioner/FXControls/BasicLightSwitchRing/LightSwitchPeckLogic",
@@ -1386,7 +945,7 @@ LIGHT_SWITCHES: tuple[tuple[str, str, str], ...] = (
      "Light Switch (Secret Salon, Mirror)", "tunnels"),
     ("LandmarksNonChallenge/SpawnCourtyardandHubPlatform/Positioner/TeachingArea/Positioner/ObjectsTeaching/Switch/LightSwitch/BasicLightSwitch/LightSwitchPeckLogic",
      "Light Switch (Tutorial)", "start"),
-    # Three separate trains (A, B, C), each switch on its engine's dashboard, named by the engine's tint.
+    # Three trains, each switch on its engine's dashboard, named by the engine's tint.
     ("TrainSystem/TrainNew/TrainCarNew/CarriageBody/CarriageContentsFront/BasicLightSwitch - headlight/LightSwitchPeckLogic",
      "Light Switch (Red Train)", "train"),
     ("TrainSystem/TrainNew/TrainCarNew B(5)/CarriageBody/CarriageContentsFront/BasicLightSwitch - headlight/LightSwitchPeckLogic",
@@ -1418,16 +977,12 @@ LIGHTS: tuple[Light, ...] = (
     *(Light(obj.guid, f"{obj.location_name} Lit", obj.zone, False) for obj in ISLAND_OBJECTS if obj.kind in LAMP_KINDS),
     *(Light(key, f"{name} On", zone, True) for key, name, zone in LIGHT_SWITCHES),
 )
-"""Every light of `light_sanity`, in id order: the island's lamps (those of object_sanity), then the wall switches."""
+"""Every light of `light_sanity`, in id order: the island's lamps, then the wall switches."""
 
 
-# --------------------------------------------------------------------------
-# Zone locks (ROADMAP R12, player 2026-10-14): the island's lamps and gadgets, by the zone of the nearest coloured
-# tower, each zone's lamps and gadgets an item. The Map Room's, the chairlift's, the tunnels', the Big Wall's, the
-# tutorial's and the train's keep the lock they have.
-
+# Zone locks: overworld lamps and gadgets locked by the zone of the nearest coloured tower.
 ZONE_LOCK_ID_OFFSET = 14_300
-"""`BASE_ID + 14_300 + position` in ZONE_LOCKS (the lights end below 14_200)."""
+"""By position in ZONE_LOCKS."""
 
 
 class ZoneLock(NamedTuple):
@@ -1451,11 +1006,7 @@ ZONE_LOCKS: tuple[ZoneLock, ...] = tuple(
 
 ZONE_LOCK_KEYS: frozenset[str] = frozenset(lock.key for lock in ZONE_LOCKS)
 
-# Each overworld lamp, gadget and light switch to the nearest of the four towers' centres (x/z), from BepInEx's
-# object-census.tsv (2026-10-13) and light-switches.tsv, the centres being the mod's MonumentOrder.Centres
-# (2026-10-14). Keyed as IslandObject.guid / Light.key. Close calls (under 40 m between the two nearest): the Green
-# Diffuser and Upper Hub train stops, Radio (Greensteps), Binoculars (Carousel), the lamps near Invisible Ink (4 m),
-# Optical Telegraph, Observation Room 2 and Breadcrumb Loop 2; set one by hand here if it sits on the wrong side.
+# Nearest tower centre (MonumentOrder.Centres) of each entry; fix by hand one on the wrong side.
 OVERWORLD_ZONES: dict[str, str] = {
     "ed2f8967-b4c1-43d9-91b5-11679be10bc6": "blue",  # Binoculars (Peak Marker)
     "24d2f9a5-5376-4a7c-b08c-17e9c060855b": "blue",  # Lamp (Diffuser Peak)
@@ -1481,9 +1032,9 @@ OVERWORLD_ZONES: dict[str, str] = {
     "13956d25-97a1-4b5c-9992-00c187092476": "green",  # Lamp (near Musical Holiday)
     "982f4dbf-22bb-4553-aa9c-dd6588c19fda": "green",  # Lamp (near Optical Telegraph)
     "632fc258-f424-4b88-930a-a62c45044965": "green",  # Lamp (near Trap Room)
-    "TrainSystem/TrainStop - Ring Room/Lighting/BasicLightSwitch/LightSwitchPeckLogic": "green",  # Light Switch (Ring Room Train Stop) On
-    "TrainSystem/TrainStop - South Valley Beach/Lighting/BasicLightSwitch/LightSwitchPeckLogic": "green",  # Light Switch (South Valley Beach Train Stop) On
-    "TrainSystem/TrainStop - Trap Room/Lighting/BasicLightSwitch/LightSwitchPeckLogic": "green",  # Light Switch (Trap Room Train Stop) On
+    "TrainSystem/TrainStop - Ring Room/Lighting/BasicLightSwitch/LightSwitchPeckLogic": "green",
+    "TrainSystem/TrainStop - South Valley Beach/Lighting/BasicLightSwitch/LightSwitchPeckLogic": "green",
+    "TrainSystem/TrainStop - Trap Room/Lighting/BasicLightSwitch/LightSwitchPeckLogic": "green",
     "7e2f3ba8-2124-4fe9-8707-1621be5a0926": "green",  # Megaphone (Pyramid Holder)
     "16990dcc-ebb8-453e-88fc-6478e3980728": "green",  # Pedestal Lamp (near Breadcrumb Loop 2)
     "b46c590f-7038-4033-b84d-e3fb664e095c": "green",  # Pedestal Lamp (near Musical Holiday 1)
@@ -1508,10 +1059,10 @@ OVERWORLD_ZONES: dict[str, str] = {
     "d3e57e13-a91d-492c-bd46-2c59da8bef9e": "red",  # Lamp (near Telescope to Box)
     "5ee8fa69-8937-4841-b9a7-ee8a10c3a933": "red",  # Lamp (near Teller Window 1)
     "4b9cad35-ab44-4dfe-9e4b-390cb165aca5": "red",  # Lamp (near Teller Window 2)
-    "LandmarksNonChallenge/Salon/Positioner/SalonBuilding/BasicLightSwitch - Salon Main/LightSwitchPeckLogic": "red",  # Light Switch (Salon, Main) On
-    "LandmarksNonChallenge/Salon/Positioner/SalonBuilding/BasicLightSwitch - Mirror/LightSwitchPeckLogic": "red",  # Light Switch (Salon, Mirror) On
-    "TrainSystem/TrainStop - Sports Valley/Lighting/BasicLightSwitch/LightSwitchPeckLogic": "red",  # Light Switch (Sports Valley Train Stop) On
-    "TrainSystem/TrainStop - Upper Hub/Lighting/BasicLightSwitch/LightSwitchPeckLogic": "red",  # Light Switch (Upper Hub Train Stop) On
+    "LandmarksNonChallenge/Salon/Positioner/SalonBuilding/BasicLightSwitch - Salon Main/LightSwitchPeckLogic": "red",
+    "LandmarksNonChallenge/Salon/Positioner/SalonBuilding/BasicLightSwitch - Mirror/LightSwitchPeckLogic": "red",
+    "TrainSystem/TrainStop - Sports Valley/Lighting/BasicLightSwitch/LightSwitchPeckLogic": "red",
+    "TrainSystem/TrainStop - Upper Hub/Lighting/BasicLightSwitch/LightSwitchPeckLogic": "red",
     "52fedcd9-caa6-4ec6-a285-f73e6ff40f50": "red",  # Paintbrush (Salon)
     "60412245-4b6c-47eb-a4e7-67eec146bf20": "red",  # Pedestal Lamp (near Basketball)
     "d0a1c556-d62f-42df-a36e-019636da7679": "red",  # Pedestal Lamp (near Fielding)
@@ -1540,7 +1091,7 @@ OVERWORLD_ZONES: dict[str, str] = {
     "80e38f3e-d054-4187-9675-66d6e70c8356": "yellow",  # Lamp (near Egg Hunt)
     "6a673617-992d-49ca-87f9-223aef4c9fe4": "yellow",  # Lamp (near Scout Bombs)
     "6beb48a3-60de-41e8-a9f6-d39772bcdfa4": "yellow",  # Lamp (near Singer and Selector)
-    "TrainSystem/TrainStop - Green Diffuser/Lighting/BasicLightSwitch/LightSwitchPeckLogic": "yellow",  # Light Switch (Green Diffuser Train Stop) On
+    "TrainSystem/TrainStop - Green Diffuser/Lighting/BasicLightSwitch/LightSwitchPeckLogic": "yellow",
     "c6259d07-2499-4063-b033-b72cddd951c2": "yellow",  # Megaphone (Ramp Holder)
     "080554bb-bc16-41cd-bc96-4765cec96beb": "yellow",  # Pedestal Lamp (near Egg Hunt)
     "11c1d018-3dbf-46d4-b1de-f9aba4d29fc2": "yellow",  # Pedestal Lamp (near Observation Room 1)
@@ -1554,7 +1105,7 @@ OVERWORLD_ZONES: dict[str, str] = {
 
 
 def zone_of(key: str, zone: str) -> str | None:
-    """The zone colour of a lamp, gadget or switch (its key, its IslandObject/Light zone); None: no zone lock."""
+    """The zone colour of a lamp, gadget or switch, or None when no zone lock applies."""
     if zone.startswith("tower:"):
         return next((colour for colour, prop in ZONE_COLOURS if zone == f"tower:{prop}"), None)
     if zone == "overworld":
@@ -1615,7 +1166,7 @@ class Effect(NamedTuple):
     offset: int
     # What the mod knows the effect by (slot data, the ModChannel).
     key: str
-    # A trap that costs time or progress (player, 2026-10-05): `hard_traps` keeps them out.
+    # A trap that costs time or progress: `hard_traps` keeps them out.
     hard: bool = False
 
 
@@ -1629,53 +1180,42 @@ TRAPS: tuple[Effect, ...] = (
     Effect("Big Load", 9_108, "load", hard=True),
     Effect("Big Mask", 9_109, "mask", hard=True),
     Effect("Big Flare", 9_110, "flare"),
-    # A clock in every player's hands, theirs to keep, telling the real time of their own computer (player,
-    # 2026-10-13).
+    # A clock in every player's hands, showing the real time of their own computer.
     Effect("Big Time", 9_111, "time"),
-    # Every player muted for the trap's duration, as with the game's own mute (R9 "No Comms", player 2026-10-13).
     Effect("Big Silence", 9_112, "silence"),
-    # The ground turns slippery for the trap's duration: starting and stopping take a long while (0.6).
     Effect("Big Slide", 9_113, "slide"),
-    # Every player white for the trap's duration, as in the Silent Gauntlet: the colour, not the silence (R9, 0.7).
+    # Every player turns white, as in the Silent Gauntlet.
     Effect("Big Ghost", 9_114, "ghost"),
-    # The players swap colours for the trap's duration (two swap, more go round; T5's colour chaos, 0.7).
+    # The players swap colours: two swap, more go round.
     Effect("Big Paint", 9_115, "paint"),
-    # A timed tomato, then up in the air (a player's idea, 0.7).
+    # A timed tomato, then up in the air.
     Effect("Big Air", 9_116, "air", hard=True),
-    # The field of view narrowed for the trap's duration (0.7).
     Effect("Big Goggles", 9_117, "goggles"),
-    # The island in big square pixels for the trap's duration (0.7).
     Effect("Big Pixels", 9_118, "pixels"),
-    # The players' heads grow for the trap's duration (0.7).
     Effect("Big Head", 9_119, "head"),
-    # The players' heads become a glowing lamp for the trap's duration (0.7).
+    # The players' heads become a glowing lamp.
     Effect("Big Brain", 9_120, "brain"),
-    # The players' hands grow for the trap's duration (0.7).
+    # The players' hands grow.
     Effect("Big Arms", 9_121, "arms"),
-    # Every player gives off a green gas and the players are pushed apart (0.7).
+    # A green gas that pushes the players apart.
     Effect("Big Smell", 9_122, "smell"),
-    # Every player becomes small for the trap's duration (0.7).
+    # Every player becomes small.
     Effect("Big Brother", 9_123, "brother"),
-    # The nearest puzzle still holding its gourd starts again (0.7).
+    # The nearest puzzle still holding its gourd starts again.
     Effect("Big Reset", 9_124, "reset", hard=True),
-    # A folding chair for every player, who is sat on it (0.7).
+    # A folding chair for every player, who is sat on it.
     Effect("Big Break", 9_125, "break"),
 )
-"""
-Every trap is "Big" + one word (player, 2026-10-05) and hits every player of the session. Only
-the traps the mod plays are here; the others wait in docs/ROADMAP.md. 9_101 was "Untied
-Shoelace", a trap that did nothing and was never in a pool: retired, not reused.
-"""
+"""Traps hit every player of the session. 9_101 is a retired id; never reuse it."""
 
 BONUSES: tuple[Effect, ...] = (
     Effect("Big Speed", 9_301, "speed"),
     Effect("Big Jump", 9_302, "jump"),
     Effect("Big Day", 9_303, "day"),
-    # A burst or two of the puzzles' own confetti around every player, with the sound of a puzzle won; nothing else,
-    # so it is filler (player, 2026-10-22).
+    # Only confetti and a puzzle-won sound, so it counts as filler.
     Effect("Big Confetti", 9_304, "confetti"),
 )
-"""The traps' good twins: a boost for every player, for `trap_duration` seconds, or a treat (Big Confetti)."""
+"""The traps' good twins: a boost for every player for `trap_duration` seconds, or a treat."""
 
 CONFETTI_ITEM_NAME = "Big Confetti"
 
@@ -1683,16 +1223,8 @@ TRAP_ITEMS: tuple[tuple[str, int], ...] = tuple((trap.item_name, trap.offset) fo
 BONUS_ITEMS: tuple[tuple[str, int], ...] = tuple((bonus.item_name, bonus.offset) for bonus in BONUSES)
 
 DEATH_LINK_TRIGGERS: tuple[str, ...] = ("puzzle_failed", "big_fall")
-"""
-What sends a DeathLink: a puzzle failed, as the game itself signals it (tile validators, buttons in
-order, counting, timers), and a fall that knocks a player down. The fall was dropped on 2026-10-05
-and is back as a choice, off by default (players, 2026-10-07). Falling asleep stays dropped.
-"""
+"""What sends a DeathLink: a failed puzzle, or a fall that floors a player."""
 
-
-# --------------------------------------------------------------------------
-# Id helpers
-# --------------------------------------------------------------------------
 
 def puzzle_location_id(puzzle: Puzzle) -> int:
     return BASE_ID + puzzle.prop_value
@@ -1707,18 +1239,12 @@ def key_deposit_location_id(tower: Tower) -> int:
 
 
 def feature_item_id(tower: Tower) -> int:
-    """The door: map room, chairlift, train, tunnels, drawbridge, dam, dome."""
+    """The feature the tower's key opens: map room, chairlift, train, tunnels..."""
     return BASE_ID + tower.prop_value
 
 
 def key_item_name(tower: Tower) -> str:
-    """
-    The physical key a player carries, cuts and places.
-
-    Named after its tower ("Red Funnel Tower Key"), like its own locations — `Red
-    Funnel Tower Key Cut 1` and `Red Funnel Tower Key Deposit` — so that nothing has to be
-    memorised to know where a key belongs.
-    """
+    """The physical key, named after its tower like its own cut and deposit checks."""
     return f"{tower.key_name} Key"
 
 
@@ -1727,11 +1253,7 @@ def key_item_id(tower: Tower) -> int:
 
 
 def cut_location_name(tower: Tower, index: int) -> str:
-    """Player-facing name of "the Nth segment of this key was cut".
-
-    Numbered from 1 for the player; the mod counts the SyncList from 0, which
-    is what `cut_location_id` undoes.
-    """
+    """Numbered from 1 for the player, while `index` counts from 0 like the mod."""
     return f"{tower.key_name} Key Cut {index + 1}"
 
 
@@ -1748,26 +1270,11 @@ def radio_location_id(station: RadioStation) -> int:
 
 
 def radio_item_id(station: RadioStation) -> int:
-    # Same number as the location, as for the big keys above: item ids and
-    # location ids are separate namespaces in Archipelago, and reusing the
-    # game's own enum value in both keeps the mod's arithmetic to one rule
-    # per category instead of two.
+    # Same id as the location: item and location ids are separate namespaces in Archipelago.
     return BASE_ID + RADIO_ID_OFFSET + station.system_value
 
 
-# --------------------------------------------------------------------------
-# Arch doors (SavableSystem.SpawnHubGate / HubShortcutToSportsCreek / HubTunnel)
-# --------------------------------------------------------------------------
-# The hub's three arch doors, which the mod opens on a save's first session
-# unless `start_with_arch_doors_open` leaves some of them out, behind an item each.
-#
-# The first is the tutorial's way back to the hub: in vanilla it is opened
-# from the far side once the drawbridge is down, so it and the Drawbridge are
-# the two ways out of the starting zone. The left one (towards Sports Creek)
-# and the right one are shortcuts, which the player confirmed change no
-# reachability, only the length of the walk. Which system is which was
-# measured on 2026-09-25: SpawnHubGate is 11m from the hub's keyhole, the
-# Sports Creek shortcut furthest east, the tunnel between them.
+# Arch doors: the first one and the Drawbridge lead out of the start; the other two are shortcuts.
 
 
 class ArchDoor(NamedTuple):
@@ -1784,17 +1291,7 @@ RIGHT_ARCH_DOOR = ArchDoor("HubTunnel", 12, "Right Arch Door")
 ARCH_DOORS: tuple[ArchDoor, ...] = (FIRST_ARCH_DOOR, LEFT_ARCH_DOOR, RIGHT_ARCH_DOOR)
 
 
-# What lies past the two far doors, told by the player on 2026-10-03 (the map is
-# theirs, not measured). The Left door (towards Sports Creek) leads to the Yellow
-# and Blue towers and to the Black Tower and the chapel behind it, and so to the
-# Green Dome, which is reached from the Black Tower; the Right door (the tunnel) to
-# the Green Tower and to what is past the chairlift, the purple gourds. Not the Red
-# Tower: it can be reached very early without the door, only the way through the
-# tunnel is hard (player, 2026-10-03).
-# Either door can be walked round, which is the whole point of putting them in
-# logic (`require_arch_doors`): so that the generator does not ask for a place on
-# foot and then send the shortcut afterwards. A list that is too short only asks for
-# fewer doors than it could, never more than a seed has.
+# Both doors can be walked round; `require_arch_doors` only keeps a shortcut from coming too late.
 TOWER_FAR_DOOR: dict[str, ArchDoor] = {
     "bigKeyGreenZone": RIGHT_ARCH_DOOR,
     "bigKeyBlueZone": LEFT_ARCH_DOOR,
@@ -1807,8 +1304,7 @@ TOWER_FAR_DOOR: dict[str, ArchDoor] = {
 ZONE_FAR_DOOR: dict[str, ArchDoor | None] = {
     "chairlift": RIGHT_ARCH_DOOR,
     "tunnels": LEFT_ARCH_DOOR,
-    # Not the chapel: the end of the game is never held behind the Left door (player,
-    # 2026-10-05, E2 walked round it to the chapel and the tracker never saw go mode).
+    # The ending can be walked to round the Left door, so it is never held behind it.
     "ending": None,
     "green_dome": LEFT_ARCH_DOOR,
 }
@@ -1830,7 +1326,7 @@ def deposit_location_id(amount: int) -> int:
 # Tunnel doors (`tunnel_sanity`): each GateLogic opens alone; the purple hole is SouthPeakTunnel.
 
 TUNNEL_DOOR_ID_OFFSET = 14_400
-"""`BASE_ID + 14_400 + position` in TUNNEL_DOORS (the zone locks end at 14_307)."""
+"""By position in TUNNEL_DOORS."""
 
 
 class TunnelDoor(NamedTuple):

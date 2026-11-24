@@ -5,16 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Hands the keyboard to the next instance of the game on this PC — the
-    // loopback guests and the host in turn — so one person can play every side
-    // without reaching for the mouse.
-    //
-    // Windows only lets the process that has the foreground give it away,
-    // which is exactly the case here: the key is read by the window that
-    // has the focus. Both instances keep running while unfocused: the game
-    // already sets Application.runInBackground (NetworkManager.runInBackground
-    // is ticked, measured with Ctrl+N), so Kcp never times out on the one
-    // left behind.
+    // Hands the keyboard focus to the next game instance; only the foreground process can give it.
     internal static class LoopbackWindows
     {
         private const string Tag = "[" + nameof(LoopbackWindows) + "]";
@@ -33,8 +24,7 @@ namespace BigWalkArchipelago.Debug
         {
             using var self = Process.GetCurrentProcess();
 
-            // With up to four instances, the next one in process order after this one, round
-            // and round: pressing it again and again visits every window.
+            // The next instance in process order, wrapping around.
             var windows = new List<Process>();
             foreach (var candidate in Process.GetProcessesByName(self.ProcessName))
             {

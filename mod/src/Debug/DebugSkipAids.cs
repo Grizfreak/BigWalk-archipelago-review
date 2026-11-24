@@ -3,16 +3,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // Switches the game's own skip aids on, to see what they do (ROADMAP U7).
-    //
-    // Each Silent Gauntlet chamber has a `SkipAid Guantlet` object: a pole of two
-    // buttons held together. It is switched off by `SkipAidToggler`, which reads
-    // a global flag, `skipAidsActive`, when it wakes up, and that flag is false in
-    // a normal game. So this sets the flag and then wakes every toggler's target
-    // by hand, since the flag is only read once.
-    //
-    // Pure diagnostic. What the aid changes is read afterwards with the Keypad 5
-    // dump, taken before and after holding its two buttons (End holds them).
+    // SkipAidToggler reads `skipAidsActive` only on wake, so set it and wake each target by hand.
     internal static class DebugSkipAids
     {
         internal static void EnableAll()

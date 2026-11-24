@@ -4,8 +4,7 @@ using HarmonyLib;
 
 namespace BigWalkArchipelago.Patches
 {
-    // Big Smell (Core/TrapEffects): the push away from the other players added to the velocity the controls ask for
-    // this fixed step, so the game's movement, walls included, carries it. LocalFixedUpdate runs for the local player only.
+    // Big Smell's push, added to the controls' velocity so the game's movement stops at walls.
     [HarmonyPatch(typeof(PlayerMover), nameof(PlayerMover.LocalFixedUpdate))]
     internal static class BigSmellPatch
     {

@@ -6,17 +6,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // Tile Thief made easier (`tile_thief`, player's wish 2026-10-05): a button beside the puzzle
-    // that puts new peg tiles down in front of it (PegTileCloner, copies shared with every player).
-    //
-    //  - easy: the tiles the validator expects, one per slot (its generator's `sequence`), the one
-    //    its board does not show as a speaker, since that one is heard.
-    //  - chaos: one tile of every kind of each slot's set, speakers for the heard slot's, so the
-    //    answer still has to be worked out.
-    //
-    // Nothing of the island is taken (moving its tiles could rob another puzzle). Each press
-    // replaces the tiles of the last one. With `lock_puzzle_needs`, the button does nothing until
-    // the parts Tile Thief is built from have arrived: the tiles are those parts.
+    // `tile_thief`: a button that lays new peg tiles before the puzzle; the island's own stay put.
     internal static class TileThiefHelper
     {
         private const string PuzzlePath = "/TileThief/";
@@ -61,8 +51,7 @@ namespace BigWalkArchipelago.Core
                 icon: null, tint: Mode == "chaos" ? "black" : "hub", hostSide: true);
         }
 
-        // Tile Thief's needs (apworld data.PUZZLE_NEEDS): its tiles are icon, drawing, pose and
-        // sound panels.
+        // Tile Thief's needs in the apworld: its tiles are these panels.
         private static readonly string[] Needs = { "icon_panels", "drawing_panels", "pose_panels", "sound_panels" };
 
         // The tiles of the last press, so the next one replaces them.
@@ -140,9 +129,7 @@ namespace BigWalkArchipelago.Core
             return null;
         }
 
-        // The slot that is heard rather than seen: Tile Thief's board shows all but one of the tiles
-        // it expects, and the missing one is played by a speaker tile (player, 2026-10-05). It is
-        // the expected kind the board's display does not draw.
+        // The board draws all expected tiles but one, which a speaker tile plays instead.
         private static int SoundSlot(List<PropGroup> sequence)
         {
             var shown = new List<PropGroup>();

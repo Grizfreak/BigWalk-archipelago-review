@@ -8,18 +8,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Debug
 {
-    // The Silent Gauntlet without solving it (player, 2026-10-14: testing the goal alone, the top bell would not break
-    // with the combinator force while only the first stage was solved). Host only.
-    //
-    //   Alt + 7   the stage the player stands in (Level0..6, the nearest by height) solved and its stairway open;
-    //   Alt + 8   all seven stages solved and every stairway open;
-    //   Alt + 9   the top bell (Level7): its `NHoldSucess` switch pecked, as the two held buttons do; with nothing
-    //             written after a moment, `GauntletEndingLogicGroup/DevTrigger` (the game's own developer trigger).
-    //
-    // A stage solved is its `GauntletChamber<N>` system set to 1, which the game writes itself when the puzzle is done
-    // (the stage's check, and the wall inside the stage); its stairway is the `GourdTowerGateNetworking` state set to 1,
-    // or its item granted when `gauntlet_mode: locked_stages` holds it (Core/GauntletStairways). Every step is logged
-    // with the states before and after.
+    // Solves Silent Gauntlet stages (Alt + 7, Alt + 8) and rings the top bell (Alt + 9). Host only.
     internal class DebugGauntletTools : MonoBehaviour
     {
         private const string Tag = "[" + nameof(DebugGauntletTools) + "]";
@@ -96,7 +85,6 @@ namespace BigWalkArchipelago.Debug
             internal Transform Level;
         }
 
-        // Each stage's puzzle system, stairway state and Level transform, from the active map version's Gauntlet.
         private static Dictionary<int, StageParts> Parts()
         {
             var parts = new Dictionary<int, StageParts>();
@@ -162,7 +150,7 @@ namespace BigWalkArchipelago.Debug
             return -1;
         }
 
-        // The stage the player stands in: the Level whose floor is the highest one under the player's feet.
+        // The Level whose floor is the highest one under the player's feet.
         private static int NearestLevel(Dictionary<int, StageParts> parts)
         {
             var local = NetworkClient.localPlayer;
@@ -224,7 +212,7 @@ namespace BigWalkArchipelago.Debug
 
         private static bool BellDone() => SaveManager.GetIntValue(SavableSystem.GauntletComplete.ToString(), 0, false) != 0;
 
-        // The top bell: what the two held buttons trigger (the combinator's onConditionMet, `NHoldSucess`), pecked.
+        // Pecks the top bell's `NHoldSucess` switch, as the two held buttons do.
         private void RingTheBell()
         {
             if (BellDone())
@@ -273,7 +261,6 @@ namespace BigWalkArchipelago.Debug
             ApNotices.Post("Gauntlet: the DevTrigger pecked");
         }
 
-        // A switch of this name in the active Gauntlet's Level7 (the top), under NHoldAnchor or GauntletEndingLogicGroup.
         private static PeckSwitch TopSwitch(string name, bool inNHoldAnchor)
         {
             var group = inNHoldAnchor ? "NHoldAnchor" : "GauntletEndingLogicGroup";

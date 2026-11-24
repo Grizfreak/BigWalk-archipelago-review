@@ -8,24 +8,14 @@ using UnityEngine.UI;
 
 namespace BigWalkArchipelago.Patches
 {
-    // The mod's own lines in the game's Settings, General category (ROADMAP U13, player
-    // 2026-10-05): the size of the Archipelago overlay's text, each player on their own machine.
-    //
-    // A line is a copy of one of the game's own left / right lines (a SettingsRow with two arrow
-    // buttons and a label). The copy is made from the line switched off, so the game's row script
-    // never wakes on it, and that script is then taken off: a SettingsRow is tied to one of the
-    // game's own settings (`settingsType`), and left on it would change that one. The arrows' click
-    // events are replaced, not added to, because Instantiate carries the persistent listeners
-    // across (the lesson of HostMenuArchipelagoControls). The texts lose their LocalizedText,
-    // which would put the game's words back on a language change.
+    // Rows copied from the game's own; their SettingsRow script is removed so no setting changes.
     [HarmonyPatch(typeof(SettingsMenu), nameof(SettingsMenu.Start))]
     internal static class SettingsMenuArchipelagoRows
     {
         private const string Tag = "[" + nameof(SettingsMenuArchipelagoRows) + "]";
         private const string RowName = "Archipelago text size (AP)";
 
-        // Point sizes; 22 is the .cfg's default. No "off": the overlay always shows (player,
-        // 2026-10-06).
+        // Point sizes; 22 is the .cfg's default.
         private static readonly (string label, int size)[] Sizes =
         {
             ("Small", 16), ("Medium", 22), ("Large", 28), ("Huge", 36),
@@ -81,10 +71,7 @@ namespace BigWalkArchipelago.Patches
             }
         }
 
-        // An "Archipelago" category of its own (player, 2026-10-06): General's panel copied and
-        // emptied of the game's lines, and General's button copied under the last one. The button
-        // hides the category showing and shows ours, and makes ours the menu's active one, so the
-        // game hides it again when another category is chosen. Returns where our lines go.
+        // The button makes ours the active category, so the game hides it when another is chosen.
         private static Transform BuildCategory(SettingsMenu menu, SettingsCatagory general, SettingsRow template)
         {
             GameObject panel;
@@ -102,7 +89,6 @@ namespace BigWalkArchipelago.Patches
             panel.name = CategoryName;
             var category = panel.GetComponent<SettingsCatagory>();
 
-            // Where the lines sit, at the same place as in General; every line of General's copy goes.
             var rows = Twin(panel.transform, general.transform, template.transform.parent) ?? panel.transform;
             for (var i = rows.childCount - 1; i >= 0; i--)
                 UnityEngine.Object.DestroyImmediate(rows.GetChild(i).gameObject);
@@ -137,10 +123,7 @@ namespace BigWalkArchipelago.Patches
             return rows;
         }
 
-        // The category buttons are laid out by the game after the menu starts (at Start every one
-        // sat at the same place, 2026-10-06), so ours is placed again every frame it shows: under
-        // the lowest category button, as far below it as the last two are apart. Only the seven
-        // categories' buttons count (the menu's button list holds others, the lobby's).
+        // The game lays out the category buttons after Start, so ours is placed again every frame.
         private static SettingsMenu _menu;
         private static Transform _button;
 
@@ -172,18 +155,12 @@ namespace BigWalkArchipelago.Patches
             _button.position = buttons[0].position - step;
         }
 
-        // ------------------------------------------------------------------
-        // The gourds' name (U14): a free text field, the host's to set
-        // ------------------------------------------------------------------
 
-        // The settings have no text field: the hosting screen's save name field is copied
-        // (MultiPlatformInputField, keyboard and gamepad already wired), and kept, since that
-        // screen only exists in the main menu and the pause menu's settings need one too.
+        // The settings have no text field, so the hosting screen's save name field is copied.
         private static GameObject _inputTemplate;
         private static TMP_InputField _gourdField;
         private static Transform _gourdTitle;
 
-        // Called at every SettingsMenu.Start: the main menu's hosting screen is found then.
         private static GameObject InputTemplate()
         {
             if (_inputTemplate != null)
@@ -214,10 +191,7 @@ namespace BigWalkArchipelago.Patches
             return _inputTemplate;
         }
 
-        // A guest can join without ever opening the settings in the main menu (the loopback guest
-        // does, player 2026-10-06), so its settings were built with no field to copy. The hosting
-        // screen is looked for once a second until found, and a category built without the gourd
-        // line gets it then.
+        // A guest may never open the main menu's settings, so the template is looked for later.
         private static Transform _rows;
         private static float _nextTemplateLook;
 
@@ -235,7 +209,7 @@ namespace BigWalkArchipelago.Patches
             if (_rows == null || _gourdRow != null)
                 return;
 
-            // Once per category: a line that failed to build is not tried again every frame.
+            // Once per category: a line that failed to build is not retried every frame.
             var rows = _rows;
             _rows = null;
             try
@@ -270,14 +244,13 @@ namespace BigWalkArchipelago.Patches
             {
                 HostMenuConfirmPatch.SetStaticLabel(input.Find("Text Area/Placeholder"), GourdNames.Default);
 
-                // The save name's own listeners came across with the copy: replaced, not added to.
+                // Instantiate copies the persistent listeners, so replace them instead of adding.
                 _gourdField.onValueChanged = new TMP_InputField.OnChangeEvent();
                 _gourdField.onEndEdit = new TMP_InputField.SubmitEvent();
                 _gourdField.onSubmit = new TMP_InputField.SubmitEvent();
                 _gourdField.characterLimit = GourdNames.MaxLength;
                 _gourdField.text = GourdNames.Current;
 
-                // Enter, or leaving the field (the menu closing among others), applies it.
                 _gourdField.onEndEdit.AddListener((UnityAction<string>)(value =>
                 {
                     if (GourdNames.IsGuest)
@@ -290,8 +263,7 @@ namespace BigWalkArchipelago.Patches
 
             _gourdRow = clone.GetComponent<RectTransform>();
 
-            // The text size line's title takes this title's font: the game's own caps font,
-            // which the copied settings line never managed to keep (it fell back to a fixed-width one).
+            // The copied row loses the game's caps font, so it borrows this title's.
             var model = _gourdTitle != null ? _gourdTitle.GetComponent<TMP_Text>() : null;
             if (model != null)
             {
@@ -314,14 +286,13 @@ namespace BigWalkArchipelago.Patches
             Plugin.Log.LogInfo($"{Tag} Gourd name line added to Settings > Archipelago.");
         }
 
-        // Every frame: on a guest the field is the host's name, greyed, and says so.
         private static bool _shownAsGuest;
 
         private static RectTransform _gourdRow;
         private static RectTransform _sizeRow;
         private static RectTransform _sizeTitle;
 
-        // A text's left edge on screen, from its rect (GetWorldCorners reads zeros under IL2CPP).
+        // GetWorldCorners reads zeros under IL2CPP, so the edge is computed from the rect.
         private static float LeftEdge(RectTransform r)
         {
             var text = r.GetComponent<TMP_Text>();
@@ -330,9 +301,7 @@ namespace BigWalkArchipelago.Patches
         }
         private static readonly Vector3[] Corners = new Vector3[4];
 
-        // The panel places its lines by hand, no layout (a LayoutElement changed nothing,
-        // 2026-10-06): the gourd name line is put under the text size line every frame it shows,
-        // its left edge on that line's, with a gap of 40 % of that line's height.
+        // The panel has no layout component, so the gourd row is placed by hand every frame.
         private static void PlaceGourdRow()
         {
             FitRows();
@@ -340,9 +309,6 @@ namespace BigWalkArchipelago.Patches
             if (_gourdRow == null || below == null)
                 return;
 
-            // The category is a VerticalLayoutGroup; the gourd line stays out of it and is set
-            // in the category's own space, under the size line (GetWorldCorners reads back zeros
-            // under IL2CPP, 2026-10-06 log).
             var element = _gourdRow.GetComponent<LayoutElement>() ?? _gourdRow.gameObject.AddComponent<LayoutElement>();
             element.ignoreLayout = true;
 
@@ -354,7 +320,6 @@ namespace BigWalkArchipelago.Patches
             _gourdRow.sizeDelta = new Vector2(below.sizeDelta.x, _gourdRow.sizeDelta.y);
             _gourdRow.anchoredPosition = new Vector2(sizeLeft, sizeBottom - 20f);
 
-            // Both titles start at the same x, whatever indent each line's own layout gives them.
             var gourdTitle = _gourdTitle != null ? _gourdTitle.GetComponent<RectTransform>() : null;
             if (_sizeTitle != null && gourdTitle != null)
             {
@@ -382,7 +347,7 @@ namespace BigWalkArchipelago.Patches
         private static bool _shiftLogged;
         private static bool _rowsFitted;
 
-        // The page held six arrow lines and the gourd name: past six, tighter spacing keeps it.
+        // Past six arrow rows, tighter spacing keeps the gourd name row on the page.
         private static void FitRows()
         {
             if (_rowsFitted || _arrayRows.Count < 7)
@@ -401,7 +366,6 @@ namespace BigWalkArchipelago.Patches
             Plugin.Log.LogInfo($"{Tag} {count} lines of {height:0} px: spacing {before:0.#} -> {group.spacing:0.#}.");
         }
 
-        // Once: how the panel lays its lines out, to stop guessing (2026-10-06).
         private static void LogLayout(Vector3 sizeBottomLeft, float sizeHeight, Vector3 gourdTopLeft, Vector3 target)
         {
             var lines = new System.Collections.Generic.List<string>
@@ -436,9 +400,6 @@ namespace BigWalkArchipelago.Patches
         private static bool? _arraysAsGuest;
         private static float _nextArrayRefresh;
 
-        // Every frame the lines show: the host's lines greyed on a guest, saying whose they are,
-        // and every value read again once a second (a seed connected or left changes what "On"
-        // and "Seed's" say).
         private static void KeepArrayRows()
         {
             if (_arrayRows.Count == 0 || _arrayRows[0].Row == null || !_arrayRows[0].Row.gameObject.activeInHierarchy)
@@ -486,14 +447,12 @@ namespace BigWalkArchipelago.Patches
                 _shownAsGuest = guest;
                 HostMenuConfirmPatch.SetStaticLabel(_gourdTitle, guest ? "GOURD NAME (THE HOST'S IN THIS GAME) :" : "GOURD NAME :");
 
-                // No longer a guest: the field shows this player's own name again, never the
-                // host's, which leaving the field would otherwise save as theirs.
+                // Otherwise leaving the field would save the host's name as this player's.
                 if (!guest)
                     _gourdField.text = GourdNames.Current;
             }
         }
 
-        // The transform at `inSource`'s place in `source`, found under `copy`.
         private static Transform Twin(Transform copy, Transform source, Transform inSource)
         {
             if (inSource == null)
@@ -505,8 +464,6 @@ namespace BigWalkArchipelago.Patches
             return path.Count == 0 ? copy : copy.Find(string.Join("/", path));
         }
 
-        // Every translated text of `clone` but `value` and the arrows', rewritten as `text` in the
-        // font the game gave the same text of `source` (see BuildSizeRow).
         private static void Retitle(GameObject clone, Transform source, string text, LocalizedText value, Button left, Button right)
         {
             foreach (var localized in clone.GetComponentsInChildren<LocalizedText>(true))
@@ -534,8 +491,6 @@ namespace BigWalkArchipelago.Patches
             }
         }
 
-        // A left / right line of ours: its title as typed until the gourd line lends it the game's
-        // caps font (BuildGourdNameRow), its value from `show`, the arrows stepping through `step`.
         private sealed class ArrayRow
         {
             internal RectTransform Row;
@@ -576,10 +531,7 @@ namespace BigWalkArchipelago.Patches
             var identifier = clone.GetComponent<SettingItemIdentifier>();
             if (identifier != null)
                 UnityEngine.Object.DestroyImmediate(identifier);
-            // The title: every translated text but the value and the arrows' (the arrows are
-            // translated glyphs too), in the font the game gave the copied line's own title. The
-            // translation comes off, or it puts "Language" back; left with a key of ours it showed
-            // "[Archipelago text]" in a fallback font (2026-10-06).
+            // The translation is removed, or a language change puts the game's text back.
             Retitle(clone, template.transform, title, value, left, right);
 
             var row = new ArrayRow
@@ -592,7 +544,7 @@ namespace BigWalkArchipelago.Patches
             };
             row.Show = () =>
             {
-                // A guest's own .cfg says nothing of the host's DeathLink: no value to show.
+                // A guest's own .cfg says nothing of the host's DeathLink.
                 if (value != null)
                     SetRaw(value, hostOnly && GourdNames.IsGuest ? "Set by the host" : show());
             };
@@ -635,13 +587,8 @@ namespace BigWalkArchipelago.Patches
             Plugin.Log.LogInfo($"{Tag} Archipelago text size line added (copied from '{template.gameObject.name}').");
         }
 
-        // The host's DeathLink (player, 2026-10-06): on or off, sending and receiving together,
-        // and the amnesty, the seed's or a number of its own. Greyed on a guest, which has no
-        // connection of its own.
         private static readonly int[] Amnesties = { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
-        // Each player's own, the accessibility setting (player, 2026-10-07): the traps' flashes
-        // (Big Flare) not shown on this screen.
         private static void BuildFlareRow(SettingsRow template, Transform parent)
         {
             BuildArrayRow(template, parent, "Gentle effects", "GENTLE EFFECTS :", hostOnly: false,
@@ -649,9 +596,6 @@ namespace BigWalkArchipelago.Patches
                 _ => ModConfig.GentleEffects.Value = !ModConfig.GentleEffects.Value);
         }
 
-        // Each player's own (player, 2026-10-11): the lines under "Archipelago: Connected" (what
-        // arrived, what a DeathLink or a trap did) and the two small sounds, one row for both (the
-        // page is full): text and sound, sound only, text only, neither.
         private static readonly string[] Alerts = { "Text + sound", "Sound only", "Text only", "Off" };
 
         private static int CurrentAlerts() =>
@@ -668,15 +612,12 @@ namespace BigWalkArchipelago.Patches
                     ModConfig.ApSounds.Value = next % 2 == 0;
                 });
 
-            // The seed's objectives on the overlay at all times (ROADMAP G5); the boards in the world
-            // show them either way.
             BuildArrayRow(template, parent, "Objectives on screen", "OBJECTIVES ON SCREEN :", hostOnly: false,
                 () => ModConfig.ShowObjectives.Value ? "Shown" : "Hidden",
                 _ => ModConfig.ShowObjectives.Value = !ModConfig.ShowObjectives.Value);
         }
 
-        // One row for both (player, 2026-10-11, the page is full): Off, then the amnesty, the seed's
-        // or a number of its own. Position 0 is off, 1 the seed's amnesty, 2 and on the numbers.
+        // Position 0 is off, 1 the seed's amnesty, 2 and on a number of its own.
         private static void BuildDeathLinkRows(SettingsRow template, Transform parent)
         {
             int Position() => !ModConfig.DeathLinkEnabled.Value
@@ -706,7 +647,6 @@ namespace BigWalkArchipelago.Patches
                 });
         }
 
-        // R7 (player, 2026-10-13): whether the guests may ask for a hint at the hub's hint board, the host's choice.
         private static void BuildHintRow(SettingsRow template, Transform parent)
         {
             BuildArrayRow(template, parent, "Guests ask hints", "GUESTS ASK HINTS :", hostOnly: true,
@@ -720,7 +660,6 @@ namespace BigWalkArchipelago.Patches
 
         private static readonly string[] PoolModes = { "Over the seed", "Game's tiles only", "Off" };
 
-        // The host's tiles/pool (CustomTiles): over the seed, on the game's icons only, or off.
         private static void BuildTilePoolRow(SettingsRow template, Transform parent)
         {
             BuildArrayRow(template, parent, "Tile pool", "TILE POOL :", hostOnly: true,
@@ -732,7 +671,6 @@ namespace BigWalkArchipelago.Patches
                 });
         }
 
-        // The preset nearest the .cfg's size.
         private static int Current()
         {
             var size = ModConfig.StatusFontSize.Value;
@@ -759,7 +697,6 @@ namespace BigWalkArchipelago.Patches
             }
             catch (Exception)
             {
-                // Not initialised yet: it reads its key when it wakes.
             }
         }
 
@@ -777,7 +714,7 @@ namespace BigWalkArchipelago.Patches
             }
             catch (Exception)
             {
-                // Not initialised yet (the line is still off): it shows the raw value when it wakes.
+                // Not initialised yet (the row is still off): it shows the raw value when it wakes.
                 var element = localized.textElement != null ? localized.textElement : localized.GetComponent<TMP_Text>();
                 if (element != null)
                     element.text = text;

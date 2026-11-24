@@ -4,12 +4,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // `lock_endings_until_objectives`, Big Game's side (ROADMAP G5, player 2026-10-12): the secret room's printer prints a first
-    // card by itself, and a refused later print left the request lost. So, while the lock holds, the cards are not there to take:
-    // every `CueCard` under `GoodbyePrinter` is hidden (scale zero, which a LODGroup cannot turn back on, as it did for the towers'
-    // buttons), and the first card's home refuses a grab (`blockGrabbing`). Local to each machine, like the puzzle hider; the host
-    // tells the guests what is shut (ObjectiveBoard). The refusal of OnQueuePeck (Patches/GoodbyePrinterHoldPatch) stays as a
-    // second guard.
+    // Hides the secret room printer's cards while `lock_endings_until_objectives` holds.
     internal static class PrinterHold
     {
         private const string Tag = "[" + nameof(PrinterHold) + "]";
@@ -19,7 +14,6 @@ namespace BigWalkArchipelago.Core
         private static bool _hidden;
         private static readonly Dictionary<int, Vector3> Scales = new();
 
-        // Every couple of seconds (ObjectiveBoard.Sync), on every machine.
         internal static void Tick()
         {
             var locked = ObjectiveBoard.HoldsTheLastStairway && ObjectiveBoard.Locked("big_game");
@@ -28,8 +22,7 @@ namespace BigWalkArchipelago.Core
 
             if (_printer == null)
             {
-                // Another world (a save loaded, or another one): its cards are new and shown, whatever the last one was
-                // (2026-10-12: a lock from an earlier save left `_hidden` true, and the next save's cards were never hidden).
+                // A new world has fresh, visible cards whatever the last one's state was.
                 _hidden = false;
                 Scales.Clear();
                 if (!locked)

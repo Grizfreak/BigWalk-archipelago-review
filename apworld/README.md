@@ -3,7 +3,7 @@
 The Python Archipelago world for *Big Walk*. The code lives in
 [`bigwalk/`](bigwalk/) and packages into `dist/bigwalk.apworld`.
 
-- [`bigwalk/docs/`](bigwalk/docs/) — the player documentation as the
+- [`bigwalk/docs/`](bigwalk/docs/): the player documentation as the
   Archipelago webhost renders it: the game's page and the setup guide. The
   two files at the root of the repository ([`../README.md`](../README.md),
   [`../SETUP.md`](../SETUP.md)) say the same thing; all four move together.
@@ -14,7 +14,7 @@ The Python Archipelago world for *Big Walk*. The code lives in
       tests)
 - [x] Real generation validated: 3 slots, Archipelago 0.6.8 (source) and
       0.6.7 (local install), with the packaged `.apworld` included
-- [x] The mod's Archipelago network client — connected and played both solo
+- [x] The mod's Archipelago network client, connected and played both solo
       and with two players
 - [x] Radio stations as items (`radio_station_items`, 2026-09-21): both
       halves written, generation validated, and the whole chain exercised in
@@ -56,41 +56,41 @@ python -m pytest test/general -q            # Archipelago conformance
 
 ## What the world does
 
-**Locations** — 45 puzzles, the 25 big-key cut segments, 7 big-key deposits,
+**Locations**: 45 puzzles, the 25 big-key cut segments, 7 big-key deposits,
 7 radio stations (optional), and the gourd deposits at the monuments (none,
-every fifth, or all — an option). 93 locations on the default options. Gourd
+every fifth, or all, an option). 93 locations on the default options. Gourd
 deposits are counted globally and never per tower, which is what makes the
 model immune to the softlock identified on 2026-09-11 (Option A).
 
-**Items** — one generic `Gourd` item, in as many copies as there are monument
+**Items**: one generic `Gourd` item, in as many copies as there are monument
 slots in play (30 or 45); the 7 features the big keys used to open
 (`Drawbridge`, `Map Room`, `Chairlift`, `Train`, `Tunnels`, `Big Wall Door`,
 `Spawn Secret Door`); the 7 big keys themselves; the 7 `Radio Music 01…07: …` items that make
-each station audible (optional); and filler — the island's own hand props,
+each station audible (optional); and filler, the island's own hand props,
 materialized on receipt and taken off the map so they cannot be picked up for
 free. The Drawbridge is handed over at the start by default.
 
-**Logic** — the key and the door are two separate items. A big key opens
+**Logic**: the key and the door are two separate items. A big key opens
 nothing: it carries six checks (five cuts and a deposit), and those six
 locations depend on it and nothing else. The features are what open the
 island, and four of them really guard something: `Chairlift` and `Tunnels`
-each enclose locations (measured in game on 2026-09-21), `Big Wall Door` — the
-Black Tower's feature — opens the ending zone, and `Spawn Secret Door`
+each enclose locations (measured in game on 2026-09-21), `Big Wall Door`, the
+Black Tower's feature, opens the ending zone, and `Spawn Secret Door`
 opens the zone the secret ending sits in. No puzzle is locked
 by the mod. The number of gourds received now gates only the gourd deposits
 themselves.
 
-**Goal** — `big_wall`, `big_goodbye` (default), `big_game` or
+**Goal**: `big_wall`, `big_goodbye` (default), `big_game` or
 `big_collection`, after the game's achievements. Every earlier name is still
 accepted (`ending`, `gauntlet`, `second_ending` / `secret_ending`, `deposits` /
 `gourds`), and the first alpha's are still what slot_data sends.
 
-**Universal Tracker** — supported, and no YAML is needed for it:
+**Universal Tracker**: supported, and no YAML is needed for it:
 `interpret_slot_data` hands the seed's own settings back to UT, which rebuilds
 the world from those instead of from whatever sits in the tracking player's
 `Players` folder.
 
-**Other trackers** (PopTracker packs) — slot_data carries the whole logic as
+**Other trackers** (PopTracker packs): slot_data carries the whole logic as
 data in `logic`: regions, exits and every rule, by item and location name.
 Evaluating it keeps a tracker in step with the apworld without porting the
 rules by hand. Built by [`bigwalk/logic_export.py`](bigwalk/logic_export.py):

@@ -6,25 +6,14 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core
 {
-    // What each player holds, in the session journal (`hands` lines), on every machine.
-    //
-    // Written for a gourd the host could not pick up after a restart (players, 2026-10-15): the
-    // received gourd had been handed to a guest before the host quit, and nothing said whether it
-    // was still held at that moment, nor by whom. So:
-    //   - a line whenever a player takes or lets go of something, read every half second;
-    //   - at `world gone`, what each player held last (from the cache: the props may be gone);
-    //   - at `world ready`, what each player holds, and on the host the mod's gourds in the world,
-    //     each with its netId, its place and whether someone holds it.
-    // Held is read both ways the game knows it, as CosmeticGourdSpawnHandler.FindHolderName does:
-    // the hands (this machine's view) and playerHeldInformation (the synced one); a line says when
-    // the two disagree. Log only: it changes nothing in the game.
+    // Logs what each player holds to the session journal, both by hands and by synced record.
     internal static class HandsJournal
     {
         private const float Period = 0.5f;
 
         private static float _next;
 
-        // Per player (its netId, or its name before it has one): the last description written.
+        // Keyed by netId, or by name before the player has one.
         private static readonly Dictionary<string, string> _last = new();
         private static readonly Dictionary<string, string> _names = new();
 
@@ -140,7 +129,6 @@ namespace BigWalkArchipelago.Core
 
         private static string Name(string id) => _names.TryGetValue(id, out var name) ? name : id;
 
-        // "<name> netId <n> <saveablePropName> (AP cosmetic)", or "nothing"; both readings when they disagree.
         private static string Holding(PlayerCharacter pc)
         {
             var inHands = pc.hands != null ? pc.hands.heldProp : null;

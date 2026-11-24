@@ -1,8 +1,4 @@
-"""
-Id tables are a contract with the mod, not an implementation detail: the C#
-client computes ids arithmetically from the game's own enum values (see
-../../protocol.md). These tests are what stops that contract drifting.
-"""
+"""Id tables are a contract with the mod, which computes ids from the game's enum values."""
 
 import unittest
 
@@ -36,17 +32,7 @@ class TestIdTables(unittest.TestCase):
             )
 
     def test_cut_ids_match_the_formula_the_mod_uses(self) -> None:
-        """
-        A cut segment has no identifier of the game's own — `cuts` is an
-        anonymous Mirror SyncList of bools — so both sides build one from the
-        key and the index. The C# is
-
-            _base + _cutOffset + (long)propName * CutStride + index
-
-        in `Core/Net/ApLocationIds.TryResolveCut`. It is spelled out again
-        here rather than calling `data.cut_location_id`, because a test that
-        calls the thing it is testing cannot catch the formula changing.
-        """
+        """Spells out ApLocationIds.TryResolveCut again, so a change in the formula shows."""
         for tower in data.TOWERS:
             for index in range(tower.segments):
                 self.assertEqual(
@@ -55,10 +41,7 @@ class TestIdTables(unittest.TestCase):
                 )
 
     def test_cut_ids_cannot_reach_any_other_range(self) -> None:
-        # The stride is what keeps one key's segments out of the next key's
-        # block, and the offset is what keeps the whole lot away from the
-        # puzzles, deposits and radio. Asserted against the real extremes
-        # rather than against remembered numbers.
+        # The stride keeps a key's segments out of the next key's; the offset keeps other ids out.
         cut_ids = [data.cut_location_id(tower, index)
                    for tower in data.TOWERS for index in range(tower.segments)]
         self.assertEqual(len(cut_ids), data.TOTAL_CUT_SEGMENTS)
@@ -74,43 +57,32 @@ class TestIdTables(unittest.TestCase):
                                  f"{tower.prop_name} has more segments than the stride allows")
 
     def test_item_ids_derive_from_game_enums(self) -> None:
-        # Still keyed on the big key's enum value even though the item is now
-        # the feature rather than the key: the mod resolves it with
-        # `ApLocationIds.TryResolveBigKeyItem`, which is plain `id - base`.
+        # Still keyed on the big key's enum value: the mod resolves it as `id - base`.
         for tower in data.TOWERS:
             self.assertEqual(items.ITEM_NAME_TO_ID[tower.item_name],
                              data.BASE_ID + tower.prop_value)
 
     def test_puzzle_count_matches_the_game(self) -> None:
-        # 45 puzzles, which is also the number of monument slots in the game —
-        # the enum holds 58 (100-159, minus the values it skips at 102 and 136)
-        # but thirteen of them produce nothing in the shipped build. If this
-        # ever fails, either a content update landed or a dump was misread;
-        # see data.ABSENT_FROM_THE_BUILD for what settled it.
+        # One puzzle per monument slot: 13 of the enum's 58 values produce nothing in the game.
         self.assertEqual(len(data.PUZZLES), 45)
         self.assertEqual(len({puzzle.prop_name for puzzle in data.PUZZLES}), 45)
         self.assertEqual(len({puzzle.location_name for puzzle in data.PUZZLES}), 45)
         self.assertEqual(len(data.PUZZLES), data.MAX_MONUMENT_SLOTS)
 
     def test_the_thirteen_absent_puzzles_are_not_locations(self) -> None:
-        # A location for one of these can never be checked: the seed would be
-        # unbeatable the moment generation put progression on it, which is
-        # what shipped until 2026-09-21.
+        # Such a location can never be checked, so progression placed there blocks the seed.
         self.assertEqual(len(data.ABSENT_FROM_THE_BUILD), 13)
         table = {puzzle.prop_name for puzzle in data.PUZZLES}
         for prop_name in data.ABSENT_FROM_THE_BUILD:
             self.assertNotIn(prop_name, table)
 
     def test_cutting_the_thirteen_left_every_other_id_alone(self) -> None:
-        # Ids are BASE_ID + the enum value, so removing rows cannot shift the
-        # survivors. Spot-checked at both ends of the table.
+        # Ids are BASE_ID + the enum value, so removing rows cannot shift the others.
         self.assertEqual(data.puzzle_location_id(data.PUZZLES[0]), data.BASE_ID + 100)
         self.assertEqual(data.puzzle_location_id(data.PUZZLES[-1]), data.BASE_ID + 159)
 
     def test_cut_segment_counts_match_the_game(self) -> None:
-        # Measured with the mod's Ctrl+K dump on 2026-09-21: nine KeyBlank
-        # instances, five segments each on the drawbridge and the four
-        # coloured towers, and none on the two keys that are born finished.
+        # Five segments each on the drawbridge and the four coloured towers, none on the rest.
         self.assertEqual(data.TOTAL_CUT_SEGMENTS, 25)
         with_segments = [tower for tower in data.TOWERS if tower.segments]
         self.assertEqual(len(with_segments), 5)
@@ -118,8 +90,7 @@ class TestIdTables(unittest.TestCase):
             self.assertEqual(tower.segments, 5, tower.prop_name)
 
     def test_monument_slot_counts(self) -> None:
-        # Counted in-game with the mod's F6 tool and independently confirmed by
-        # a third-party document; both agree on 4 + 5*4 + 6 + 15.
+        # 4 + 5*4 + 6 + 15 slots across the monuments.
         self.assertEqual(data.MAX_MONUMENT_SLOTS, 45)
 
     def test_every_deposit_amount_has_a_location(self) -> None:
