@@ -126,7 +126,7 @@ BepInEx\licenses\.
 Set-Content -Path (Join-Path $stage 'README.txt') -Value $readme -Encoding utf8
 
 if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
-$zip = Join-Path (Resolve-Path $OutDir) "BigWalkArchipelago-$version-$stamp.zip"
+$zip = Join-Path (Resolve-Path $OutDir) 'BigWalkArchipelago.zip'
 if (Test-Path $zip) { Remove-Item $zip -Force }
 
 Write-Host '== Compressing ==' -ForegroundColor Cyan
@@ -148,4 +148,4 @@ Remove-Item $stage -Recurse -Force
 
 $size = [math]::Round((Get-Item $zip).Length / 1MB, 1)
 Write-Host ''
-Write-Host "Package ready: $zip ($size MB)" -ForegroundColor Green
+Write-Host "Package ready: $zip, version $version ($size MB)" -ForegroundColor Green
