@@ -2,7 +2,7 @@ import unittest
 
 from Options import OptionError
 
-from .. import data, items
+from .. import checks, data, items
 from .bases import BigWalkTestBase, build_like_universal_tracker
 
 
@@ -37,7 +37,8 @@ class TestTheBellIsAnEnding(unittest.TestCase):
     """big_wall ends a short seed."""
 
     def test_the_bell_as_the_goal_generates(self) -> None:
-        build_like_universal_tracker({"goal": "big_wall", "objectives": ["big_collection"]})
+        built = build_like_universal_tracker({"goal": "big_wall", "objectives": ["big_collection"]})
+        self.assertEqual(checks.objective_keys(built.worlds[1]), ("big_wall", "big_collection"))
 
 
 class TestTheBellEndsBeforeTheGauntlet(unittest.TestCase):
@@ -231,7 +232,8 @@ class TestTheClubWithoutShuffledMusic(BigWalkTestBase):
 
 class TestObjectivesTakeTheGoalAsTheirEnding(unittest.TestCase):
     def test_a_list_without_a_goal_takes_the_default_ending(self) -> None:
-        build_like_universal_tracker({"objectives": ["big_collection", "big_keys"]})
+        built = build_like_universal_tracker({"objectives": ["big_collection", "big_keys"]})
+        self.assertIn("big_goodbye", checks.objective_keys(built.worlds[1]))
 
     def test_the_radio_objective_needs_radio_sanity(self) -> None:
         with self.assertRaises(OptionError):
