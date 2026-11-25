@@ -195,7 +195,7 @@ A player without it:
 **Settings > Archipelago**, last in the game's Settings, from the main menu or the pause menu: the
 overlay's text size, the host's DeathLink switch and amnesty, **Gentle effects** (hides the traps'
 flashes on your screen, for photosensitive players) and the **gourd name** (the host names the gourds
-for everyone). The whole list, and who can change what, is on the game's page, "In-game settings".
+for everyone).
 They live in the mod's own file, `BepInEx/config/com.grizfreak.bigwalk.archipelago.cfg`, which can be
 edited by hand with the game closed.
 
