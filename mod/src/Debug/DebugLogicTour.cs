@@ -122,7 +122,7 @@ namespace BigWalkArchipelago.Debug
         {
             if (!File.Exists(TourPath))
             {
-                ApNotices.Post("Tour: no BepInEx/logic-tour.tsv (run tools/logic_tour.py)", warning: true);
+                ApNotices.Post("Tour: no BepInEx/logic-tour.tsv", warning: true);
                 return false;
             }
 

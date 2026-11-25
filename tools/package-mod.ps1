@@ -4,7 +4,8 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$GameDir = 'F:\SteamLibrary\steamapps\common\Big Walk',
+    # The game's folder: -GameDir, or the BIGWALK_DIR variable.
+    [string]$GameDir = ($env:BIGWALK_DIR -split ';')[0],
     [string]$Configuration = 'Release',
     [string]$OutDir = (Join-Path $PSScriptRoot '..\dist')
 )
@@ -15,6 +16,7 @@ $repo = Resolve-Path (Join-Path $PSScriptRoot '..')
 $sln = Join-Path $repo 'mod\BigWalkArchipelago.sln'
 $buildOut = Join-Path $repo "mod\src\bin\$Configuration\net6.0"
 
+if (-not $GameDir) { throw 'Pass -GameDir or set BIGWALK_DIR to the game folder.' }
 if (-not (Test-Path $GameDir)) {
     throw "Game folder not found: $GameDir"
 }
