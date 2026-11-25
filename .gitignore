@@ -8,44 +8,20 @@ apworld/dist/
 # Throwaway seeds made by tools/testroom.py.
 tools/out/
 
-# Zips made by tools/package-mod.ps1 (~40 MB, rebuilt with one command, and
-# they contain a copy of BepInEx).
+# Zips made by tools/package-mod.ps1.
 dist/
 
 # Python caches (the apworld's tests).
 __pycache__/
 *.py[cod]
 
-# Local DLLs copied from the game's install (see mod/lib/README.md): never
-# committed, they depend on the machine and on the game's version.
+# DLLs copied from the game's install (see mod/lib/README.md): never committed.
 mod/lib/*.dll
 !mod/lib/README.md
 
 # IDE
 .vs/
 *.user
-
-# Full Il2CppInspectorRedux dump (~1 GB: the game's extracted DLLs, metadata
-# JSON/headers, a binary Ghidra project): never committed. Far too big for git
-# (past GitHub's limit without LFS), and extracted game binaries do not belong
-# in a repo, even a private one.
-BW_export/*
-mod/BigWalk-ghidra-project.zip
-mod/gh-pj/*
-
-# Working notes (roadmap, test lists, release drafts, session, design and
-# reverse-engineering notes): kept on the author's machine, never published.
-# What was tracked before 2026-10-09 stays in the history of the commits
-# already pushed.
-/docs/
-/apworld/design-decisions.md
-/apworld/protocol.md
-/mod/architecture-mod.md
-/mod/reverse-engineering-notes.md
-
-# Local config of the Claude Code agent: specific to the machine and the
-# editor, it has no place in the repo.
-.claude/
 
 # Players' YAML files for the test rooms: local, specific to each machine.
 tools/players/*.yaml

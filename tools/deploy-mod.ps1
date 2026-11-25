@@ -5,16 +5,16 @@
 [CmdletBinding()]
 param(
     [string]$Configuration = 'Debug',
-    [string[]]$Targets = @(
-        'F:\Games\Big Walk',
-        'F:\shared\Big Walk',
-        'F:\SteamLibrary\steamapps\common\Big Walk'
-    ),
-    [string]$SharedDrop = 'F:\shared',
+    # The game folders: -Targets, or the BIGWALK_DIR variable (several are separated by ';').
+    [string[]]$Targets = @($env:BIGWALK_DIR -split ';' | Where-Object { $_ }),
+    # A folder that also gets the mod's DLL alone, for a second machine.
+    [string]$SharedDrop = '',
     [switch]$SkipBuild
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ($Targets.Count -eq 0) { throw 'Pass -Targets or set BIGWALK_DIR to the game folder.' }
 
 $repo = Resolve-Path (Join-Path $PSScriptRoot '..')
 $sln = Join-Path $repo 'mod\BigWalkArchipelago.sln'

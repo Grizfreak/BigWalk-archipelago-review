@@ -4,7 +4,8 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$GameDir = 'F:\SteamLibrary\steamapps\common\Big Walk',
+    # The game's folder: -GameDir, or the BIGWALK_DIR variable.
+    [string]$GameDir = ($env:BIGWALK_DIR -split ';')[0],
     [int]$Width = 1280,
     [int]$Height = 720,
     [switch]$NoJoin,
@@ -53,6 +54,7 @@ if ($WatchGuest -ne 0) {
     exit 0
 }
 
+if (-not $GameDir) { throw 'Pass -GameDir or set BIGWALK_DIR to the game folder.' }
 $exe = Join-Path $GameDir 'Big Walk.exe'
 if (-not (Test-Path $exe)) { throw "No game at $exe." }
 
