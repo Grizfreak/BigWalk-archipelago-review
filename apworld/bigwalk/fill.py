@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from typing import TYPE_CHECKING
 
 from BaseClasses import CollectionState, Item, LocationProgressType
@@ -46,7 +47,16 @@ def make_room_at_the_start(world: BigWalkWorld) -> None:
     if getattr(world.multiworld, "generation_is_fake", False):
         return
     local_early = world.multiworld.local_early_items[world.player]
-    mine = [item for item in world.multiworld.itempool if item.player == world.player]
+    # Already in hand: Archipelago takes them out of the itempool after create_items.
+    in_hand = Counter(world.options.start_inventory_from_pool.value)
+    mine: list[Item] = []
+    for item in world.multiworld.itempool:
+        if item.player != world.player:
+            continue
+        if in_hand[item.name]:
+            in_hand[item.name] -= 1
+        else:
+            mine.append(item)
     if any(item.name == data.LEGS_ITEM_NAME for item in mine):
         local_early[data.LEGS_ITEM_NAME] = 1
     # Given up from the end, Legs first. By identity: items compare equal by name and player.
