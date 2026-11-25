@@ -155,6 +155,17 @@ class TestLegsWithNoRoomAtTheStart(BigWalkTestBase):
     options = {"lock_abilities": "handed", "linear_puzzles": True, "tower_mode": "by_item", "first_tower_open": False}
 
 
+class TestLegsAskedForAtTheStart(BigWalkTestBase):
+    """Archipelago hands Legs over and takes it out of the pool after create_items: not given twice."""
+    run_default_tests = False
+    options = {**TestLegsWithNoRoomAtTheStart.options, "start_inventory_from_pool": {"Legs": 1}}
+
+    def test_legs_waits_in_the_pool(self) -> None:
+        self.assertNotIn("Legs", [item.name for item in self.multiworld.precollected_items[self.player]])
+        self.assertEqual(1, [item.name for item in self.multiworld.itempool].count("Legs"))
+        self.assertNotIn("Legs", self.multiworld.local_early_items[self.player])
+
+
 class TestSomeAbilitiesFree(BigWalkTestBase):
     """An ability listed in start_with_abilities is handed over at the start and leaves the pool."""
 
