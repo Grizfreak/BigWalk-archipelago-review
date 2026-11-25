@@ -1,0 +1,69 @@
+name: fuzz
+
+# By hand, before a version: random settings, with the fuzzer of the Archipelago index.
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Generations per variant
+        default: "500"
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {variant: default, hook: ""}
+          - {variant: determinism, hook: "hooks.determinism:Hook"}
+          - {variant: item-location-count, hook: "hooks.item_location_count:Hook"}
+          - {variant: collect-accessibility, hook: "hooks.collect_accessibility_test:Hook"}
+          - {variant: indirect-conditions, hook: "hooks.indirect_conditions:Hook"}
+          - {variant: lambda-capture, hook: "hooks.detect_rule_variable_capture_issues:Hook"}
+          - {variant: placement-references, hook: "hooks.check_placement_item_location_references:Hook"}
+          - {variant: output-placement, hook: "hooks.detect_output_placement_changes:Hook"}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: bigwalk
+      - uses: actions/checkout@v4
+        with:
+          repository: ArchipelagoMW/Archipelago
+          ref: "0.6.8"
+          path: archipelago
+      - uses: actions/checkout@v4
+        with:
+          repository: ionium-ap/Archipelago-fuzzer
+          ref: 53686ba34f9e8852cbe1970666a5f56fd6abf75a
+          path: fuzzer
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Archipelago with the world
+        working-directory: archipelago
+        run: |
+          find worlds -mindepth 1 -maxdepth 1 -type d ! -name generic ! -name apquest -exec rm -rf {} +
+          cp -r ../bigwalk/apworld/bigwalk worlds/bigwalk
+          cp -r ../fuzzer/fuzz.py ../fuzzer/hooks .
+          python -m pip install --upgrade pip
+          python ModuleUpdate.py --yes --force
+          python Launcher.py --update_settings
+      - name: Fuzz
+        working-directory: archipelago
+        env:
+          RUNS: ${{ inputs.runs }}
+        # Its exit code counts the fills that found no place, which the report judges apart.
+        run: python -O fuzz.py -g bigwalk -m ../bigwalk/tools/fuzz_meta.yaml -n 1 -j 4 -t 30 -r "$RUNS" ${{ matrix.hook && format('--hook {0}', matrix.hook) }} || [ $? -eq 1 ]
+      - name: Report
+        run: python bigwalk/tools/fuzz_report.py ${{ matrix.variant }} archipelago/fuzz_output/report.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fuzz-${{ matrix.variant }}
+          path: archipelago/fuzz_output

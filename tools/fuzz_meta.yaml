@@ -1,0 +1,17 @@
+# Keeps the fuzzer away from what the world refuses, so that most of its draws make a seed.
+Big Walk:
+  fuzz_constraints:
+    # An ending is the goal, never an objective.
+    - {option: objectives, if_selected: big_wall, must_exclude: big_wall}
+    - {option: objectives, if_selected: big_goodbye, must_exclude: big_goodbye}
+    - {option: objectives, if_selected: big_game, must_exclude: big_game}
+    # An objective whose checks or items are off.
+    - {option: object_sanity, if_value: "off", then_exclude: {objectives: big_objects}}
+    - {option: lock_abilities, if_value: disabled, then_exclude: {objectives: big_body}}
+    - {option: radio_sanity, if_value: "false", then_exclude: {objectives: big_radio}}
+    - {option: radio_sanity, if_value: false, then_exclude: {objectives: big_radio}}
+    - {option: tower_mode, if_value: all_open, then_exclude: {objectives: big_towers}}
+    - {option: tower_mode, if_value: all_open, then: {first_tower_open: "true"}}
+    - {option: tower_mode, if_value: in_order, then: {first_tower_open: "true"}}
+    # The bell ends the run before the Gauntlet.
+    - {option: goal, if_value: big_wall, then: {gauntlet_mode: vanilla}}
