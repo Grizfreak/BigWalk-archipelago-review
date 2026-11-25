@@ -1,8 +1,6 @@
 # Big Walk (Archipelago)
 
-An [Archipelago](https://archipelago.gg) randomizer for *Big Walk* (House
-House). Checks go out and items come in from inside the game: there is no
-separate client to run while you play.
+An [Archipelago](https://archipelago.gg) randomizer for *Big Walk* (House House).
 
 ## Download
 
@@ -31,37 +29,7 @@ own.
 → **[Your own tile drawings and sounds](CUSTOM-TILES.md)**: drop PNG and WAV files in a
 folder, no coding.
 
-## Big Walk is co-op, and so is this
-
-Nothing here can be played solo: both bells and every monument deposit need
-two players. A whole co-op group shares one Archipelago slot, and only the
-host types the Archipelago details, but every player installs the mod
-([why](apworld/bigwalk/docs/setup_en.md#why-the-others-need-the-mod-too)).
-
-## What gets randomized
-
-- **Checks**: the puzzle gourds, cutting and placing the big keys, the radio
-  stations, and depositing gourds into the monuments; if you like, picking up
-  the island's objects, switching on its lights, and filling each monument.
-- **Items**: gourds, the big keys, the doors they used to open, each station's
-  music, the island's own gadgets and, if you turn it on, the parts the
-  puzzles are built from (`lock_puzzle_needs`: their buttons, panels,
-  speakers... are not on the map until you are sent them) and the players'
-  own bodies (`lock_abilities`: jumping, sitting, the arms, throwing,
-  carrying another player).
-- **Goal**: the Gauntlet's bell, the chapel bell, the second ending, a
-  number of deposits; and, if you like, **objectives** to do on the way, in
-  any order (gourds, big keys, radio stations, towers filled, the island's
-  highest point, a party on the beach, a share of the lights, objects or
-  abilities), listed or drawn at random, shown on a board in the hub. The towers can open one after the other, in an order the
-  seed draws, or each one on a Progressive Monument.
-- **Looks**: the island's buoys and flare guns in the seed's colors, and the puzzles' nine basic tiles shown as
-  drawings made by the community, those of the games in your multiworld first (Celeste's strawberry, Zelda's
-  Triforce, Minecraft's creeper...).
-
-What each goal asks, what every item does and what the options change are on
-the **[game page](apworld/bigwalk/docs/en_Big%20Walk.md)**, the same one the
-Archipelago website shows.
+→ **[The game page](apworld/bigwalk/docs/en_Big%20Walk.md)**: what is randomized, the goals and a FAQ.
 
 ## Reporting a problem
 
@@ -76,18 +44,14 @@ The world is built with Archipelago's own "Build APWorlds" and the mod with `too
 (both documented in their own folder: [`apworld/README.md`](apworld/README.md),
 [`mod/README.md`](mod/README.md)).
 
-To propose a tile of your own (an icon for your game, a scribble for the drawing panels):
-[`mod/assets/tiles/README.md`](mod/assets/tiles/README.md).
+To propose a new tile to replace the basic ones: [`mod/assets/tiles/README.md`](mod/assets/tiles/README.md).
 
 ## License
 
-[MIT](LICENSE). The mod zip also bundles BepInEx and its dependencies, each
-under its own license, listed in `THIRD-PARTY-NOTICES.txt` inside the zip.
+[MIT](LICENSE). The mod zip also bundles BepInEx and its dependencies.
 
-The custom tiles in [`mod/assets/tiles/`](mod/assets/tiles/) are not under MIT: they are drawn by Jack5, Don
-Chalant, GameFraek and Kensufox, and licensed under
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Who drew which tile:
-[`mod/assets/tiles/LICENSE.md`](mod/assets/tiles/LICENSE.md). Thanks to them.
+The custom tiles are under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/):
+[who drew which](mod/assets/tiles/LICENSE.md).
 
 ## AI disclosure
 

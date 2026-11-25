@@ -23,9 +23,6 @@ them. Every option is described there and in the YAML template. This page says w
   that door in logic, though you can walk around it.
 - **Purple gourds** are on the map from the start, and the seal on the true ending's path is gone.
 
-Big Walk can't be played solo: the bells and the monument slots need two players. A whole co-op group shares one slot,
-and every player needs the same build of the mod. See the setup guide.
-
 ## What is the goal of Big Walk when randomized?
 
 - **Big Wall**: break the bell inside the Big Wall.
@@ -181,3 +178,18 @@ right away, for everyone. Traps and bonuses play on every player, one at a time.
 
 The resync station in the hub brings back what got stuck out of reach. Placed keys and deposited gourds stay put.
 Unlocks are applied again each time the world loads, so give a door a second after loading.
+
+## FAQ
+
+### Can it be played solo?
+
+No. Big Walk is co-op, and so is this: both bells and every monument deposit need two players.
+
+### Does everyone need a slot?
+
+No. A whole co-op group shares one Archipelago slot, and only the host types the Archipelago details. Every player
+installs the same build of the mod, though: see the setup guide.
+
+### Is there a client to run while playing?
+
+No. Checks go out and items come in from inside the game.
