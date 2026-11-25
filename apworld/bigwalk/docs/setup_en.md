@@ -13,10 +13,6 @@
 There is no separate client to run while you play: the mod talks to
 Archipelago from inside the game.
 
-**This is an alpha.** Every path has been exercised in game, on two machines
-as well as one, and with four players on one PC, but no one has yet played a seed
-from the first check to the goal.
-
 ## About BepInEx
 
 The mod is a BepInEx plugin, so the game needs BepInEx to load it, and not
@@ -24,13 +20,9 @@ just any BepInEx. It needs **BepInEx 6, the Unity IL2CPP x64 build**, and
 specifically **`6.0.0-be.781`**, the build the mod is compiled and tested
 against.
 
-The release zip contains that exact build, so there is nothing to fetch.
-Installing a different one yourself is the most common way to end up with a
-mod that loads nothing: BepInEx 6 has no stable release, its builds are
-numbered rather than versioned and are not interchangeable, and the Mono
-build will not work at all, Big Walk is an IL2CPP game. If the game folder
-already has a BepInEx in it from something else, replace it with the one
-from the zip.
+The release zip contains that exact build. If the game folder already has
+another BepInEx in it, replace it with the one from the zip: builds are not
+interchangeable.
 
 The build is published at
 [builds.bepinex.dev](https://builds.bepinex.dev/projects/bepinex_be) as
@@ -64,11 +56,9 @@ never starts. In Steam, right-click **Big Walk** → **Properties** → **Genera
 `WINEDLLOVERRIDES="winhttp=n,b" %command%`. The zip holds the Windows build of BepInEx, so the game must run
 through Proton. The install folder and `BepInEx/LogOutput.log` are where they are on Windows.
 
-Everyone must run the same mod version and the same game version, and since
-0.1.2 the same build: the host and its guests talk through a channel that
-changed, and a guest on another build ignores its host. To
-uninstall, delete the four things you added; nothing in the game's own files
-is ever modified.
+Everyone must run the same build of the mod and the same game version: a
+guest on another build ignores its host. To uninstall, delete the four things
+you added; nothing in the game's own files is ever modified.
 
 ## Installing the APWorld
 
@@ -101,29 +91,6 @@ Archipelago is looking. Check `custom_worlds` again.
 A co-op group shares one Archipelago slot, so they fill in **one** YAML
 between them, with one slot name.
 
-### Moving a YAML from 0.3 to 0.4
-
-One thing stops a 0.3 YAML from generating, and everything else keeps working: `cabin_fever_time`,
-`cabin_fever_long_time` and their `_seconds_min` / `_seconds_max` are gone. Use `cabin_fever_seconds`
-(300, the game's own wait) and `cabin_fever_long_seconds` (1800). For a wait drawn once per seed,
-Archipelago's own syntax does it: `cabin_fever_seconds: random-range-60-300`.
-
-The defaults changed too, so a seed made from an unchanged YAML is bigger: 117 locations instead of
-93 (packs, fireworks and flare guns), a quarter of the filler as bonuses, and the colors drawn per
-seed. Turn `pack_sanity`, `firework_sanity`, `flare_gun_sanity`, `bonus_fill_percentage` or
-`random_colors` off to go back.
-
-### Moving a YAML from 0.7
-
-A 0.7 YAML generates as before, with one change you can see: `custom_tiles` is on by default
-(`matching_games`), so when a game of the multiworld has a drawing of its own (Celeste, Zelda,
-Minecraft...), some of the puzzles' basic tiles show other symbols. The puzzles ask for the same tiles;
-set `custom_tiles: off` to keep the game's. `pack_sanity`, `flare_gun_sanity` and `linear_towers` were
-on/off and now have more values; `true` and `false` still mean what they meant.
-
-Every player of a session needs this build of the mod: the host and its guests talk a new version of
-their protocol.
-
 ## Joining a MultiWorld Game
 
 ### Generating a game
@@ -150,9 +117,7 @@ Only the host of the co-op session connects to Archipelago.
      save is created: once it exists the field is locked, because renaming it
      would point the save at a different Archipelago slot.
    - **Archipelago password**: the room's password, or leave it empty: the
-     mod makes the field optional, which it is not in the vanilla game. On a
-     build where it stays mandatory anyway, type anything, a server with no
-     password ignores what you send.
+     mod makes the field optional.
    - **Archipelago host**: the server, as `host:port`, for example
      `archipelago.gg:38281`. It is prefilled with `archipelago.gg:` the first
      time and remembers what you typed afterwards.
@@ -170,9 +135,7 @@ connecting.
 
 The host's screen carries a line in the corner: the Archipelago connection,
 for the whole session, with the last few checks sent and items received
-underneath it and the resync shortcut below that. It reads `Archipelago: off`
-when the switch is off, so a session started disconnected by mistake says so
-rather than looking normal. It is off for everyone else, who never connects.
+underneath it. It reads `Archipelago: off` when the switch is off.
 
 What it cannot show is the rest of the multiworld, who received what you
 sent, or what anyone else is doing. Keep Archipelago's Text Client open
@@ -191,15 +154,11 @@ rebuilds the world from those.
 
 ## Playing together
 
-Big Walk is co-op, and **a whole co-op group shares one Archipelago slot**.
-That is not a compromise, it is the only shape that makes sense: you share
-one world and one save, so you share one set of checks. It also suits the
-game, since depositing a gourd in a monument and breaking either bell both
-need two players acting at once, a Big Walk slot is a two-person slot by
-nature.
+Big Walk is co-op, and **a whole co-op group shares one Archipelago slot**:
+you share one world and one save, so you share one set of checks.
 
-**You cannot play solo.** Every goal depends on one of those two-player
-actions.
+**You cannot play solo.** Depositing a gourd in a monument and breaking either
+bell both need two players acting at once.
 
 **Two people cannot take two separate slots in the same game either.** They
 would need two separate sessions, and then neither could deposit or ring
@@ -210,10 +169,10 @@ anything.
 - **The host** fills in the three fields on the hosting screen and is the
   only one who talks to Archipelago. Their save owns everything: the checks,
   the items received, the filled monuments.
-- **Everyone else** just joins the session the normal way. No address, no
-  slot name, no password, the mod stays dormant for them on purpose.
+- **Everyone else** joins the session the normal way. No address, no slot
+  name, no password.
 
-### Why the others still need the mod installed
+### Why the others need the mod too
 
 Some of what the mod does reaches everyone by itself: doors and shortcuts
 replicate like any other game state, a check is reported by the host whoever
@@ -230,14 +189,6 @@ A player without it:
   granted;
 - does not see the purple postgame gourds on the map, and walks into the
   sphere on the way to the true ending that the host walks straight through.
-
-A friend without the mod can still join and play, that was tried, but only
-a vanilla-looking world. So everyone installs it.
-
-The big keys have been through a two-machine session too: a guest can carry,
-cut and place a key, and every one of those checks reaches the host. If
-something still looks wrong on the joining player's side, that is worth
-reporting rather than working around.
 
 ### The mod's settings, in the game
 
@@ -258,11 +209,10 @@ would be gone. Pick a host at the start and stay with them.
 
 ## If you get stuck somewhere unreachable
 
-`Ctrl+R`, on the host's machine, sweeps up everything Archipelago has given
-you that is loose, gourds, big keys, filler props, including whatever is in
-someone's hands, and puts back exactly what the server says you have
-received. Deposited gourds and placed keys are never touched, so nothing
-Archipelago counts can be lost by pressing it.
+The **resync station** in the hub (and in each tower with
+`tower_resync_stations`) brings everything Archipelago has given you that is
+loose back in front of it. Deposited gourds and placed keys are never touched.
+Only the host can press it, unless `guests_can_resync` is on.
 
 If a save is lost altogether, start a new one and reconnect to the same slot.
 The server, not the save file, owns the list of items you have received, so

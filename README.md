@@ -4,9 +4,6 @@ An [Archipelago](https://archipelago.gg) randomizer for *Big Walk* (House
 House). Checks go out and items come in from inside the game: there is no
 separate client to run while you play.
 
-**Version 1.0.** Every path has been exercised in game (1.0's on one machine, with a second instance as the guest).
-If you find something, please report it.
-
 ## Download
 
 From the [releases](https://github.com/Grizfreak/BigWalk-archipelago/releases):
@@ -25,7 +22,7 @@ From the [releases](https://github.com/Grizfreak/BigWalk-archipelago/releases):
 3. The host types the Archipelago address, the slot name and the password on
    the hosting screen, and presses Continue.
 
-→ **[The full setup guide](SETUP.md)**
+→ **[The setup guide](apworld/bigwalk/docs/setup_en.md)**, and [the mod's settings](SETUP.md)
 
 → **[Your own tile drawings and sounds](CUSTOM-TILES.md)**: drop PNG and WAV files in a
 folder, no coding.
@@ -35,7 +32,7 @@ folder, no coding.
 Nothing here can be played solo: both bells and every monument deposit need
 two players. A whole co-op group shares one Archipelago slot, and only the
 host types the Archipelago details, but every player installs the mod
-([why](SETUP.md#why-the-others-still-need-the-mod-installed)).
+([why](apworld/bigwalk/docs/setup_en.md#why-the-others-need-the-mod-too)).
 
 ## What gets randomized
 
