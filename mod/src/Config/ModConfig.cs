@@ -5,10 +5,8 @@ namespace BigWalkArchipelago
     // Named ModConfig so it does not clash with the BasePlugin.Config property.
     internal static partial class ModConfig
     {
-        internal static ConfigEntry<bool> DebugModeEnabled;
         internal static ConfigEntry<bool> ArchipelagoEnabled;
         internal static ConfigEntry<string> ArchipelagoHostPort;
-        internal static ConfigEntry<float> CosmeticGourdRestoreInterval;
         internal static ConfigEntry<bool> ShowConnectionStatus;
         internal static ConfigEntry<int> StatusFontSize;
         internal static ConfigEntry<bool> ShowItemFeed;
@@ -17,36 +15,18 @@ namespace BigWalkArchipelago
         internal static ConfigEntry<bool> ApSounds;
         internal static ConfigEntry<bool> ShowObjectives;
         internal static ConfigEntry<bool> ShowTowerOrder;
-        internal static ConfigEntry<string> ClimbSpot;
-        internal static ConfigEntry<string> ReceivedSound;
-        internal static ConfigEntry<string> CheckSound;
         internal static ConfigEntry<float> NoticeSeconds;
         internal static ConfigEntry<int> GadgetCopiesKept;
         internal static ConfigEntry<bool> SpawnGourdAtPlayer;
         internal static ConfigEntry<bool> PutGourdInHands;
         internal static ConfigEntry<bool> ColorBigKeys;
-        internal static ConfigEntry<string> KeyColorProperty;
         internal static ConfigEntry<string> GourdName;
         internal static ConfigEntry<bool> DeathLinkEnabled;
         internal static ConfigEntry<bool> GentleEffects;
         internal static ConfigEntry<int> DeathLinkAmnesty;
 
-        // Debug settings live in their own file, written only when Debug.Enabled is on.
-        internal const string DebugFileName = "com.grizfreak.bigwalk.archipelago.debug.cfg";
-
         internal static void Bind(ConfigFile file)
         {
-            DebugModeEnabled = file.Bind(
-                "Debug",
-                "Enabled",
-                false,
-                "Enables the debug tools (free camera, etc). Leave disabled for normal use.");
-
-            var debug = new ConfigFile(System.IO.Path.Combine(BepInEx.Paths.ConfigPath, DebugFileName), false)
-            {
-                SaveOnConfigSet = DebugModeEnabled.Value,
-            };
-
             ArchipelagoEnabled = file.Bind(
                 "Archipelago",
                 "Enabled",
@@ -64,18 +44,6 @@ namespace BigWalkArchipelago
                 "ColorBigKeys",
                 true,
                 "Tints the drawbridge key and the four coloured towers' keys so they can be told apart.");
-
-            KeyColorProperty = debug.Bind(
-                "Archipelago",
-                "KeyColorProperty",
-                "_TintColor",
-                "Shader colour properties the tint is written to, comma-separated.");
-
-            CosmeticGourdRestoreInterval = debug.Bind(
-                "Archipelago",
-                "GourdRestoreInterval",
-                0.5f,
-                "Seconds between each gourd when several are restored at the start of a session. Lower is faster but piles them up.");
 
             SpawnGourdAtPlayer = file.Bind(
                 "Archipelago",
@@ -165,24 +133,6 @@ namespace BigWalkArchipelago
                 false,
                 "Lists on the board in the hub the order the seed opens the towers in. Off: only the towers full and the one open.");
 
-            ClimbSpot = debug.Bind(
-                "Archipelago",
-                "ClimbSpot",
-                "94.5, 179.6, -329.1, 25",
-                "Where the objective big_climb is done: x, y, z and a radius, in metres.");
-
-            ReceivedSound = file.Bind(
-                "Archipelago",
-                "ReceivedSound",
-                "",
-                "The game's own clip played when an item is received (empty: the default).");
-
-            CheckSound = file.Bind(
-                "Archipelago",
-                "CheckSound",
-                "",
-                "The game's own clip played when a check other than a puzzle is sent (empty: the default).");
-
             NoticeSeconds = file.Bind(
                 "Archipelago",
                 "NoticeSeconds",
@@ -196,12 +146,8 @@ namespace BigWalkArchipelago
                 "How many copies of each received object the world keeps at most. 0: no limit.");
 
 #if DEBUG
-            BindDebugWorldKeys(debug);
-            BindDebugSessionKeys(debug);
+            BindDebug(file);
 #endif
-
-            if (DebugModeEnabled.Value)
-                debug.Save();
             DropOrphans(file);
         }
 

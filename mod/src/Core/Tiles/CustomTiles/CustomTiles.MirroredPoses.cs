@@ -1,5 +1,3 @@
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
-using Mirror;
 using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Tiles

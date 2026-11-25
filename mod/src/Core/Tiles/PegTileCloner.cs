@@ -238,7 +238,6 @@ namespace BigWalkArchipelago.Core.Tiles
             ReceivedItemSpawner.ClearLightmapReferences(clone);
             ReceivedItemSpawner.FixMaterialessRenderers(clone);
             ReceivedItemSpawner.RefreshPropertyBlockHelpers(clone);
-            LogLook(clone, kind, speaker);
             Redraws.Add((prop, kind, Time.time + 0.05f, Time.time + 1f));
             return prop;
         }
@@ -265,7 +264,6 @@ namespace BigWalkArchipelago.Core.Tiles
 
                 if (Time.time >= last)
                 {
-                    LogLook(prop.gameObject, kind, false);
                     Redraws.RemoveAt(i);
                 }
                 else
@@ -273,27 +271,6 @@ namespace BigWalkArchipelago.Core.Tiles
                     Redraws[i] = (prop, kind, last, last);
                 }
             }
-        }
-
-        // A magenta part shows here as no material or an error shader.
-        private static void LogLook(GameObject clone, PropGroup kind, bool speaker)
-        {
-            if (!ModConfig.DebugModeEnabled.Value)
-                return;
-
-            var parts = new List<string>();
-            foreach (var renderer in clone.GetComponentsInChildren<Renderer>(true))
-            {
-                if (renderer == null || !renderer.enabled)
-                    continue;
-
-                var materials = new List<string>();
-                foreach (var material in renderer.sharedMaterials)
-                    materials.Add(material != null ? $"{material.name}/{(material.shader != null ? material.shader.name : "-")}" : "NONE");
-                parts.Add($"{renderer.name}:[{string.Join(" | ", materials)}]");
-            }
-
-            Plugin.Log.LogInfo($"[{nameof(PegTileCloner)}] {(speaker ? "speaker " : string.Empty)}{kind} drawn with {string.Join(", ", parts)}");
         }
 
         // On the host: builds and spawns for everyone. Null when nothing could be made.
