@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, TextIO
 
-from BaseClasses import Entrance, Location
+from BaseClasses import Entrance, Item, Location
 from rule_builder.rules import Rule
 from worlds.AutoWorld import World
 
@@ -161,6 +161,9 @@ class BigWalkWorld(World):
     gourd_name: str = data.GOURD_ITEM_NAME
     """Display name of the gourds, shared by every Big Walk slot."""
 
+    local_placements: list[tuple[list[str], list[Item]]]
+    """Checks of the `local` options, and the items pre_fill places on them."""
+
     way_out: tuple[str, ...] = ()
     """Items asked for early as the way out of the starting zone."""
 
@@ -208,17 +211,23 @@ class BigWalkWorld(World):
 
     def create_items(self) -> None:
         items.create_all_items(self)
+        # Before set_rules: the start can only be given items while the pool may still change.
+        rules.set_all_rules(self)
+        fill.make_room_at_the_start(self)
         # `lock_running: early`: the fill places it in sphere 1, in any world.
         early = self.options.lock_running == bigwalk_options.LockRunning.option_early
         if early and any(item.player == self.player and item.name == data.RUNNING_ITEM_NAME
                          for item in self.multiworld.itempool):
             self.multiworld.early_items[self.player][data.RUNNING_ITEM_NAME] = 1
 
-    def set_rules(self) -> None:
-        rules.set_all_rules(self)
-
     def pre_fill(self) -> None:
-        fill.pre_fill(self)
+        fill.place_local_items(self)
+
+    def fill_hook(self, progitempool: list[Item], usefulitempool: list[Item], filleritempool: list[Item],
+                  fill_locations: list[Location]) -> None:
+        # Local items whose check plando took go through the main fill.
+        for item in fill.local_items_left(self):
+            (usefulitempool if item.useful else filleritempool).append(item)
 
     def set_rule(self, spot: Location | Entrance, rule: Any) -> None:
         """Also remembers the built rule, which logic_export sends to the mod as data."""
@@ -270,16 +279,12 @@ class BigWalkWorld(World):
             "locked_arch_doors": [door.system_name for door in self.locked_arch_doors],
             "arch_door_id_offset": data.ARCH_DOOR_ID_OFFSET,
 
-            # `gauntlet_stage_systems` is in the order of the stage items.
-            "gauntlet_stage_systems": [stage.system_name for stage in data.GAUNTLET_STAGES],
             "gauntlet_id_offset": data.GAUNTLET_ID_OFFSET,
 
             # Teleport destinations in the order of their item ids.
             "teleport_destinations": [key for key, _ in data.TELEPORT_DESTINATIONS],
             "teleport_id_offset": data.TELEPORT_ID_OFFSET,
 
-            # For the hint sign's suggestions while a player writes on it.
-            "hint_items": checks.hint_items(self),
             # Always sent: outside trackers (PopTracker) evaluate it instead of porting the rules.
             "logic": logic_export.export(self),
 
@@ -300,7 +305,7 @@ class BigWalkWorld(World):
             "flare_gun_sanity": bool(self.options.flare_gun_sanity),
             "flare_gun_guids": [pickup.guid for pickup in data.FLARE_GUN_PICKUPS],
             "flare_gun_id_offset": data.FLARE_GUN_ID_OFFSET,
-            "object_guids": [obj.guid for obj in data.ISLAND_OBJECTS],
+            "object_guids": [obj.guid for obj in data.ISLAND_OBJECTS] if checks.object_location_names(self) else [],
             "object_id_offset": data.OBJECT_ID_OFFSET,
             "object_kinds": [kind for kind, _ in data.OBJECT_KINDS],
             "object_kind_id_offset": data.OBJECT_KIND_ID_OFFSET,
@@ -308,7 +313,7 @@ class BigWalkWorld(World):
             "object_sanity_kinds": [kind for kind, _ in data.OBJECT_KINDS if checks.object_kind_counted(self, kind)],
             "object_sanity_kind_keys": sorted(self.options.object_sanity_kinds.value),
             # Light keys in id order: a lamp by guid, a switch by its state's path.
-            "light_keys": [light.key for light in data.LIGHTS],
+            "light_keys": [light.key for light in data.LIGHTS] if checks.lights(self) else [],
             "light_id_offset": data.LIGHT_ID_OFFSET,
             "lights_required_count": checks.lights_target(self),
             "lights_counted": [light.key for light in checks.lights_counted(self)],
@@ -358,7 +363,6 @@ class BigWalkWorld(World):
 
             "total_monument_slots": self.gourd_count,
             "deposit_location_amounts": list(self.deposit_amounts),
-            "big_keys_in_play": [tower.prop_name for tower in self.towers],
 
             # Id arithmetic, so the mod computes ids instead of keeping a copy of data.py.
             "location_id_base": data.BASE_ID,

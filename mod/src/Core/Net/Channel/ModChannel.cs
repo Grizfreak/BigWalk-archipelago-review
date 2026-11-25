@@ -18,7 +18,7 @@ namespace BigWalkArchipelago.Core.Net
         internal const uint BeaconAssetId = 0xB16_9BFE;
 
         // A mismatch is logged once and ignored rather than half-read.
-        private const byte ProtocolVersion = 26;
+        private const byte ProtocolVersion = 27;
 
         private const byte KindHello = 1;
         private const byte KindSnapshot = 2;

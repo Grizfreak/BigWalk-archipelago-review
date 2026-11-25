@@ -1,6 +1,8 @@
 """`object_sanity`: the gadgets stay on the map and their pick-ups are checks."""
 
 from BaseClasses import LocationProgressType
+from test.general import gen_steps, setup_multiworld
+from worlds.AutoWorld import call_all
 
 from .. import data, locations
 from .bases import BigWalkTestBase
@@ -78,7 +80,55 @@ class TestObjectItemsJunk(BigWalkTestBase):
 
 
 class TestObjectItemsLocal(BigWalkTestBase):
-    options = {"object_sanity": "first_pickup", "object_sanity_items": "local"}
+    options = {"object_sanity": "every", "object_sanity_items": "local", "backpacks_in_pool": 8,
+               "start_inventory_from_pool": {"Backpack": 1}}
+
+    def world_up_to_plando(self) -> None:
+        self.multiworld = setup_multiworld(type(self.world), gen_steps[:-1], options=self.options)
+        self.world = self.multiworld.worlds[self.player]
+
+    def test_the_checks_hold_this_worlds_junk(self) -> None:
+        for name in object_locations(self):
+            item = self.multiworld.get_location(name, self.player).item
+            self.assertIsNotNone(item, name)
+            self.assertEqual(item.player, self.player)
+            self.assertFalse(item.advancement, name)
+
+    def test_an_item_to_start_with_stays_in_the_pool(self) -> None:
+        placed = [self.multiworld.get_location(name, self.player).item.name for name in object_locations(self)]
+        self.assertNotIn("Backpack", placed)
+
+    def test_the_items_wait_outside_the_pool(self) -> None:
+        self.world_up_to_plando()
+        pooled = {id(item) for item in self.multiworld.itempool}
+        aside = [item for _, own in self.world.local_placements for item in own]
+        self.assertEqual(len(object_locations(self)), len(aside))
+        self.assertFalse([item.name for item in aside if id(item) in pooled])
+
+    def test_plando_keeps_its_place(self) -> None:
+        self.world_up_to_plando()
+        name = sorted(object_locations(self))[0]
+        location = self.multiworld.get_location(name, self.player)
+        gourd = next(item for item in self.multiworld.itempool if item.name == data.GOURD_ITEM_NAME)
+        self.multiworld.itempool.remove(gourd)
+        location.place_locked_item(gourd)
+        call_all(self.multiworld, "pre_fill")
+        self.assertIs(gourd, location.item)
+        useful: list = []
+        filler: list = []
+        self.world.fill_hook([], useful, filler, [])
+        self.assertEqual(len(self.multiworld.itempool) + len(useful) + len(filler),
+                         len(self.multiworld.get_unfilled_locations()))
+
+
+class TestObjectItemsLocalWithPlando(BigWalkTestBase):
+    run_default_tests = False
+    options = {"object_sanity": "every", "object_sanity_items": "local", "backpacks_in_pool": 8,
+               "plando_items": [{"item": "Backpack", "location": "Medium Cowbell (Tutorial)"}]}
+
+    def test_the_item_asked_for_stays_in_the_pool(self) -> None:
+        aside = [item.name for _, own in self.world.local_placements for item in own]
+        self.assertNotIn("Backpack", aside)
 
 
 class TestObjectData(BigWalkTestBase):

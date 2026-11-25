@@ -22,26 +22,22 @@ namespace BigWalkArchipelago.Core.Hub
         // `hint_board` (on by default) and `tracker_board` (off), on the host.
         private static bool _hintOn;
 
-        // Whether guests may ask for hints; on a guest, what the host said and names to suggest.
+        // Whether guests may ask for hints; on a guest, what the host said.
         private static bool _mirroredMayAsk;
-        private static List<string> _mirroredNames = new();
 
         private static bool GuestsMayAsk => _hintOn && ModConfig.GuestsCanAskHints.Value;
 
         // For the snapshot: bit 0, the guests may ask.
         internal static byte HostFlags() => (byte)(GuestsMayAsk ? 1 : 0);
-        internal static string HostNames() => GuestsMayAsk ? string.Join("\n", HintableNames()) : string.Empty;
 
-        internal static void ApplyFromHost(byte flags, string names)
+        internal static void ApplyFromHost(byte flags)
         {
             _mirroredMayAsk = (flags & 1) != 0;
-            _mirroredNames = string.IsNullOrEmpty(names) ? new List<string>() : new List<string>(names.Split('\n'));
         }
 
         internal static void ForgetMirror()
         {
             _mirroredMayAsk = false;
-            _mirroredNames = new List<string>();
         }
         private static PeckEffectTextInput _checkSign;
         private static bool _checkLocked;
@@ -58,112 +54,24 @@ namespace BigWalkArchipelago.Core.Hub
         // What the mod last wrote on the hint sign: anything else there is a player asking.
         private static string _hintWritten;
 
-        // While a player writes on the hint sign here: the item names that match, for the overlay.
-        internal static readonly List<string> Suggestions = new();
-        private const int MaxSuggestions = 5;
-        private static readonly BepInEx.Unity.IL2CPP.Configuration.KeyboardShortcut CompleteKey = new(KeyCode.Tab);
         private static bool _wasWriting;
 
+        // The sign opens with the list in it: emptied, so what is typed is the question alone.
         internal static void Tick()
         {
             try
             {
-                var names = IsGuest ? _mirroredNames : HintableNames();
                 var mine = IsGuest ? _mirroredMayAsk && IsOurs(_hintSign) : _hintOn;
-                var writing = mine && _hintSign != null && _hintSign.isInputting && SignTextInput.IsSignInputActive()
-                              && names.Count > 0;
+                var writing = mine && _hintSign != null && _hintSign.isInputting && SignTextInput.IsSignInputActive();
                 var field = writing && SignTextInput.instance != null ? SignTextInput.instance.inputField : null;
-                if (field == null)
-                {
-                    _wasWriting = false;
-                    Suggestions.Clear();
-                    return;
-                }
-
-                // Opened with the list in it: emptied, so what is typed is the question alone.
-                if (!_wasWriting)
-                {
-                    _wasWriting = true;
+                if (field != null && !_wasWriting)
                     field.text = string.Empty;
-                }
-
-                Suggestions.Clear();
-                Suggestions.AddRange(Matches(field.text, names, MaxSuggestions));
-                if (Suggestions.Count > 0 && CompleteKey.IsDown())
-                {
-                    // A Tab the field may have typed in goes with the rest of the text.
-                    field.text = Suggestions[0];
-                    field.caretPosition = field.text.Length;
-                }
+                _wasWriting = field != null;
             }
             catch (Exception ex)
             {
-                Suggestions.Clear();
-                Plugin.Log.LogWarning($"{Tag} Suggestions: {ex.Message}");
+                Plugin.Log.LogWarning($"{Tag} Hint sign: {ex.Message}");
             }
-        }
-
-        // Item names not received yet; worked out when the field opens and as items arrive.
-        private static List<string> _hintable = new();
-        private static int _hintableAt = -1;
-
-        private static List<string> HintableNames()
-        {
-            var slot = ApRuntime.SlotData;
-            var connection = ApRuntime.Current;
-            if (slot == null || connection == null || slot.HintItems.Count == 0)
-                return _hintable = new List<string>();
-
-            var received = connection.ReceivedByName();
-            var total = 0;
-            foreach (var count in received.Values)
-                total += count;
-            if (total == _hintableAt && _hintable.Count > 0)
-                return _hintable;
-
-            _hintableAt = total;
-            _hintable = new List<string>();
-            foreach (var pair in slot.HintItems)
-            {
-                if (!received.TryGetValue(pair.Key, out var have) || have < pair.Value)
-                    _hintable.Add(pair.Key);
-            }
-            return _hintable;
-        }
-
-        // The names that start with what is typed, then those that hold it, ignoring case.
-        private static List<string> Matches(string typed, List<string> names, int max)
-        {
-            var result = new List<string>();
-            var query = (typed ?? string.Empty).Trim();
-            if (query.Length == 0)
-                return result;
-            foreach (var name in names)
-            {
-                if (result.Count < max && name.StartsWith(query, StringComparison.OrdinalIgnoreCase))
-                    result.Add(name);
-            }
-            foreach (var name in names)
-            {
-                if (result.Count < max && !result.Contains(name) && name.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
-                    result.Add(name);
-            }
-            return result;
-        }
-
-        // An item's name in its own case when it matches one, else the text as it is.
-        private static string Resolve(string asked)
-        {
-            var names = HintableNames();
-            if (names.Count == 0)
-                return asked;
-            foreach (var name in names)
-            {
-                if (string.Equals(name, asked, StringComparison.OrdinalIgnoreCase))
-                    return name;
-            }
-            // Never a guess, which would spend points on what was not asked: Tab completes.
-            return asked;
         }
 
         // On every machine: finds the signs and says which are locked; the host writes their text.
@@ -203,7 +111,6 @@ namespace BigWalkArchipelago.Core.Hub
             var asked = _hintOn ? Asked(_hintSign) : null;
             if (asked != null)
             {
-                asked = Resolve(asked);
                 Plugin.Log.LogInfo($"{Tag} Hint asked at the sign: '{asked}'.");
                 ApNotices.Post($"Asking for a hint: {asked}");
                 connection.AskHint(asked);

@@ -13,6 +13,14 @@ unwinnable, which is why every player of a session should run the same build.
 - **`gourd_name` only renames the gourds in Big Walk**: the item feed, the goal line and the hub board show the
   name, as before. The apworld no longer rewrites the data package, so the server, the Text Client, the other
   games and the spoiler log say "Gourd", and two Big Walk slots may now pick different names.
+- **The hint sign no longer suggests item names** while you write: ask with the name, as in the Text Client.
+- **Start items are decided before the fill**: the search that gave a second item away on very tight seeds is gone.
+- Every player of a session needs this version (protocol v27).
+
+### Fixed
+
+- **South Peak Fireworks were in logic without the chairlift** (Tyrope): the launcher sits past it, like the Maroon
+  Backpack and the Blue Belt, and now needs the Chairlift item too.
 
 ## 1.0.15
 
@@ -27,8 +35,6 @@ unwinnable, which is why every player of a session should run the same build.
   purple puzzles. Lamp and Pedestal Lamp (South Peak 1) and Pedestal Lamp (near Cabin Fever Long) now need the
   Tunnels item too (the Purple Tunnel with `tunnel_sanity`). Lamp (near Cabin Fever Long), on the coast, no longer
   needs the chairlift.
-- **South Peak Fireworks were in logic without the chairlift** (Tyrope): the launcher sits past it, like the Maroon
-  Backpack and the Blue Belt, and now needs the Chairlift item too.
 
 ## 1.0.14
 

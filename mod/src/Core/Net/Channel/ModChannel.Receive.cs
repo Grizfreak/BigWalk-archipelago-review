@@ -160,7 +160,6 @@ namespace BigWalkArchipelago.Core.Net
                 var abilitiesEnabled = NetworkReaderExtensions.ReadBool(reader);
                 var abilityMask = NetworkReaderExtensions.ReadUShort(reader);
                 var hintFlags = reader.ReadByte();
-                var hintNames = NetworkReaderExtensions.ReadString(reader);
                 var zoneLocked = new List<string>();
                 var zoneLockedCount = reader.ReadByte();
                 for (var i = 0; i < zoneLockedCount; i++)
@@ -230,7 +229,7 @@ namespace BigWalkArchipelago.Core.Net
                 ObjectiveBoard.ApplyFromHost(boardText, endingLocks);
                 MonumentOrder.ApplyFromHost(monumentMask);
                 AbilityLocks.ApplyFromHost(abilitiesEnabled, abilityMask);
-                HintBoards.ApplyFromHost(hintFlags, hintNames);
+                HintBoards.ApplyFromHost(hintFlags);
                 ZoneLocks.ApplyFromHost(zoneLocked);
                 CustomTiles.ApplyFromHost(pegTiles);
                 CustomTiles.ApplyDrawingsFromHost(drawings);

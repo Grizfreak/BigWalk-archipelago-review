@@ -1,7 +1,7 @@
 # apworld/
 
 The Python Archipelago world for *Big Walk*. The code lives in
-[`bigwalk/`](bigwalk/) and packages into `dist/bigwalk.apworld`.
+[`bigwalk/`](bigwalk/) and packages into `bigwalk.apworld`.
 
 - [`bigwalk/docs/`](bigwalk/docs/): the player documentation as the
   Archipelago webhost renders it: the game's page and the setup guide. The
@@ -28,12 +28,14 @@ The Python Archipelago world for *Big Walk*. The code lives in
 
 ## Build
 
+From an Archipelago source checkout with the world linked (see below):
+
 ```
-python build.py
+python Launcher.py "Build APWorlds" -- "Big Walk"
 ```
 
-Produces `dist/bigwalk.apworld`, to be copied into the `custom_worlds/`
-folder of an Archipelago installation (0.6.7 or newer).
+Produces `build/apworlds/bigwalk.apworld` in the checkout, to be copied into the
+`custom_worlds/` folder of an Archipelago installation (0.6.7 or newer).
 
 ## Development and tests
 

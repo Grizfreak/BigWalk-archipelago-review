@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import logging
+from typing import TYPE_CHECKING
 
 from BaseClasses import LocationProgressType
 
-from .. import data, locations
-from .. import options as bigwalk_options
+from .. import data
 
 if TYPE_CHECKING:
     from ..world import BigWalkWorld
@@ -28,13 +26,6 @@ def exclude_as_junk(world: BigWalkWorld, chosen: list, what: str) -> None:
     if budget is None:
         budget = sum(1 for item in world.multiworld.itempool
                      if item.player == world.player and not item.advancement and not item.useful)
-        # Checks of a `local` option take this world's non-progression items, junk included.
-        for group, contents in (("Objects", world.options.object_sanity_items.value),
-                                ("Lights", world.options.light_sanity_items.value)):
-            if contents == bigwalk_options.ObjectSanityItems.option_local:
-                names = locations.LOCATION_NAME_GROUPS[group]
-                budget -= sum(1 for location in world.multiworld.get_locations(world.player) if location.name in names)
-        budget = max(0, budget)
     if budget < len(chosen):
         logging.warning(f"Big Walk ({world.player_name}): {what}: only {budget} junk items left for "
                         f"{len(chosen)} locations; the others may hold anything.")
@@ -55,10 +46,7 @@ PROGRESSION_MARGIN = 5
 
 def room_for_progression(world: BigWalkWorld) -> int:
     """How many more locations the junk options may exclude and still fit the progression."""
-    local_groups = [group for group, contents in (("Objects", world.options.object_sanity_items.value),
-                                                  ("Lights", world.options.light_sanity_items.value))
-                    if contents == bigwalk_options.ObjectSanityItems.option_local]
-    local_names = set().union(*(locations.LOCATION_NAME_GROUPS[group] for group in local_groups))
+    local_names = {name for names, _ in world.local_placements for name in names}
     open_locations = sum(1 for location in world.multiworld.get_locations(world.player)
                          if location.address is not None and location.item is None
                          and location.progress_type != LocationProgressType.EXCLUDED
