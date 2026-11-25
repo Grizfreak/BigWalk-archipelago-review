@@ -6,12 +6,16 @@ separate client to run while you play.
 
 ## Download
 
-From the [releases](https://github.com/Grizfreak/BigWalk-archipelago-review/releases):
+The latest version:
 
 | File | Who needs it |
 | --- | --- |
-| `BigWalkArchipelago-<version>.zip` | every player in the session, host and guests alike |
-| `bigwalk.apworld` | whoever generates the seed (Archipelago 0.6.7 or newer) |
+| [BigWalkArchipelago.zip](https://github.com/Grizfreak/BigWalk-archipelago-review/releases/latest/download/BigWalkArchipelago.zip) | every player in the session, host and guests alike |
+| [bigwalk.apworld](https://github.com/Grizfreak/BigWalk-archipelago-review/releases/latest/download/bigwalk.apworld) | whoever generates the seed (Archipelago 0.6.7 or newer) |
+
+Every [release](https://github.com/Grizfreak/BigWalk-archipelago-review/releases) holds both files.
+A mod and an apworld whose first two numbers match (1.1.0 and 1.1.3) play together; the third number of each moves on its
+own.
 
 ## Getting started
 
