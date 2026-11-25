@@ -1,41 +1,27 @@
 """What a place asks for stays asked: each rule is checked by taking its item away."""
 
-from BaseClasses import CollectionState
-
 from .. import data, regions
 from ..rules.common import gauntlet_body_through
-from .bases import BigWalkTestBase
+from .bases import BigWalkTestBase, NeedsChecks
 
 LEFT = data.LEFT_ARCH_DOOR.item_name
 RIGHT = data.RIGHT_ARCH_DOOR.item_name
 BLUE = data.tower_by_prop("bigKeyBlueZone").item_name
 
 
-class RulesTestBase(BigWalkTestBase):
+class RulesTestBase(NeedsChecks, BigWalkTestBase):
     run_default_tests = False
-
-    def reached_without(self, location: str, *missing: str) -> bool:
-        """Whether the location is reached with everything but the items named."""
-        state = CollectionState(self.multiworld)
-        for item in self.multiworld.itempool:
-            if item.name not in missing:
-                state.collect(item, True)
-        state.sweep_for_advancements()
-        return state.can_reach_location(location, self.player)
-
-    def assert_needs(self, location: str, item: str) -> None:
-        self.assertTrue(self.reached_without(location), f"{location} is out of reach with everything")
-        self.assertFalse(self.reached_without(location, item), f"{location} does not need {item}")
 
 
 class TestLightEvents(RulesTestBase):
     options = {"objectives": ["big_lights"], "light_sanity": "lamps_and_switches"}
 
     def test_the_trains_lights_need_the_train(self) -> None:
-        for light in data.LIGHTS:
-            if light.zone == "train":
-                self.assert_needs(data.light_event_name(light), BLUE)
-                self.assert_needs(light.location_name, BLUE)
+        found = [light for light in data.LIGHTS if light.zone == "train"]
+        self.assertTrue(found)
+        for light in found:
+            self.assert_needs(data.light_event_name(light), BLUE)
+            self.assert_needs(light.location_name, BLUE)
 
     def test_the_lights_past_the_purple_hole_need_the_tunnels(self) -> None:
         found = [light for light in data.LIGHTS if light.zone == "purple"]

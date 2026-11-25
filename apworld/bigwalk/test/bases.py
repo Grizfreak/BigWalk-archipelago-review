@@ -55,6 +55,29 @@ def world_shape(multiworld: MultiWorld) -> dict[str, Any]:
     }
 
 
+class NeedsChecks:
+    """Mixed into a test case: what a place asks for, checked by taking an item away."""
+
+    multiworld: MultiWorld
+    player: int
+
+    def state_without(self, *missing: str) -> CollectionState:
+        """Everything collected but the items named."""
+        state = CollectionState(self.multiworld)
+        for item in self.multiworld.itempool:
+            if item.name not in missing:
+                state.collect(item, True)
+        state.sweep_for_advancements()
+        return state
+
+    def reached_without(self, location: str, *missing: str) -> bool:
+        return self.state_without(*missing).can_reach_location(location, self.player)
+
+    def assert_needs(self, location: str, item: str) -> None:
+        self.assertTrue(self.reached_without(location), f"{location} is out of reach with everything")
+        self.assertFalse(self.reached_without(location, item), f"{location} does not need {item}")
+
+
 class BigWalkTestBase(WorldTestBase):
     game = "Big Walk"
     world: BigWalkWorld
