@@ -32,17 +32,15 @@ namespace BigWalkArchipelago.Core.Hub
             }
 
             var hinted = (state & HintBit) != 0;
-            var stickColour = (state & TunnelBit) != 0 ? BuriedStickColour : StickColour;
-            if (marker.Stick != null && (hinted != marker.Hinted || stickColour != marker.StickColour))
+            if (marker.Stick != null && hinted != marker.Hinted)
             {
                 marker.Hinted = hinted;
-                marker.StickColour = stickColour;
                 if (hinted)
                     Glowing.Add(marker.Stick);
                 else
                 {
                     Glowing.Remove(marker.Stick);
-                    Tint(marker.Stick, stickColour);
+                    Tint(marker.Stick, StickColour);
                 }
             }
         }

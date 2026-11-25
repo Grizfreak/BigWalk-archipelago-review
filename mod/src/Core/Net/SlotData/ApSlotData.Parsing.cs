@@ -27,7 +27,6 @@ namespace BigWalkArchipelago.Core.Net
             data.MonumentItemId = GetInt(raw, "monument_item_id", 0);
             data.TowersRequired = GetInt(raw, "towers_required", data.TowersRequired);
             data.TowerReachedKeys = GetStringArray(raw, "tower_reached_keys");
-            data.TowerReachedIdOffset = GetInt(raw, "tower_reached_id_offset", data.TowerReachedIdOffset);
             foreach (var pair in GetMap(raw, "tower_reach_hints"))
             {
                 try
@@ -56,19 +55,15 @@ namespace BigWalkArchipelago.Core.Net
             data.PuzzleNeedKeys = GetStringArray(raw, "puzzle_need_keys");
             data.LockAbilities = GetString(raw, "lock_abilities", data.LockAbilities);
             data.AbilityKeys = GetStringArray(raw, "ability_keys");
-            data.AbilityIdOffset = GetInt(raw, "ability_id_offset", (int)data.AbilityIdOffset);
             data.LockRunning = GetBool(raw, "lock_running", data.LockRunning);
             data.RidesRequireSeat = GetBool(raw, "rides_require_seat", data.RidesRequireSeat);
             data.IncludeBigGamePuzzles = GetString(raw, "include_big_game_puzzles", data.IncludeBigGamePuzzles);
             data.MonumentFullKeys = GetStringArray(raw, "monument_full_keys");
-            data.MonumentFullIdOffset = GetInt(raw, "monument_full_id_offset", data.MonumentFullIdOffset);
             data.MonumentKeyKeys = GetStringArray(raw, "monument_key_keys");
             // Not sorted: it follows monument_key_keys.
             data.MonumentKeyGourds = GetIntArray(raw, "monument_key_gourds", sorted: false);
-            data.MonumentKeyIdOffset = GetInt(raw, "monument_key_id_offset", data.MonumentKeyIdOffset);
             data.LightSanity = GetString(raw, "light_sanity", data.LightSanity);
             data.LightKeys = GetStringArray(raw, "light_keys");
-            data.LightIdOffset = GetInt(raw, "light_id_offset", data.LightIdOffset);
             data.LightsRequiredCount = GetInt(raw, "lights_required_count", 0);
             data.LightsCounted = GetStringArray(raw, "lights_counted");
             data.ZoneLocks = GetBool(raw, "zone_locks", false);
@@ -107,18 +102,8 @@ namespace BigWalkArchipelago.Core.Net
             data.GauntletPuzzlesRequired = GetBool(raw, "gauntlet_puzzles_required", data.GauntletPuzzlesRequired);
             data.LockGauntletNeeds = GetBool(raw, "lock_gauntlet_needs", data.LockGauntletNeeds);
 
-            data.LocationIdBase = GetInt(raw, "location_id_base", (int)data.LocationIdBase);
-            data.RadioIdOffset = GetInt(raw, "radio_id_offset", (int)data.RadioIdOffset);
-            data.DepositIdOffset = GetInt(raw, "deposit_id_offset", (int)data.DepositIdOffset);
-            data.CutIdOffset = GetInt(raw, "cut_id_offset", (int)data.CutIdOffset);
-            data.KeyItemIdOffset = GetInt(raw, "key_item_id_offset", (int)data.KeyItemIdOffset);
-            data.GourdItemId = GetInt(raw, "gourd_item_id", (int)data.GourdItemId);
-            data.ArchDoorIdOffset = GetInt(raw, "arch_door_id_offset", (int)data.ArchDoorIdOffset);
-            data.PuzzleNeedIdOffset = GetInt(raw, "puzzle_need_id_offset", (int)data.PuzzleNeedIdOffset);
-            data.GauntletIdOffset = GetInt(raw, "gauntlet_id_offset", (int)data.GauntletIdOffset);
             data.TeleportButtons = GetString(raw, "teleport_buttons", data.TeleportButtons);
             data.TeleportDestinations = GetStringArray(raw, "teleport_destinations");
-            data.TeleportIdOffset = GetInt(raw, "teleport_id_offset", data.TeleportIdOffset);
             data.TeleportBackToHub = GetBool(raw, "teleport_back_to_hub", true);
             data.OpenBlackTower = GetBool(raw, "open_black_tower", false);
             data.TileThief = GetString(raw, "tile_thief", data.TileThief);
@@ -133,9 +118,7 @@ namespace BigWalkArchipelago.Core.Net
             data.CabinFeverHideTimer = GetBool(raw, "cabin_fever_hide_timer", false);
             data.TrackerBoard = GetBool(raw, "tracker_board", false);
             data.HintBoard = GetBool(raw, "hint_board", true);
-            data.MapTrackerMode = GetString(raw, "map_tracker", "off");
-            if ((data.TrackerBoard || data.MapTracker) && raw.TryGetValue("logic", out var logic) && logic is Newtonsoft.Json.Linq.JObject logicObject)
-                data.Logic = ApLogic.From(logicObject);
+            data.MapTracker = GetString(raw, "map_tracker", "off") != "off";
             data.CabinFeverLongHideTimer = GetBool(raw, "cabin_fever_long_hide_timer", false);
 
             foreach (var pair in GetMap(raw, "effect_items"))
@@ -147,18 +130,13 @@ namespace BigWalkArchipelago.Core.Net
 
             data.PackSanity = GetString(raw, "pack_sanity", "off");
             data.PickupGuids = GetStringArray(raw, "pickup_guids");
-            data.PickupIdOffset = GetInt(raw, "pickup_id_offset", data.PickupIdOffset);
             data.FireworkSanity = GetBool(raw, "firework_sanity", false);
             data.FireworkKeys = GetStringArray(raw, "firework_keys");
-            data.FireworkIdOffset = GetInt(raw, "firework_id_offset", data.FireworkIdOffset);
             data.FlareGunSanity = GetBool(raw, "flare_gun_sanity", false);
             data.FlareGunGuids = GetStringArray(raw, "flare_gun_guids");
-            data.FlareGunIdOffset = GetInt(raw, "flare_gun_id_offset", data.FlareGunIdOffset);
             data.ObjectSanity = GetString(raw, "object_sanity", data.ObjectSanity);
             data.ObjectGuids = GetStringArray(raw, "object_guids");
-            data.ObjectIdOffset = GetInt(raw, "object_id_offset", data.ObjectIdOffset);
             data.ObjectKinds = GetStringArray(raw, "object_kinds");
-            data.ObjectKindIdOffset = GetInt(raw, "object_kind_id_offset", data.ObjectKindIdOffset);
             data.ObjectSanityKinds = raw.ContainsKey("object_sanity_kinds") ? GetStringArray(raw, "object_sanity_kinds") : null;
             // Spelt "random_colours" and "colour_palette" in the first 0.4 builds.
             data.RandomColours = GetBool(raw, "random_colors", GetBool(raw, "random_colours", false));

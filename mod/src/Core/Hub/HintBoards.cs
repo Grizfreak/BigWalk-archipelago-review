@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Hub
 {
-    // Two hub notice board signs: hints this slot asked for (`hint_board`) and checks in logic.
+    // Two hub notice board signs: hints this slot asked for (`hint_board`) and checks left.
     internal static class HintBoards
     {
         private const string Tag = "[" + nameof(HintBoards) + "]";
@@ -103,7 +103,7 @@ namespace BigWalkArchipelago.Core.Hub
             var connection = ApRuntime.Current;
             var connected = connection != null && connection.Status == ApConnection.ConnectionStatus.Connected
                             && connection.SlotData != null;
-            _checkLocked = connected && connection.SlotData.TrackerBoard && connection.SlotData.Logic != null;
+            _checkLocked = connected && connection.SlotData.TrackerBoard;
             _hintOn = connected && connection.SlotData.HintBoard;
             if (!connected)
                 return;
@@ -129,7 +129,7 @@ namespace BigWalkArchipelago.Core.Hub
                     Write(_hintSign, _hintWritten);
                 }
                 if (_checkLocked)
-                    Write(_checkSign, CheckText(connection.SlotData.Logic, connection));
+                    Write(_checkSign, CheckText(connection));
             }
             catch (Exception ex)
             {
@@ -139,7 +139,7 @@ namespace BigWalkArchipelago.Core.Hub
 
         // The mod's texts start with this title, which is how a guest knows a sign is the mod's.
         private const string HintTitle = "HINTS";
-        private const string CheckTitle = "LOGIC";
+        private const string CheckTitle = "CHECKS LEFT";
 
         private static bool IsOurs(PeckEffectTextInput sign)
         {
@@ -191,35 +191,24 @@ namespace BigWalkArchipelago.Core.Hub
             return text.ToString();
         }
 
-        private static string CheckText(ApLogic logic, ApConnection connection)
+        private static string CheckText(ApConnection connection)
         {
             var checkedIds = connection.CheckedLocations();
-            var hinted = connection.HintedLocations();
-            var first = new List<string>();
-            var then = new List<string>();
-            var rest = new List<string>();
-            foreach (var (id, name) in logic.InLogic(connection.ReceivedByName()))
+            var hinted = new List<string>();
+            foreach (var id in connection.HintedLocations())
             {
-                if (checkedIds.Contains(id))
-                    continue;
-                if (hinted.Contains(id))
-                    first.Add(name);
-                else if (connection.HoldsProgression(id))
-                    then.Add(name);
-                else
-                    rest.Add(name);
+                if (!checkedIds.Contains(id))
+                    hinted.Add(connection.LocationName(id));
             }
-            var open = new List<string>(first);
-            open.AddRange(then);
-            open.AddRange(rest);
+            hinted.Sort(StringComparer.Ordinal);
 
-            var text = new StringBuilder($"{CheckTitle} {open.Count}/{connection.UncheckedCount(checkedIds)}");
-            if (open.Count == 0)
-                return text.Append("\nnothing right now").ToString();
-            for (var i = 0; i < open.Count && i < MaxChecks; i++)
-                text.Append("\n- ").Append(open[i]);
-            if (open.Count > MaxChecks)
-                text.Append($"\n(and {open.Count - MaxChecks} more)");
+            var text = new StringBuilder($"{CheckTitle} {connection.UncheckedCount(checkedIds)}");
+            if (hinted.Count == 0)
+                return text.Append("\nno hint here").ToString();
+            for (var i = 0; i < hinted.Count && i < MaxChecks; i++)
+                text.Append("\n- ").Append(hinted[i]);
+            if (hinted.Count > MaxChecks)
+                text.Append($"\n(and {hinted.Count - MaxChecks} more)");
             return text.ToString();
         }
 

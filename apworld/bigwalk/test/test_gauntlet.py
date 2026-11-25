@@ -78,23 +78,6 @@ class TestLockedStages(BigWalkTestBase):
     def test_slot_data_tells_the_mod(self) -> None:
         slot_data = self.world.fill_slot_data()
         self.assertEqual(slot_data["gauntlet_mode"], "locked_stages")
-        self.assertEqual(slot_data["gauntlet_id_offset"], data.GAUNTLET_ID_OFFSET)
-
-
-class TestTheStagesStayLocal(BigWalkTestBase):
-    options = {"gauntlet_mode": "locked_stages", "gauntlet_stage_items": "individual"}
-    run_default_tests = False
-
-    def test_they_are_local_by_default(self) -> None:
-        self.assertTrue(STAGE_ITEMS <= set(self.world.options.local_items.value))
-
-
-class TestTheStagesMayTravel(BigWalkTestBase):
-    options = {"gauntlet_mode": "locked_stages", "gauntlet_stage_items": "individual", "gauntlet_stages_local": False}
-    run_default_tests = False
-
-    def test_they_are_not_forced_home(self) -> None:
-        self.assertFalse(STAGE_ITEMS & set(self.world.options.local_items.value))
 
 
 class TestWithPuzzleNeeds(BigWalkTestBase):

@@ -237,15 +237,6 @@ class GauntletStageItems(Choice):
     default = option_progressive
 
 
-class GauntletStagesLocal(DefaultOnToggle):
-    """
-    With Gauntlet Mode locked_stages: keep the seven stage items in your own
-    world, so that a stage is never held up by another game's item.
-    """
-
-    display_name = "Gauntlet Stages Local"
-
-
 class OpenBlackTower(DefaultOnToggle):
     """
     The Black Tower's door is open from the start (the default). Off: it opens as in the game, once the monuments of

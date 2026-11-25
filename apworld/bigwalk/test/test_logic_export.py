@@ -1,4 +1,4 @@
-"""The logic sent to the mod, evaluated the way the mod does, must agree with Archipelago's."""
+"""The logic sent to trackers, evaluated the way a tracker does, must agree with Archipelago's."""
 
 import json
 from collections import Counter
@@ -6,11 +6,12 @@ from typing import Any
 
 from BaseClasses import CollectionState, ItemClassification
 
+from ..options import MapTracker
 from .bases import BigWalkTestBase
 
 
 def reachable(logic: dict[str, Any], received: Counter) -> set[str]:
-    """The mod's sweep: what `received` reaches, events collected as they are reached."""
+    """A tracker's sweep: what `received` reaches, events collected as they are reached."""
     rules = logic["rules"]
     have = Counter(received)
     regions: set[str] = {logic["origin"]}
@@ -60,7 +61,7 @@ def reachable(logic: dict[str, Any], received: Counter) -> set[str]:
 
 
 class LogicExportChecks:
-    """Mixed into a test case with `tracker_board` on; not a test case itself."""
+    """Mixed into a test case; not a test case itself."""
 
     run_default_tests = False
 
@@ -88,7 +89,7 @@ class LogicExportChecks:
 
 
 class TestSentWithoutTheBoard(LogicExportChecks, BigWalkTestBase):
-    """Outside trackers read the logic too, so it travels with the board and the map tracker off."""
+    """Outside trackers read the logic, so it travels with the board and the map tracker off."""
 
     def test_the_logic_is_there(self) -> None:
         slot_data = self.world.fill_slot_data()
@@ -96,14 +97,12 @@ class TestSentWithoutTheBoard(LogicExportChecks, BigWalkTestBase):
         self.assertEqual(slot_data["map_tracker"], "off")
         self.assertIn("logic", slot_data)
 
-
-class TestDefaults(LogicExportChecks, BigWalkTestBase):
-    options = {"tracker_board": True}
+    def test_in_logic_is_still_read(self) -> None:
+        self.assertEqual(MapTracker.from_any("in_logic").current_key, "all")
 
 
 class TestEverythingLocked(LogicExportChecks, BigWalkTestBase):
     options = {
-        "tracker_board": True,
         "lock_abilities": "handed",
         "lock_running": True,
         "object_sanity": "every",

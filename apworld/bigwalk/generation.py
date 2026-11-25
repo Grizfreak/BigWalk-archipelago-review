@@ -73,10 +73,6 @@ def generate_early(world: BigWalkWorld) -> None:
     _ask_for_an_early_way_out(world)
     _ask_for_the_first_monument_early(world)
     _ask_for_the_far_doors_early(world)
-    _hint_the_keys(world)
-    _keep_the_gauntlet_stages_local(world)
-    if world.options.zone_locks_local:
-        world.options.local_items.value |= {lock.item_name for lock in checks.zone_locks(world)}
 
 
 def _draw_the_tiles(world: BigWalkWorld) -> tuple[str, ...]:
@@ -98,18 +94,6 @@ def _draw_the_tiles(world: BigWalkWorld) -> tuple[str, ...]:
     own = random.Random(f"{world.multiworld.seed}-{world.player}-tiles")
     return tiles.draw(own, candidates, world.options.custom_tile_weights.value,
                       sorted(world.options.custom_tile_choices.value), preferred)
-
-
-def _keep_the_gauntlet_stages_local(world: BigWalkWorld) -> None:
-    locked = world.options.gauntlet_mode == bigwalk_options.GauntletMode.option_locked_stages
-    if locked and world.options.gauntlet_stages_local:
-        world.options.local_items.value |= set(items.GAUNTLET_ITEM_NAMES) | {data.PROGRESSIVE_GAUNTLET_ITEM_NAME}
-
-
-def _hint_the_keys(world: BigWalkWorld) -> None:
-    if world.options.hint_keys != bigwalk_options.HintKeys.option_from_start:
-        return
-    world.options.start_hints.value |= {data.key_item_name(tower) for tower in world.towers}
 
 
 def _pick_a_random_puzzle_need(world: BigWalkWorld) -> None:

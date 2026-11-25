@@ -70,7 +70,6 @@ class TestItems(BigWalkTestBase):
     def test_slot_data_lists_the_destinations_in_item_order(self) -> None:
         slot_data = self.world.fill_slot_data()
         self.assertEqual(slot_data["teleport_destinations"], DESTINATIONS)
-        self.assertEqual(slot_data["teleport_id_offset"], data.TELEPORT_ID_OFFSET)
 
 
 class TestNoWayBack(BigWalkTestBase):

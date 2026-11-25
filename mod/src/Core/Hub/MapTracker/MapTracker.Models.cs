@@ -99,7 +99,6 @@ namespace BigWalkArchipelago.Core.Hub
                 new Vector3(0.012f, stickHeight, 0.012f), stickColour);
             stick.transform.SetParent(marker.Root.transform, true);
             marker.Stick = stick.GetComponent<Renderer>();
-            marker.StickColour = stickColour;
 
             var model = new GameObject("model");
             model.transform.SetParent(marker.Root.transform, false);

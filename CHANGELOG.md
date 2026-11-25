@@ -13,6 +13,12 @@ unwinnable, which is why every player of a session should run the same build.
 - **`gourd_name` only renames the gourds in Big Walk**: the item feed, the goal line and the hub board show the
   name, as before. The apworld no longer rewrites the data package, so the server, the Text Client, the other
   games and the spoiler log say "Gourd", and two Big Walk slots may now pick different names.
+- **Three options gone, Archipelago has them**: instead of `hint_keys`, put `Big Keys` in `start_hints`; instead of
+  `zone_locks_local` and `gauntlet_stages_local`, put `Zone Locks` or `Gauntlet Doors` in `local_items`. The Gauntlet's
+  stage items were local by default and no longer are. A YAML that still lists them only gets a warning.
+- **The mod no longer works out the logic**: `map_tracker` shows every check not done, hinted ones on a gold pin
+  (`in_logic` is read as `all`), and `tracker_board` counts the checks left and names the hinted ones. Universal
+  Tracker and PopTracker packs still get the logic.
 - **The hint sign no longer suggests item names** while you write: ask with the name, as in the Text Client.
 - **Start items are decided before the fill**: the search that gave a second item away on very tight seeds is gone.
 - Every player of a session needs this version (protocol v27).

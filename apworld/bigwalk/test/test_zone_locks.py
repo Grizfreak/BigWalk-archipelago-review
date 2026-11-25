@@ -61,13 +61,6 @@ class TestZoneLocksLightsOnly(BigWalkTestBase):
         self.assertIn("Red Zone Lamps", {item.name for item in self.multiworld.precollected_items[self.player]})
 
 
-class TestZoneLocksLocal(BigWalkTestBase):
-    options = {"object_sanity": "every", "zone_locks": True, "zone_locks_local": True}
-
-    def test_local(self) -> None:
-        self.assertTrue({"Red Zone Gadgets", "Yellow Zone Gadgets"} <= self.world.options.local_items.value)
-
-
 class TestZoneLocksNoSanity(BigWalkTestBase):
     options = {"zone_locks": True}
     run_default_tests = False

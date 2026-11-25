@@ -21,7 +21,6 @@
         internal int TowersRequired { get; private set; } = 7;
 
         internal string[] TowerReachedKeys { get; private set; } = Array.Empty<string>();
-        internal int TowerReachedIdOffset { get; private set; } = 13_200;
         internal Dictionary<string, long[]> TowerReachHints { get; private set; } = new();
         internal int RadioStationsRequired { get; private set; } = 7;
         internal int DepositGoalAmount { get; private set; }
@@ -42,14 +41,6 @@
         internal string[] LockedArchDoors { get; private set; } = Array.Empty<string>();
         internal bool LinearArchDoors { get; private set; }
 
-        internal long LocationIdBase { get; private set; } = ApLocationIds.DefaultBase;
-        internal long RadioIdOffset { get; private set; } = ApLocationIds.DefaultRadioOffset;
-        internal long DepositIdOffset { get; private set; } = ApLocationIds.DefaultDepositOffset;
-        internal long CutIdOffset { get; private set; } = ApLocationIds.DefaultCutOffset;
-        internal long KeyItemIdOffset { get; private set; } = ApLocationIds.DefaultKeyItemOffset;
-        internal long GourdItemId { get; private set; } = ApLocationIds.DefaultGourdItemId;
-        internal long ArchDoorIdOffset { get; private set; } = ApLocationIds.DefaultArchDoorOffset;
-
         // "vanilla" by default: an older apworld has no stairway items. Only "locked_stages" acts.
         internal string GauntletMode { get; private set; } = "vanilla";
 
@@ -57,11 +48,9 @@
 
         // False by default, like every field that hides something.
         internal bool LockGauntletNeeds { get; private set; }
-        internal long GauntletIdOffset { get; private set; } = ApLocationIds.DefaultGauntletOffset;
 
         internal string TeleportButtons { get; private set; } = "off";
         internal string[] TeleportDestinations { get; private set; } = new string[0];
-        internal int TeleportIdOffset { get; private set; } = ApLocationIds.DefaultTeleportOffset;
         internal bool TeleportBackToHub { get; private set; } = true;
 
         // False on a seed older than 0.1.3.
@@ -80,23 +69,17 @@
         internal bool CabinFeverLongHelp { get; private set; }
         internal bool CabinFeverHideTimer { get; private set; }
 
-        // The tracker board and the logic it evaluates (null without the board).
         internal bool TrackerBoard { get; private set; }
         internal bool HintBoard { get; private set; } = true;
-        // "off", "in_logic" or "all".
-        internal string MapTrackerMode { get; private set; } = "off";
-        internal bool MapTracker => MapTrackerMode != "off";
-        internal ApLogic Logic { get; private set; }
+        internal bool MapTracker { get; private set; }
 
         internal bool CabinFeverLongHideTimer { get; private set; }
 
         // Off by default: an older apworld has no need items, so the objects would stay hidden.
         internal bool LockPuzzleNeeds { get; private set; }
         internal string[] PuzzleNeedKeys { get; private set; } = Array.Empty<string>();
-        internal long PuzzleNeedIdOffset { get; private set; } = 11_000;
         internal string LockAbilities { get; private set; } = "disabled";
         internal string[] AbilityKeys { get; private set; } = Array.Empty<string>();
-        internal long AbilityIdOffset { get; private set; } = 13_400;
         internal bool LockRunning { get; private set; }
         // The chairlift's and the train's seats stay locked until Seat arrives.
         internal bool RidesRequireSeat { get; private set; }
@@ -104,14 +87,11 @@
         internal string IncludeBigGamePuzzles { get; private set; } = "from_start";
         // The towers whose full monument is a check, by their big key's prop, in id order.
         internal string[] MonumentFullKeys { get; private set; } = Array.Empty<string>();
-        internal int MonumentFullIdOffset { get; private set; } = 13_800;
         // The towers whose monument key is a location, and the gourds each monument needs.
         internal string[] MonumentKeyKeys { get; private set; } = Array.Empty<string>();
         internal int[] MonumentKeyGourds { get; private set; } = Array.Empty<int>();
-        internal int MonumentKeyIdOffset { get; private set; } = 13_850;
         internal string LightSanity { get; private set; } = "off";
         internal string[] LightKeys { get; private set; } = Array.Empty<string>();
-        internal int LightIdOffset { get; private set; } = 14_000;
         internal int LightsRequiredCount { get; private set; }
         // light_sanity's lights, or the lamps without it (counted, no check).
         internal string[] LightsCounted { get; private set; } = Array.Empty<string>();
@@ -140,19 +120,14 @@
         // In location id order; off and empty on a seed older than 0.4.0.
         internal string PackSanity { get; private set; } = "off";
         internal string[] PickupGuids { get; private set; } = Array.Empty<string>();
-        internal int PickupIdOffset { get; private set; } = 13_000;
         internal bool FireworkSanity { get; private set; }
         internal string[] FireworkKeys { get; private set; } = Array.Empty<string>();
-        internal int FireworkIdOffset { get; private set; } = 13_100;
 
         internal bool FlareGunSanity { get; private set; }
         internal string[] FlareGunGuids { get; private set; } = Array.Empty<string>();
-        internal int FlareGunIdOffset { get; private set; } = 13_050;
         internal string ObjectSanity { get; private set; } = "off";
         internal string[] ObjectGuids { get; private set; } = Array.Empty<string>();
-        internal int ObjectIdOffset { get; private set; } = 13_500;
         internal string[] ObjectKinds { get; private set; } = Array.Empty<string>();
-        internal int ObjectKindIdOffset { get; private set; } = 13_700;
         // Without the field (the first 0.6 builds), every kind.
         internal string[] ObjectSanityKinds { get; private set; }
         internal bool RandomColours { get; private set; }
