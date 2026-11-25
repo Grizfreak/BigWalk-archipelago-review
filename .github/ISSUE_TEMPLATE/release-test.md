@@ -54,3 +54,7 @@ A line that fails stays unticked, with a comment on what happened.
 
 - [ ] No `[Error` line from the mod in any log, or each one explained in a comment.
 - [ ] `LogOutput.log` of the host and of the guest attached, one per start.
+
+## Generation
+
+- [ ] The `fuzz` workflow ran on the published commit: link to the run, and its rate of fills without a place.
