@@ -56,3 +56,10 @@ jobs:
         if: matrix.archipelago == 'main'
         working-directory: archipelago
         run: python Launcher.py "Build APWorlds" -- "Big Walk" --skip_open_folder
+
+  ids:
+    name: Same ids in the mod and the apworld
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check_ids.py
