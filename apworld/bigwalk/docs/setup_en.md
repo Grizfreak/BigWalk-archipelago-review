@@ -57,8 +57,11 @@ never starts. In Steam, right-click **Big Walk** → **Properties** → **Genera
 through Proton. The install folder and `BepInEx/LogOutput.log` are where they are on Windows.
 
 Everyone must run the same build of the mod and the same game version: a
-guest on another build ignores its host. To uninstall, delete the four things
-you added; nothing in the game's own files is ever modified.
+guest on another build ignores its host.
+
+To uninstall, delete what the zip added: `winhttp.dll`, `doorstop_config.ini`,
+`dotnet/`, `BepInEx/`, `README.txt` and `THIRD-PARTY-NOTICES.txt`. Nothing in the
+game's own files is ever modified.
 
 ## Installing the APWorld
 
@@ -136,6 +139,9 @@ connecting.
 The host's screen carries a line in the corner: the Archipelago connection,
 for the whole session, with the last few checks sent and items received
 underneath it. It reads `Archipelago: off` when the switch is off.
+
+If the server stops, keep playing: the mod reconnects by itself, and the checks
+made meanwhile are sent then.
 
 What it cannot show is the rest of the multiworld, who received what you
 sent, or what anyone else is doing. Keep Archipelago's Text Client open
