@@ -2,6 +2,7 @@ name: tests
 
 on:
   push:
+    branches: [master]
   pull_request:
 
 permissions:
@@ -48,9 +49,13 @@ jobs:
       - name: The world's own tests
         working-directory: archipelago
         run: pytest worlds/bigwalk/test -n auto
-      - name: Archipelago's general and website tests
+      - name: Archipelago's general tests
         working-directory: archipelago
-        run: pytest test/general test/options test/webhost -n auto
+        run: pytest test/general test/options -n auto
+      - name: Archipelago's website tests
+        # One at a time: they write the same generated files.
+        working-directory: archipelago
+        run: pytest test/webhost
       - name: Build the apworld
         # 0.6.7 has no way to build without opening a folder.
         if: matrix.archipelago == 'main'
