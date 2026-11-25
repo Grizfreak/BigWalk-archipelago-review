@@ -33,3 +33,8 @@ and produces the player zip (BepInEx included).
 
 Launch the game through Steam: running the executable directly does not always
 load BepInEx.
+
+## In-game tests
+
+Before a version is published, it is played on two machines with the zip that will be published. What was seen is ticked
+in an issue made from the "Release test" template, with the logs of both machines, and the release links to it.
