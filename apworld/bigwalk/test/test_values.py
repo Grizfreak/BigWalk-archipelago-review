@@ -119,12 +119,26 @@ class TestTheJunkBudget(ValuesTestBase):
         self.assertGreater(excluded, 0)
         self.assertEqual(self.world.__dict__["junk_budget"], junk_items - excluded)
 
-    def test_room_for_progression_counts_each_location_once(self) -> None:
-        progression = sum(1 for item in self.multiworld.itempool if item.player == self.player and item.advancement)
+    def room_with(self, progression: int) -> tuple[int, int]:
+        """The places still free, and the room left when the pool holds this many progression items."""
+        items_of_progression = [item for item in self.multiworld.itempool if item.advancement]
+        self.multiworld.itempool[:] = items_of_progression[:progression]
         free = [location for location in self.multiworld.get_unfilled_locations(self.player)
                 if location.address is not None and location.progress_type != LocationProgressType.EXCLUDED]
-        margin = max(junk.PROGRESSION_MARGIN, progression // 2)
-        self.assertEqual(junk.room_for_progression(self.world), max(0, len(free) - progression - margin))
+        return len(free), junk.room_for_progression(self.world)
+
+    def test_a_large_pool_keeps_half_as_many_places_more(self) -> None:
+        free, room = self.room_with(30)
+        self.assertEqual(room, free - 30 - 15)
+
+    def test_a_small_pool_keeps_five_places_more(self) -> None:
+        free, room = self.room_with(4)
+        self.assertEqual(room, free - 4 - 5)
+
+    def test_no_place_left_is_no_room(self) -> None:
+        for location in self.multiworld.get_unfilled_locations(self.player):
+            location.progress_type = LocationProgressType.EXCLUDED
+        self.assertEqual(junk.room_for_progression(self.world), 0)
 
 
 class TestPacksGiveThemselves(ValuesTestBase):
