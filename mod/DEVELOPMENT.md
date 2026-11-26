@@ -55,7 +55,9 @@ stateDiagram-v2
     Connecting --> Failed: refused, or no answer after 15 s
     Connected --> Failed: socket closed
     Failed --> Connecting: tried again every 10 s
-    Connected --> Connected: OnJustConnected resends the checks, then the item cursor
+    Connected --> Connected: OnJustConnected reads the item cursor, then resends the checks
 ```
 
 Checks made without a connection are in the save (`ap_reported_*`): they all go again on the next connection.
+The item cursor never goes to the server: it stays in the save (`ap_items_received`). The server sends every item
+again, and the mod skips those it has already applied.
