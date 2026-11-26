@@ -61,7 +61,7 @@ namespace BigWalkArchipelago
                 "Archipelago",
                 "GourdName",
                 "Gourd",
-                "What the gourds are called on screen when this machine hosts. Left at \"Gourd\", shows the seed's gourd_name.");
+                "What the gourds are called on screen when this machine hosts, for every player. Archipelago keeps calling them \"Gourd\".");
 
             GentleEffects = file.Bind(
                 "Archipelago",

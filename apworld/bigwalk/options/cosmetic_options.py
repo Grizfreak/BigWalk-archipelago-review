@@ -1,22 +1,10 @@
-"""Colors, names and custom tiles options."""
+"""Colors and custom tiles options."""
 
 from __future__ import annotations
 
-from Options import Choice, DefaultOnToggle, FreeText, OptionCounter, OptionSet, Range, Toggle
+from Options import Choice, DefaultOnToggle, OptionCounter, OptionSet, Range, Toggle
 
 from .. import tiles
-
-
-class GourdName(FreeText):
-    """
-    What Big Walk calls the gourds on screen for the run (24 characters max): the item feed, the goal
-    line and the hub board, on every player's screen. The Gourd Carton follows: "<name> Carton".
-    Archipelago, the text client and the other games keep calling the item "Gourd".
-    Letters, digits and spaces, with ' - _ . , ! ? & + : ; ( ) @; anything else is dropped.
-    """
-
-    display_name = "Gourd Name"
-    default = "Gourd"
 
 
 class RandomColors(DefaultOnToggle):

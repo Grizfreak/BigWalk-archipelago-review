@@ -1,8 +1,8 @@
 """Counts, start items and slot_data values, each against a number worked out here."""
 
 import json
-from io import StringIO
 
+import worlds
 from BaseClasses import LocationProgressType
 
 from .. import checks, data, items, monuments
@@ -161,20 +161,9 @@ class TestDeathLinkRoulette(ValuesTestBase):
         self.assertEqual(checks.death_link_roulette(self.world), {self.soft.key: 1})
 
 
-class TestTheSpoilersGourdName(ValuesTestBase):
-    options = {"gourd_name": "Pumpkin"}
-
-    def spoiler(self) -> str:
-        out = StringIO()
-        self.world.write_spoiler_header(out)
-        return out.getvalue()
-
-    def test_a_chosen_name_is_written(self) -> None:
-        self.assertIn("Pumpkin", self.spoiler())
-
-    def test_the_games_own_is_not(self) -> None:
-        self.world.gourd_name = data.GOURD_ITEM_NAME
-        self.assertNotIn("Gourds shown in game as", self.spoiler())
+class TestTheDataPackage(ValuesTestBase):
+    def test_the_gourds_are_called_gourd(self) -> None:
+        self.assertIn(data.GOURD_ITEM_NAME, worlds.network_data_package["games"]["Big Walk"]["item_name_to_id"])
 
 
 class TestTheExportedRules(ValuesTestBase):

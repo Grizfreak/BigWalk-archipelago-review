@@ -158,9 +158,6 @@ class BigWalkWorld(World):
     locked_arch_doors: tuple[data.ArchDoor, ...]
     """Arch doors held closed until their item arrives."""
 
-    gourd_name: str = data.GOURD_ITEM_NAME
-    """Display name of the gourds, shared by every Big Walk slot."""
-
     local_placements: list[tuple[list[str], list[Item]]]
     """Checks of the `local` options, and the items pre_fill places on them."""
 
@@ -173,8 +170,6 @@ class BigWalkWorld(World):
         return slot_data
 
     def write_spoiler_header(self, spoiler_handle: TextIO) -> None:
-        if self.gourd_name != data.GOURD_ITEM_NAME:
-            spoiler_handle.write(f"{'Gourds shown in game as:':33}{self.gourd_name}\n")
         if self.options.random_objectives.value:
             spoiler_handle.write(f"{'Objectives drawn:':33}{', '.join(checks.objective_keys(self))}\n")
         if self.peg_tiles != tiles.VANILLA_TILES:
@@ -349,6 +344,4 @@ class BigWalkWorld(World):
 
             "total_monument_slots": self.gourd_count,
             "deposit_location_amounts": list(self.deposit_amounts),
-
-            "gourd_name": self.gourd_name,
         }

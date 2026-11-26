@@ -37,7 +37,7 @@ from .deathlink_options import (
     DeathLinkTrapOnSend, DeathLinkRouletteHardTraps,
 )
 from .cosmetic_options import (
-    GourdName, RandomColors, CustomTiles, CustomDrawings, MirroredPoses, CustomTileChoices, CustomTileWeights,
+    RandomColors, CustomTiles, CustomDrawings, MirroredPoses, CustomTileChoices, CustomTileWeights,
 )
 from .qol_options import (
     HintDiscoveredKeyLocations, HintDiscoveredDepositBoxes, FastGolf, TeleportBackToHub, TrackerBoard,
@@ -145,7 +145,6 @@ class BigWalkOptions(PerGameCommonOptions):
     towers_required: TowersRequired
     hint_discovered_key_locations: HintDiscoveredKeyLocations
     hint_discovered_deposit_boxes: HintDiscoveredDepositBoxes
-    gourd_name: GourdName
     start_inventory_from_pool: StartInventoryPool
 
 
@@ -169,7 +168,7 @@ option_groups = [
     OptionGroup("Vanilla Behaviours", [LinearKeys, LinearArchDoors, LinearTowers, LinearPuzzles]),
     OptionGroup("Movement Locking", [LockAbilities, StartWithAbilities, LockRunning, RidesRequireSeat]),
     OptionGroup("Item Pool", [BackpacksInPool, BeltsInPool, GourdCartonsInPool, IslandObjectLimits]),
-    OptionGroup("Colors and Names", [RandomColors, GourdName]),
+    OptionGroup("Colors", [RandomColors]),
     OptionGroup("Custom Tiles", [CustomTiles, CustomTileChoices, CustomTileWeights, CustomDrawings, MirroredPoses]),
     OptionGroup("Traps and Bonuses", [
         TrapFillPercentage, TrapWeights, HardTraps, BonusFillPercentage, BonusWeights, TrapDuration, TrapsSpareTheGauntlet,
