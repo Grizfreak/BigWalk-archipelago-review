@@ -11,6 +11,7 @@ namespace BigWalkArchipelago
         internal static ConfigEntry<int> StatusFontSize;
         internal static ConfigEntry<bool> ShowItemFeed;
         internal static ConfigEntry<bool> GuestsCanAskHints;
+        internal static ConfigEntry<bool> GuestsCanResync;
         internal static ConfigEntry<int> TilePool;
         internal static ConfigEntry<bool> ApSounds;
         internal static ConfigEntry<bool> ShowObjectives;
@@ -100,6 +101,12 @@ namespace BigWalkArchipelago
                 "GuestsCanAskHints",
                 false,
                 "On the host: whether the guests may ask for a hint at the hub's hint board. A hint costs the slot's points.");
+
+            GuestsCanResync = file.Bind(
+                "Archipelago",
+                "GuestsCanResync",
+                false,
+                "On the host: whether the guests may press the resync stations. Off, only the host can.");
 
             TilePool = file.Bind(
                 "Archipelago",

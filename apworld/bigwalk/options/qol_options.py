@@ -85,14 +85,6 @@ class TowerResyncStations(Toggle):
     display_name = "Tower Resync Stations"
 
 
-class GuestsCanResync(Toggle):
-    """
-    The guests may use the resync stations too. Off, only the host can.
-    """
-
-    display_name = "Guests Can Resync"
-
-
 class TeleportButtons(Choice):
     """
     Buttons in the hub that teleport you to the Red, Green, Blue, Yellow and Black towers, the

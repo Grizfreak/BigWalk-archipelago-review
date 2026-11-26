@@ -218,7 +218,7 @@ would be gone. Pick a host at the start and stay with them.
 The **resync station** in the hub (and in each tower with
 `tower_resync_stations`) brings everything Archipelago has given you that is
 loose back in front of it. Deposited gourds and placed keys are never touched.
-Only the host can press it, unless `guests_can_resync` is on.
+Only the host can press it, unless the host turns on Settings > Archipelago > Guests resync.
 
 If a save is lost altogether, start a new one and reconnect to the same slot.
 The server, not the save file, owns the list of items you have received, so

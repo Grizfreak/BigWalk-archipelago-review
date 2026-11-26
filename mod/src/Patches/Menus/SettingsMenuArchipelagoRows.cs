@@ -55,6 +55,7 @@ namespace BigWalkArchipelago.Patches.Menus
                     BuildSizeRow(template, rows);
                     BuildDeathLinkRows(template, rows);
                     BuildHintRow(template, rows);
+                    BuildResyncRow(template, rows);
                     BuildTilePoolRow(template, rows);
                     BuildFlareRow(template, rows);
                     BuildMessagesRows(template, rows);
