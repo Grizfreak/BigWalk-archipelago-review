@@ -13,7 +13,7 @@ mod/
     ├── Config/           declares every option available in .cfg config file for bepinex mods
     ├── Core/
     │   ├── Net/              contains every related scripts to archipelago server management or mirror netcode operations between players
-    │   │   ├── Connection/   contains code to handle archipelago connection witht the game
+    │   │   ├── Connection/   contains code to handle archipelago connection with the game
     │   │   ├── Runtime/      contains everything related to resync, send checks, and operations with archipelago server
     │   │   ├── Channel/      contains every custom operations handled by the mod on network
     │   │   └── SlotData/     handles parsing slotdata and get their features available for the mod
@@ -37,7 +37,7 @@ mod/
 ```
 
 ## But how works connection without a client ?
-Big Walk is a Unity game, so it enables me to use BepInEx as a mod manager for this implementation. I reuse Archipelago.Multiclient.Net as a packager for handling archipelago server connection and functions. 
+Big Walk is a Unity game, so it enables me to use BepInEx as a mod manager for this implementation. I reuse Archipelago.MultiClient.Net as a client dll for handling archipelago server connection and functions. 
 
 To make the rest possible, the original game uses Mirror as network API and EOS (Epic Online Services) as a network provider for matchmaking. We won't talk about EOS here since it doesn't changes anything. Mirror works with channels and messages id that are registered at startup to allow game to send messages to everyone who knows those ids. My mod is creating a new message id type (`0xB1A9`) on Mirror and registering it on the network to allow everyone who has this same id to communicate with the.
 
@@ -71,7 +71,7 @@ This way I ensure that everything comes by only one computer : the host one. Hos
 A long time ago, it would have disconnected your friend directly at startup...
 Because Mirror doesn't allow receiving unknowns ids in the communication channel without knowing them.
 
-Now and since a time, the hosts spawns an object at startup (invisible with a name `Beacon`), every client mod that sees this objects then sends a message with the id type before host tries to speak to them (like a "hello). This allows everyone to join in even without the mod installed (which could be a bad thing ?)
+Now and since a time, the hosts spawns an object at lobby startup (invisible with a name `Beacon`), every client mod that sees this objects then sends a message with the id type before host tries to speak to them (like a "hello). If the versions mismatch client is informed that his version doesn't correspond to the host's one.
 
 
 ## So if the host handles everything, how a guest could register a location ?
@@ -93,16 +93,16 @@ sequenceDiagram
     H->>S: LocationChecks
 ```
 
-This includes also problems when the host is receiving the items, since they have to be replicated on every client machines. This is why I also send items data through the channel.
+This includes also problems when the host is receiving the items, since they have to be replicated on every client machines. This is why I also send items data, traps, doors, etc.. through the channel.
 
 ## Losing the server and finding it again
 Sometimes it happens that archipelago server's goes down. Developpers are warned that they should have a way to protect game failures when this happens.
 
-Archipelago server's method are runned on a second thread parallel to the game, to avoid it freezing when erroring for any reason, and allowing it to be closed and restarted from main thread. 
+Archipelago server's method are runned on a second thread parallel to the game, to avoid it freezing when erroring for any reason, and allowing it to be abandonned and restarted from main thread. 
 
 When the game get disconnected from archipelago (basically socket got closed), it will enter a loop, where it tries to contact the server every 10 seconds. If the server restarts then they reconnect but they still need to reconciliate about their state.
 
-Big Walk when connecting to the archipelago will run methods to resend checks and an item cursor to reconciliate with the server.
+Big Walk when connecting to the archipelago will run methods to resend checks and update the local item cursor to reconciliate with the server.
 ```mermaid
 stateDiagram-v2
     [*] --> Idle
@@ -116,9 +116,9 @@ stateDiagram-v2
 
 ## Saves and config
 
-Game saves are heavily modified by the mod, every added piece contains the prefix `ap_*\`. It allows me to not send twice a location to the server and revert them easily by hand if needed.
+Game saves are heavily modified by the mod, every added piece contains the prefix `ap_`. It allows me to not send twice a location to the server.
 
-Config file for archipelago mod contains mostly options that are visible to the player in-game by going in the escape menu -> settings -> Archipelago settings.
+Config file for archipelago mod contains mostly options that are visible to the player in main menu or in-game by going in the escape menu -> settings -> Archipelago.
 
 ## Debugging
 
