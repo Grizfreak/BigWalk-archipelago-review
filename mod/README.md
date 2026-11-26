@@ -3,6 +3,8 @@
 BepInEx mod (IL2CPP, Harmony) for *Big Walk* (House House): it plugs an
 Archipelago multiworld client into the game loop.
 
+How it works, between the server, the host and the guests: [DEVELOPMENT.md](DEVELOPMENT.md).
+
 ## Build
 
 Requirements: the .NET SDK (tested with 10.0.301) and the local DLLs in
