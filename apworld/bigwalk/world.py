@@ -9,7 +9,7 @@ from BaseClasses import Entrance, Item, Location
 from rule_builder.rules import Rule
 from worlds.AutoWorld import World
 
-from . import (checks, data, fill, generation, items, locations, logic_export, monuments, regions, rules, tiles,
+from . import (checks, data, generation, items, locations, logic_export, monuments, regions, rules, tiles,
                web_world)
 from . import options as bigwalk_options
 
@@ -213,7 +213,7 @@ class BigWalkWorld(World):
         items.create_all_items(self)
         # Before set_rules: the start can only be given items while the pool may still change.
         rules.set_all_rules(self)
-        fill.make_room_at_the_start(self)
+        generation.make_room_at_the_start(self)
         # `lock_running: early`: the fill places it in sphere 1, in any world.
         early = self.options.lock_running == bigwalk_options.LockRunning.option_early
         if early and any(item.player == self.player and item.name == data.RUNNING_ITEM_NAME
@@ -221,12 +221,12 @@ class BigWalkWorld(World):
             self.multiworld.early_items[self.player][data.RUNNING_ITEM_NAME] = 1
 
     def pre_fill(self) -> None:
-        fill.place_local_items(self)
+        generation.place_local_items(self)
 
     def fill_hook(self, progitempool: list[Item], usefulitempool: list[Item], filleritempool: list[Item],
                   fill_locations: list[Location]) -> None:
         # Local items whose check plando took go through the main fill.
-        for item in fill.local_items_left(self):
+        for item in generation.local_items_left(self):
             (usefulitempool if item.useful else filleritempool).append(item)
 
     def set_rule(self, spot: Location | Entrance, rule: Any) -> None:
