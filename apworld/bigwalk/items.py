@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from BaseClasses import Item, ItemClassification
 from Options import OptionError
 
-from . import checks, data, fill, monuments
+from . import checks, data, generation, monuments
 from . import options as bigwalk_options
 
 if TYPE_CHECKING:
@@ -359,7 +359,7 @@ def create_all_items(world: BigWalkWorld) -> None:
         filler_needed -= take
     pool += [world.create_filler() for _ in range(filler_needed)]
 
-    world.multiworld.itempool += fill.set_local_items_aside(world, pool)
+    world.multiworld.itempool += generation.set_local_items_aside(world, pool)
 
 
 def ability_item_names(world: BigWalkWorld) -> list[str]:
