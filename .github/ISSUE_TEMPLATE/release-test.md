@@ -5,26 +5,51 @@ title: "Test of version "
 labels: release-test
 ---
 
-Played on two machines with the same zip, the one published. Tick a line once it was seen on both screens.
+Played with the zip and the apworld that are published, as a host and a guest: two machines, or two game
+instances on one PC (`tools/launch-guest.ps1`). Tick a line once it was seen on both screens.
 A line that fails stays unticked, with a comment on what happened.
 
 - Version:
+- Commit:
 - SHA-256 of `BigWalkArchipelago.zip`:
 - SHA-256 of `bigwalk.apworld`:
 - Host:
-- Guest:
+- Guest: (other machine, or loopback guest on the same PC)
+- OS tested: (Windows; Linux/Proton only if actually played)
 - Date:
 
-## Starting and joining
+## What changed since the last version
 
-- [ ] Both machines: the title screen shows no error, Settings > Archipelago is there, and the two logs name the same build.
-- [ ] Both machines: the `.cfg` of the last version keeps its values on the first start.
+- [ ] apworld
+- [ ] mod
+
+In a few lines:
+
+## What I tested, and what I skipped
+
+Tested:
+
+Not tested, and why: (unchanged since vX, needs another OS, needs a real network, ...)
+
+## If the apworld changed
+
+- [ ] The `fuzz` workflow ran on the published commit: link to the run, and its rate of fills without a place.
+- [ ] The seeds of `tools/test-seeds/` generate, or the ones that fail are named with the reason.
+- [ ] Each check whose logic changed was reached in game as the logic says (logic tour or by hand): list them.
+- [ ] A seed made with this apworld and the previous mod: the mod warns about the newer apworld.
+
+## If the mod changed
+
+### Starting and joining
+
+- [ ] Both instances: the title screen shows no error, Settings > Archipelago is there, and the two logs name the same build.
+- [ ] Both instances: the `.cfg` of the last version keeps its values on the first start.
 - [ ] Host: Test connection answers in words, and the corner of the screen shows the connection.
 - [ ] Guest: joins, and sees the host's connection line.
 - [ ] Guest: leaves and comes back; nothing is doubled or missing.
 - [ ] A guest with another build, then a guest without the mod: both get a message, and neither game crashes.
 
-## Checks and items
+### Checks and items
 
 - [ ] The host solves a puzzle: the server lists the check once.
 - [ ] The guest cuts a big key and places it: the server lists the cuts and the placement once each.
@@ -33,7 +58,7 @@ A line that fails stays unticked, with a comment on what happened.
 - [ ] A big key and its door received: the key is tinted and the door open for both.
 - [ ] Gourds deposited by both players: the deposit check goes out.
 
-## Options
+### Options
 
 - [ ] `tower_mode: by_item`: only the towers opened so far take gourds.
 - [ ] `lock_abilities`: locked actions are refused for both players, and work once received.
@@ -44,7 +69,7 @@ A line that fails stays unticked, with a comment on what happened.
 - [ ] `random_colors`: the same colours on both screens.
 - [ ] `big_climb`: the board in the hub ticks it.
 
-## Losing the connection
+### Losing the connection
 
 - [ ] The server stops, a check is made, the server comes back: the check reaches it.
 - [ ] The save is hosted again: nothing is received twice, and the gourds not deposited are back in the hub.
@@ -54,7 +79,10 @@ A line that fails stays unticked, with a comment on what happened.
 
 - [ ] No `[Error` line from the mod in any log, or each one explained in a comment.
 - [ ] `LogOutput.log` of the host and of the guest attached, one per start.
+- [ ] The session journal of the session attached.
+- [ ] The Archipelago server log of the room attached.
 
-## Generation
+## Outside this test (optional)
 
-- [ ] The `fuzz` workflow ran on the published commit: link to the run, and its rate of fills without a place.
+- [ ] A session with a remote player (real network): who, and what was seen.
+- [ ] Linux/Proton or Steam Deck, by a community tester: who, and what was seen.
