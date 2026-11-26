@@ -13,7 +13,7 @@ namespace BigWalkArchipelago
         // Also names the .cfg file: changing it loses the user's settings to a fresh file.
         public const string PluginGuid = "com.grizfreak.bigwalk.archipelago";
         public const string PluginName = "Big Walk Archipelago";
-        public const string PluginVersion = "1.0.15";
+        public const string PluginVersion = "1.1.0";
 
         // BasePlugin.Log is an instance property; a static one lets patches log without a Plugin.
         internal static new ManualLogSource Log;

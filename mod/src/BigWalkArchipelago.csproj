@@ -11,7 +11,7 @@
     <AssemblyName>BigWalkArchipelago</AssemblyName>
     <RootNamespace>BigWalkArchipelago</RootNamespace>
     <!-- Keep in step with Plugin.PluginVersion: package-mod.ps1 names the zip from it. -->
-    <Version>1.0.15</Version>
+    <Version>1.1.0</Version>
 
     <!-- Copies the NuGet client next to the plugin; BepInEx references stay Private=false. -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>

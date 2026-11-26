@@ -55,6 +55,8 @@ tells two copies of the mod apart.
 never starts. In Steam, right-click **Big Walk** → **Properties** → **General**, and set the **Launch options** to
 `WINEDLLOVERRIDES="winhttp=n,b" %command%`. The zip holds the Windows build of BepInEx, so the game must run
 through Proton. The install folder and `BepInEx/LogOutput.log` are where they are on Windows.
+This procedure comes from players of the Archipelago Discord. The mod is not tested on Linux or the Steam Deck, so
+it may not work there, and no fix is promised.
 
 Everyone must run the same build of the mod and the same game version: a
 guest on another build ignores its host.
