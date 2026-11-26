@@ -137,7 +137,7 @@
         // As "<tile kind>=<drawing>".
         internal string[] PegDrawings { get; private set; } = Array.Empty<string>();
 
-        // "Gourd" on older seeds.
+        // Name from a seed made before 1.1.0, used while the config is left at "Gourd".
         internal string GourdName { get; private set; } = GourdNames.Default;
 
         internal bool TrapLink { get; private set; }

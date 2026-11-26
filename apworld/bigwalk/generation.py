@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from Options import OptionError
 
-from . import checks, data, gourd_name, items, monuments, tiles
+from . import checks, data, items, monuments, tiles
 from . import options as bigwalk_options
 
 if TYPE_CHECKING:
@@ -31,9 +31,6 @@ def _cabin_fever_waits(world: BigWalkWorld) -> dict[str, dict[str, object]]:
 
 
 def generate_early(world: BigWalkWorld) -> None:
-    # Only the mod shows this name; the item stays "Gourd" for Archipelago.
-    world.gourd_name = gourd_name.clean(world.options.gourd_name.value, world.player_name)
-
     # `linear_keys` puts the Tunnels on the Yellow key's deposit: no doors to shuffle then.
     if world.options.linear_keys and world.options.tunnel_sanity:
         logging.warning(f"Big Walk ({world.player_name}): tunnel_sanity is off with linear_keys, whose Yellow key "

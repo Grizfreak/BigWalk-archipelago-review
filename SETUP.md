@@ -18,8 +18,7 @@ the main menu or the pause menu. Nothing there is in the YAML.
   [CUSTOM-TILES.md](CUSTOM-TILES.md)).
 - **Gourd name** (the host): free text, up to 24 characters, applied with Enter or by leaving the
   field. The overlay says it instead of "Gourd" on every player's screen; a guest sees the host's,
-  greyed. Left at "Gourd", it shows the seed's `gourd_name` (the YAML option). Either way the
-  server, the Text Client and the other games keep saying "Gourd".
+  greyed. The server, the Text Client and the other games keep saying "Gourd".
 
 On a guest, the host's settings are greyed ("Set by the host").
 

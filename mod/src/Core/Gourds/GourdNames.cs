@@ -36,7 +36,7 @@ namespace BigWalkArchipelago.Core.Gourds
 
         internal static bool IsGuest => NetworkClient.active && !NetworkServer.active;
 
-        // Same filter as the apworld's gourd_name.py; TextMeshPro reads `<` and `>` as tags.
+        // TextMeshPro reads `<` and `>` as tags.
         private const string AllowedSigns = "'-_.,!?&+:;()@";
 
         internal static string Clean(string name)
@@ -44,7 +44,7 @@ namespace BigWalkArchipelago.Core.Gourds
             if (string.IsNullOrEmpty(name))
                 return string.Empty;
 
-            // NFKC first, as the apworld does.
+            // NFKC first: lookalike letters become plain ones.
             try
             {
                 name = name.Normalize(System.Text.NormalizationForm.FormKC);
@@ -122,7 +122,7 @@ namespace BigWalkArchipelago.Core.Gourds
             _mirrored = null;
         }
 
-        // Matched by id: the server may already send the seed's name.
+        // Matched by id, whatever name the server sends.
         internal static string Display(long itemId, string itemName)
         {
             if (itemId == Net.ApLocationIds.GourdItemId)

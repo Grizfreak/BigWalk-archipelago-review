@@ -159,7 +159,7 @@ player. **TrapLink** (`trap_link`, off): traps are shared with the other games t
   puzzles ask for the same tiles. The drawings are by **Jack5**, **Don Chalant**, **GameFraek** and **Kensufox**, under
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); the games belong to their owners.
 - `mirrored_poses` adds mirrored poses to the pose panels.
-- `gourd_name` changes what Big Walk calls the gourds on screen. Archipelago still says "Gourd".
+- The host names the gourds in game: Settings > Archipelago. Archipelago still says "Gourd".
 
 Flashing effects can be softened on your own screen: Settings > Archipelago > Gentle effects.
 

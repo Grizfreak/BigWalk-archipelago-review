@@ -146,6 +146,7 @@ namespace BigWalkArchipelago.Core.Net
                 : GetIntArray(raw, "colour_palette", sorted: false);
             data.PegTiles = GetStringArray(raw, "peg_tiles");
             data.PegDrawings = GetStringArray(raw, "peg_drawings");
+            // Only seeds made before 1.1.0 carry it; the name is now set in game.
             data.GourdName = GetString(raw, "gourd_name", data.GourdName);
             data.TrapLink = GetBool(raw, "trap_link", false);
 
