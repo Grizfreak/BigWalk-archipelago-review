@@ -18,7 +18,7 @@ namespace BigWalkArchipelago.Debug
         private const int MaxGuests = 3;
         private const string PrefsKey = @"Software\House House\Big Walk";
 
-        // tools/netsim.py's default port; while something listens there, the guest joins through it.
+        // netsim.py's default port: while something listens there, the guest joins through it.
         private const int NetSimPort = 7778;
 
         // withoutTheMod: the guest runs --bwap-vanilla, only the join.
