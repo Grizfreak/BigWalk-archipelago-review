@@ -159,6 +159,15 @@ $arguments = $role + " --bwap-guest-index $index" + $(if ($join) { " --bwap-join
     $(if ($viaNetSim) { " --bwap-port $netSimPort" } else { "" }) +
     " -logFile `"$unityLog`" -screen-fullscreen 0 -screen-width $Width -screen-height $Height"
 
+# A BepInEx-guest folder beside BepInEx gives the guest its own plugins and .cfg, as Ctrl+L does.
+$guestLoader = Join-Path $GameDir 'BepInEx-guest\core\BepInEx.Unity.IL2CPP.dll'
+$ownBepInEx = -not $Vanilla -and (Test-Path $guestLoader)
+if ($ownBepInEx) {
+    $arguments += " --doorstop-target-assembly `"$guestLoader`""
+    Write-Host 'The guest loads BepInEx-guest (its own plugins and .cfg).'
+}
+$logDirs = @(Join-Path $GameDir 'BepInEx') + $(if ($ownBepInEx) { @(Join-Path $GameDir 'BepInEx-guest') } else { @() })
+
 $previous = @{}
 foreach ($name in 'SteamAppId', 'SteamGameId') {
     $previous[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
@@ -192,7 +201,7 @@ $bepLog = $null
 $deadline = $started.AddSeconds(90)
 while ((Get-Date) -lt $deadline -and -not $guest.HasExited) {
     # Found by content, not name: LogOutput.1.log when the host holds LogOutput.log.
-    $bepLog = Get-ChildItem (Join-Path $GameDir 'BepInEx') -Filter 'LogOutput*.log' -ErrorAction SilentlyContinue |
+    $bepLog = Get-ChildItem $logDirs -Filter 'LogOutput*.log' -ErrorAction SilentlyContinue |
         Where-Object { $_.LastWriteTime -ge $started } |
         Where-Object { Select-String -Path $_.FullName -Pattern 'Role: loopback guest' -Quiet } |
         Select-Object -First 1
@@ -206,7 +215,7 @@ if ($bepLog) {
 } elseif ($guest.HasExited) {
     Write-Host "  The guest exited (code $($guest.ExitCode)) before BepInEx wrote a log." -ForegroundColor Red
 } else {
-    Write-Host '  No guest log naming its role after 90 s. Is Debug.Enabled on in the .cfg?' -ForegroundColor Yellow
+    Write-Host '  No guest log naming its role after 90 s. Is Debug.Enabled on in the guest''s .cfg?' -ForegroundColor Yellow
 }
 Write-Host "  Unity log: $unityLog"
 
