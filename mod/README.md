@@ -181,8 +181,14 @@ release links to it. Linux and the Steam Deck are not tested.
 
 ## Testing on one PC
 
-Co-op can be played on one PC that owns the game: the guests are more instances of the same Steam install, on the
-same account. Nothing here starts the game without Steam or without a copy of it.
+Since I don't have as many bucks as true business corporations. I only own the game once, so how could I test out multiplayer ?
+Using one licence (so you still need to own the game) it is possibles to run multiples instances of the **same steam directory install**. No trespassing allowed here !
+
+> [!WARNING]
+> This is a tool to test the mod, not a way to play co-op with one copy: every player needs their own copy of
+> the game. Nothing here starts the game without Steam.
+
+We then use another tool called `netsim` that allows to control the properties of the localhost loop, such as latency, jitter, loss and etc... 
 
 It needs a Debug build (`tools/deploy-mod.ps1` builds in Debug by default), `BIGWALK_DIR` set to the game folder,
 and `Debug.Enabled = true` in the guest's `.cfg`. netsim needs Python 3.12 or newer.
@@ -216,8 +222,12 @@ same losses and delays, so a run can be played again.
 | `flaky` | 50 | 20 | 10 % | 2 % | 3 % | no limit |
 
 **Does the host need `Debug.Enabled`?** No. The game listens on UDP 7777 whenever it hosts, and the loopback
-patches run in the guest only. On the host, `Debug.Enabled` only gives the keys: Ctrl+L starts a guest, Ctrl+C
-calls the guests over, Ctrl+T switches windows. But the instances read the same `.cfg`, so the host has
+patches run in the guest only. On the host, `Debug.Enabled` only gives the keys: 
+- Ctrl+L starts a guest,
+- Ctrl+C calls the guests over,
+- Ctrl+T switches windows.
+
+But the instances read the same `.cfg`, so the host has
 `Debug.Enabled` on too, unless the guest has its own BepInEx: copy `BepInEx` to `BepInEx-guest` once, turn
 `Debug.Enabled` on in `BepInEx-guest\config` and off in `BepInEx\config`. `launch-guest.ps1` and Ctrl+L then start
 the guest on `BepInEx-guest`, and `deploy-mod.ps1` updates both folders. With the host's `Debug.Enabled` off, start
