@@ -34,7 +34,7 @@ class TestZoneLocksBoth(BigWalkTestBase):
         self.assertTrue(self.can_reach_location(name))
 
     def test_a_switch_needs_its_zone(self) -> None:
-        name = "Light Switch (Ring Room Train Stop) On"
+        name = "Light Switch (near Green Tower Train Stop) On"
         light = next(light for light in data.LIGHTS if light.location_name == name)
         lock = data.zone_lock_for(light.key, light.zone, True)
         self.assertIsNotNone(lock)
