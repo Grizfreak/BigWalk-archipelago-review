@@ -1,4 +1,4 @@
-## AI Disclosure
+## AI Disclosure for 1.1.0 and onward
 
 This mod and apworld were built with heavy AI pair-programming.
 
@@ -8,7 +8,7 @@ This mod and apworld were built with heavy AI pair-programming.
 - In-game testing: done entirely by me before each release, on several game setups and seeds. Community testers now help after release. Nothing ships without me testing it in-game first.
 - Docs: I typically write a first pass myself and use AI to rephrase (even for inline code), help on translation, add detail and check for inconsistencies.
 
-I initially started this project for myself, partly as an experiment with AI tools (as a computer science graduate). I still rely on AI, and will keep doing so, mainly for speed, and for areas where it would be too time-consuming (decompilation, reverse engineering and assembly code). However, I remain responsible for every aspect of the project, including security, user experience and developer experience.
+I initially started this project for myself, partly as an experiment with AI tools (as a computer science graduate). I still rely on AI, and will keep doing so, for areas where it would be too time-consuming (decompilation, reverse engineering and assembly code). However, I remain responsible for every aspect of the project, including security, user experience and developer experience.
 
 I hope you can take something from this and use this as an example of LLM based code that is put through rigorous testing.
 I hope you'll enjoy it tho.
