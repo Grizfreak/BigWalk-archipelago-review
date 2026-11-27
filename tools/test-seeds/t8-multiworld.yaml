@@ -22,5 +22,5 @@ Big Walk:
   teleport_back_to_hub: true
 ---
 name: BW_T8_Other
-game: ChecksFinder
-ChecksFinder: {}
+game: APQuest
+APQuest: {}
