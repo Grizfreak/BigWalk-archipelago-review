@@ -90,6 +90,17 @@ namespace BigWalkArchipelago.Patches.Menus
                 });
         }
 
+        private static void BuildResyncRow(SettingsRow template, Transform parent)
+        {
+            BuildArrayRow(template, parent, "Guests resync", "GUESTS RESYNC :", hostOnly: true,
+                () => ModConfig.GuestsCanResync.Value ? "Yes" : "No",
+                _ =>
+                {
+                    ModConfig.GuestsCanResync.Value = !ModConfig.GuestsCanResync.Value;
+                    Plugin.Log.LogInfo($"{Tag} Guests can resync: {ModConfig.GuestsCanResync.Value}.");
+                });
+        }
+
         private static readonly string[] PoolModes = { "Over the seed", "Game's tiles only", "Off" };
 
         private static void BuildTilePoolRow(SettingsRow template, Transform parent)

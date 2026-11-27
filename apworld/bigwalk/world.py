@@ -77,7 +77,7 @@ SLOT_OPTIONS = (
     "lock_endings_until_objectives", "keys_required", "first_tower_open", "everyone_gathers", "towers_required",
     "tower_sanity", "radio_stations_required", "start_with_arch_doors_open", "require_arch_doors",
     "gauntlet_puzzles_required", "lock_gauntlet_needs", "teleport_back_to_hub", "open_black_tower",
-    "tower_resync_stations", "tracker_board", "hint_board", "guests_can_resync", "firework_sanity",
+    "tower_resync_stations", "tracker_board", "hint_board", "firework_sanity",
     "lights_required", "zone_locks", "tunnel_sanity", "fast_golf", "objects_required", "body_required",
     "random_colors", "trap_link", "trap_duration", "traps_spare_the_gauntlet", "death_link_triggers",
     "death_link_amnesty", "death_link_trap_on_send", "lock_puzzle_needs", "start_with_puzzle_needs",

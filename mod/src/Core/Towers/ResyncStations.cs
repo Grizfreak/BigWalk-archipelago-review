@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace BigWalkArchipelago.Core.Towers
 {
-    // The resync buttons that replace Ctrl+R. Only the host's press has an effect.
+    // The resync buttons that replace Ctrl+R; the host decides whether guests may press them.
     internal static class ResyncStations
     {
         private sealed class Station
@@ -77,18 +77,21 @@ namespace BigWalkArchipelago.Core.Towers
         private static int _mirrored = -1;
 
         private static bool _towers;
-        private static bool _guests;
+        // Set by seeds made before 1.1.0; newer ones leave it to the host's config.
+        private static bool _seedGuests;
 
         internal static void Configure(bool towers, bool guests)
         {
             _towers = towers;
-            _guests = guests;
+            _seedGuests = guests;
             Plugin.Log.LogInfo(
-                $"[{nameof(ResyncStations)}] Stations in the towers {(towers ? "on" : "off")}, guests {(guests ? "may" : "may not")} use them.");
+                $"[{nameof(ResyncStations)}] Stations in the towers {(towers ? "on" : "off")}, guests {(GuestsMayPress ? "may" : "may not")} use them.");
         }
 
         // The first six stations took bits 0..5 before 6 and 7 were spoken for.
         private static int GadgetBit(int station) => 1 << (station < 6 ? station : station + 2);
+
+        private static bool GuestsMayPress => _seedGuests || ModConfig.GuestsCanResync.Value;
 
         private static bool TowersOn => IsGuest ? _mirrored >= 0 && (_mirrored & (1 << 7)) != 0 : _towers;
 
@@ -303,7 +306,7 @@ namespace BigWalkArchipelago.Core.Towers
             if (!NetworkServer.active)
                 return true;
 
-            if (presser == null || presser.isLocalPlayer || _guests)
+            if (presser == null || presser.isLocalPlayer || GuestsMayPress)
                 return false;
 
             ModChannel.SendNotice(presser.connectionToClient, why, warning: true);

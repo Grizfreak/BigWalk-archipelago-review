@@ -52,9 +52,12 @@ namespace BigWalkArchipelago.Patches.Menus
                 if (rows != null)
                 {
                     _arrayRows.Clear();
+                    // The pause menu builds its own rows, which need fitting again.
+                    _rowsFitted = false;
                     BuildSizeRow(template, rows);
                     BuildDeathLinkRows(template, rows);
                     BuildHintRow(template, rows);
+                    BuildResyncRow(template, rows);
                     BuildTilePoolRow(template, rows);
                     BuildFlareRow(template, rows);
                     BuildMessagesRows(template, rows);
