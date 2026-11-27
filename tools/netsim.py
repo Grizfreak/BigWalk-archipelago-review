@@ -22,6 +22,9 @@ MAX_QUEUE_SECONDS = 0.5
 # A guest silent this long is forgotten: a guest that comes back joins from a new port.
 IDLE_SECONDS = 30.0
 
+# Windows' Proactor loop stops reading a UDP socket after one error; the Selector loop does not.
+LOOP_FACTORY = asyncio.SelectorEventLoop if sys.platform == "win32" else None
+
 
 @dataclass
 class Settings:
@@ -115,6 +118,12 @@ class Relay:
         self.retired = (Stats(), Stats())
         self._front: asyncio.DatagramTransport | None = None
         self._count = 0
+        self.socket_errors = 0
+
+    def on_socket_error(self, error: Exception) -> None:
+        self.socket_errors += 1
+        if self.socket_errors == 1:
+            self.log(f"socket error, still relaying (a guest gone?): {error!r}")
 
     @property
     def address(self) -> tuple[str, int]:
@@ -123,7 +132,7 @@ class Relay:
     async def start(self) -> None:
         loop = asyncio.get_running_loop()
         self._front, _ = await loop.create_datagram_endpoint(
-            lambda: _Protocol(self._from_guest), local_addr=self.listen)
+            lambda: _Protocol(self._from_guest, self.on_socket_error), local_addr=self.listen)
 
     def close(self) -> None:
         for guest in list(self.guests.values()):
@@ -186,7 +195,8 @@ class Guest:
     async def open(self) -> None:
         loop = asyncio.get_running_loop()
         self._back, _ = await loop.create_datagram_endpoint(
-            lambda: _Protocol(self._from_host), remote_addr=self.relay.target)
+            lambda: _Protocol(self._from_host, self.relay.on_socket_error),
+            remote_addr=self.relay.target)
         for data in self._waiting:
             self._back.sendto(data)
         self._waiting.clear()
@@ -219,15 +229,16 @@ class Guest:
 
 
 class _Protocol(asyncio.DatagramProtocol):
-    def __init__(self, on_data) -> None:
+    def __init__(self, on_data, on_error) -> None:
         self.on_data = on_data
+        self.on_error = on_error
 
     def datagram_received(self, data: bytes, addr) -> None:
         self.on_data(data, addr)
 
     def error_received(self, exc: Exception) -> None:
         # Windows reports a closed port as an error on the next receive: a guest gone, nothing more.
-        pass
+        self.on_error(exc)
 
 
 def load_presets(path: Path = PRESETS_FILE) -> dict[str, Settings]:
@@ -377,14 +388,15 @@ def main(argv: list[str] | None = None) -> int:
     relay = Relay(("127.0.0.1", args.listen), ("127.0.0.1", args.target), settings, seed,
                   args.max_guests, log)
     try:
-        asyncio.run(run(args, relay, log))
+        asyncio.run(run(args, relay, log), loop_factory=LOOP_FACTORY)
     except KeyboardInterrupt:
         log("stopped with Ctrl+C")
     except OSError as error:
         log(f"could not listen on 127.0.0.1:{args.listen}: {error}")
         log.close()
         return 1
-    log("final stats:\n" + format_stats(*relay.totals()))
+    log("final stats:\n" + format_stats(*relay.totals())
+        + (f"\nsocket errors {relay.socket_errors}" if relay.socket_errors else ""))
     log(f"log written to {path}")
     log.close()
     return 0

@@ -71,7 +71,7 @@ def test_relays_both_ways():
         _close(echo_t, relay, clients)
         return got, relay
 
-    got, relay = asyncio.run(scenario())
+    got, relay = asyncio.run(scenario(), loop_factory=netsim.LOOP_FACTORY)
     assert got == [b"echo:hello"]
     up, down = relay.totals()
     assert (up.received, up.sent, down.received, down.sent) == (1, 1, 1, 1)
@@ -86,7 +86,7 @@ def test_each_guest_has_its_own_port_on_the_host_side():
         _close(echo_t, relay, clients)
         return answers, echo.sources
 
-    answers, sources = asyncio.run(scenario())
+    answers, sources = asyncio.run(scenario(), loop_factory=netsim.LOOP_FACTORY)
     assert answers == [[b"echo:guest0"], [b"echo:guest1"], [b"echo:guest2"]]
     assert len(sources) == 3
 
@@ -101,7 +101,7 @@ def test_jitter_alone_keeps_the_order():
         _close(echo_t, relay, clients)
         return got
 
-    got = asyncio.run(scenario())
+    got = asyncio.run(scenario(), loop_factory=netsim.LOOP_FACTORY)
     assert got == [f"echo:{i:03}".encode() for i in range(60)]
 
 
@@ -118,7 +118,7 @@ def test_latency_is_applied_each_way():
         return elapsed
 
     # 60 ms out and 60 ms back.
-    assert asyncio.run(scenario()) >= 0.115
+    assert asyncio.run(scenario(), loop_factory=netsim.LOOP_FACTORY) >= 0.115
 
 
 def _pattern(settings: Settings, seed: int, count: int = 2000) -> list[int]:
@@ -211,4 +211,60 @@ def test_a_cut_file_cuts_while_it_exists(tmp_path):
         _close(echo_t, relay, clients)
         return first, second, third
 
-    assert asyncio.run(scenario()) == ([b"echo:open"], [], [b"echo:again"])
+    assert asyncio.run(scenario(), loop_factory=netsim.LOOP_FACTORY) == ([b"echo:open"], [], [b"echo:again"])
+
+
+def test_a_guest_gone_does_not_stop_the_others():
+    # Windows reports the closed port on the next receive; the relay must keep reading.
+    async def scenario():
+        echo_t, _echo, relay, clients = await _setup(Settings(), guests=1)
+        gone, _ = clients[0]
+        gone.sendto(b"first")
+        await asyncio.sleep(0.1)
+        gone.close()
+        # The host answers the guest that left, to its closed port.
+        for guest in relay.guests.values():
+            guest._from_host(b"late", ("127.0.0.1", 0))
+        await asyncio.sleep(0.2)
+        loop = asyncio.get_running_loop()
+        transport, client = await loop.create_datagram_endpoint(_Client, remote_addr=relay.address)
+        transport.sendto(b"second")
+        got = await _receive(client, 1)
+        transport.close()
+        _close(echo_t, relay, [])
+        return got
+
+    assert asyncio.run(scenario(), loop_factory=netsim.LOOP_FACTORY) == [b"echo:second"]
+
+
+class _FailsOnce:
+    """Stands for the relay's socket: its next receive fails as Windows does for a closed port."""
+
+    def __init__(self, sock) -> None:
+        self._sock, self._failed = sock, False
+
+    def recvfrom(self, size):
+        if not self._failed:
+            self._failed = True
+            raise ConnectionResetError(10054, "closed port")
+        return self._sock.recvfrom(size)
+
+    def __getattr__(self, name):
+        return getattr(self._sock, name)
+
+
+def test_the_relay_keeps_reading_after_a_socket_error():
+    async def scenario():
+        echo_t, _echo, relay, clients = await _setup(Settings())
+        transport, client = clients[0]
+        relay._front._sock = _FailsOnce(relay._front._sock)
+        transport.sendto(b"lost")
+        await asyncio.sleep(0.1)
+        transport.sendto(b"still")
+        got = await _receive(client, 2)
+        _close(echo_t, relay, clients)
+        return got, relay.socket_errors
+
+    got, errors = asyncio.run(scenario(), loop_factory=netsim.LOOP_FACTORY)
+    assert errors == 1
+    assert got == [b"echo:lost", b"echo:still"]
