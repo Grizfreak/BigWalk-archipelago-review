@@ -108,6 +108,7 @@ namespace BigWalkArchipelago.Core.Net
             data.OpenBlackTower = GetBool(raw, "open_black_tower", false);
             data.TileThief = GetString(raw, "tile_thief", data.TileThief);
             data.TowerResyncStations = GetBool(raw, "tower_resync_stations", false);
+            // Only seeds made before 1.1.0 carry it; the host now sets it in game.
             data.GuestsCanResync = GetBool(raw, "guests_can_resync", false);
             data.CabinFeverMode = GetString(raw, "cabin_fever_mode", data.CabinFeverMode);
             data.CabinFeverSeconds = GetInt(raw, "cabin_fever_seconds", 0);

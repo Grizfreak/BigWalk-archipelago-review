@@ -68,20 +68,16 @@ class TestBlackTowerAsInTheGame(BigWalkTestBase):
 class TestResyncStationsByDefault(BigWalkTestBase):
     run_default_tests = False
 
-    def test_towers_off_guests_off(self) -> None:
-        slot_data = self.world.fill_slot_data()
-        self.assertFalse(slot_data["tower_resync_stations"])
-        self.assertFalse(slot_data["guests_can_resync"])
+    def test_towers_off(self) -> None:
+        self.assertFalse(self.world.fill_slot_data()["tower_resync_stations"])
 
 
 class TestResyncStationsChanged(BigWalkTestBase):
-    options = {"tower_resync_stations": True, "guests_can_resync": True}
+    options = {"tower_resync_stations": True}
     run_default_tests = False
 
-    def test_both_travel(self) -> None:
-        slot_data = self.world.fill_slot_data()
-        self.assertTrue(slot_data["tower_resync_stations"])
-        self.assertTrue(slot_data["guests_can_resync"])
+    def test_towers_travel(self) -> None:
+        self.assertTrue(self.world.fill_slot_data()["tower_resync_stations"])
 
 
 class TestTileThief(BigWalkTestBase):

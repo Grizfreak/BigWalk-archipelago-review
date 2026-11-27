@@ -41,7 +41,7 @@ from .cosmetic_options import (
 )
 from .qol_options import (
     HintDiscoveredKeyLocations, HintDiscoveredDepositBoxes, FastGolf, TeleportBackToHub, TrackerBoard,
-    MapTracker, HintBoard, TowerResyncStations, GuestsCanResync, TeleportButtons, CabinFeverSeconds, CabinFeverHelp,
+    MapTracker, HintBoard, TowerResyncStations, TeleportButtons, CabinFeverSeconds, CabinFeverHelp,
     CabinFeverHideTimer, CabinFeverLongSeconds, CabinFeverLongHelp, CabinFeverLongHideTimer, TileThief,
 )
 
@@ -85,7 +85,6 @@ class BigWalkOptions(PerGameCommonOptions):
     tracker_board: TrackerBoard
     hint_board: HintBoard
     map_tracker: MapTracker
-    guests_can_resync: GuestsCanResync
     teleport_buttons: TeleportButtons
     teleport_back_to_hub: TeleportBackToHub
     cabin_fever_seconds: CabinFeverSeconds
@@ -180,7 +179,7 @@ option_groups = [
     ]),
     OptionGroup("QoL", [
         HintDiscoveredKeyLocations, HintDiscoveredDepositBoxes, HintBoard, TrackerBoard, MapTracker,
-        TeleportButtons, TeleportBackToHub, TowerResyncStations, GuestsCanResync,
+        TeleportButtons, TeleportBackToHub, TowerResyncStations,
     ]),
     OptionGroup("Puzzle QoL", [
         FastGolf, CabinFeverSeconds, CabinFeverHelp, CabinFeverHideTimer, CabinFeverLongSeconds, CabinFeverLongHelp,
