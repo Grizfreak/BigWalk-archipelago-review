@@ -186,3 +186,29 @@ def test_options_override_the_preset():
 def test_cut_needs_a_period():
     with pytest.raises(SystemExit):
         netsim.parse_args(["--cut", "5"])
+
+
+def test_a_cut_file_cuts_while_it_exists(tmp_path):
+    cut = tmp_path / "cut"
+
+    async def scenario():
+        echo_t, _echo, relay, clients = await _setup(Settings())
+        transport, client = clients[0]
+        args = netsim.parse_args(["--cut-file", str(cut), "--duration", "1.2", "--no-keys"])
+        serve = asyncio.ensure_future(netsim._serve(args, relay, lambda _m: None))
+        await asyncio.sleep(0.2)
+        transport.sendto(b"open")
+        first = await _receive(client, 1, 0.5)
+        cut.write_text("")
+        await asyncio.sleep(0.2)
+        transport.sendto(b"cut")
+        second = await _receive(client, 1, 0.3)
+        cut.unlink()
+        await asyncio.sleep(0.2)
+        transport.sendto(b"again")
+        third = await _receive(client, 1, 0.5)
+        await serve
+        _close(echo_t, relay, clients)
+        return first, second, third
+
+    assert asyncio.run(scenario()) == ([b"echo:open"], [], [b"echo:again"])

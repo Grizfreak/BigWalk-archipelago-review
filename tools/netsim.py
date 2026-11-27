@@ -261,6 +261,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-guests", type=int, default=3)
     parser.add_argument("--log", type=Path, help="log file (default: tools/netsim-logs/netsim-<time>.log)")
     parser.add_argument("--stop-file", type=Path, help="stop cleanly once this file exists")
+    parser.add_argument("--cut-file", type=Path, help="cut the link while this file exists (for scripts)")
     parser.add_argument("--no-keys", action="store_true", help="no keyboard control, even in a console")
     parser.add_argument("--list-presets", action="store_true", help="print the presets and exit")
     args = parser.parse_args(argv)
@@ -343,8 +344,9 @@ async def _serve(args: argparse.Namespace, relay: Relay, log) -> None:
 
     while not stop.is_set():
         elapsed = loop.time() - started
-        if args.every > 0:
-            relay.set_cut(elapsed % args.every >= args.every - args.cut)
+        scheduled = args.every > 0 and elapsed % args.every >= args.every - args.cut
+        if args.every > 0 or args.cut_file:
+            relay.set_cut(scheduled or bool(args.cut_file and args.cut_file.exists()))
         relay.forget_idle(loop.time())
         if args.duration and elapsed >= args.duration:
             break
