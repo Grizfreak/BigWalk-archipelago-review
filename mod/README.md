@@ -164,10 +164,10 @@ load BepInEx.
 
 Before a version is published, it is played with the zip and the apworld that will be published:
 
-- seed settings (options, logic) on one PC, with a loopback guest (`tools/launch-guest.ps1`) that joins through
-  Mirror like a real guest;
-- what happens between players (joining, items, checks, leaving and coming back) on two PCs on the same local
-  network, through Steam.
+- **loopback**: seed settings (options, logic) on one PC, with the Debug build of the same commit and a loopback
+  guest (`tools/launch-guest.ps1`) that joins over 127.0.0.1 through Mirror like a real guest;
+- **real network**: what happens between players (joining, items, checks, leaving and coming back) on two PCs on
+  the same local network, with the published zip, the guest joining through the game's own matchmaking (EOS).
 
 What was seen is ticked in an issue made from the "Release test" template, with the logs of every instance, and the
 release links to it. Linux and the Steam Deck are not tested.

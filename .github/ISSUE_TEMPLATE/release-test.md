@@ -5,10 +5,14 @@ title: "Test of version "
 labels: release-test
 ---
 
-Played with the zip and the apworld that are published, as a host and a guest.
-Seed settings (options, logic) are played on one PC with a loopback guest (`tools/launch-guest.ps1`), which joins
-through Mirror like a real guest. What happens between players (joining, items, checks, leaving and coming back) is
-played on two PCs on the same local network, through Steam. Tick a line once it was seen on both screens.
+Played with the apworld that is published, as a host and a guest, in two setups:
+
+- **Loopback** (one PC): the Debug build of the same commit, with a loopback guest (`tools/launch-guest.ps1`)
+  that joins over 127.0.0.1 through Mirror like a real guest. Used for the seed settings (options, logic).
+- **Real network** (two PCs on the same local network): the published zip, the guest joining through the game's
+  own matchmaking (EOS). Used for what happens between players (joining, items, checks, leaving and coming back).
+
+Each section says which setup it was played in. Tick a line once it was seen on both screens.
 A line that fails stays unticked, with a comment on what happened.
 
 - Version:
@@ -17,7 +21,7 @@ A line that fails stays unticked, with a comment on what happened.
 - SHA-256 of `bigwalk.apworld`:
 - Host PC:
 - Guest PC (same local network):
-- Loopback guest used for the options: yes / no
+- Loopback (Debug build, one PC) used for the options: yes / no
 - OS tested: Windows (Linux and the Steam Deck are not tested by the maintainer)
 - Date:
 
@@ -43,7 +47,7 @@ Not tested, and why: (unchanged since vX, needs another OS, needs a real network
 
 ## If the mod changed
 
-### Starting and joining (two PCs)
+### Starting and joining (real network)
 
 - [ ] Both instances: the title screen shows no error, Settings > Archipelago is there, and the two logs name the same build.
 - [ ] Both instances: the `.cfg` of the last version keeps its values on the first start.
@@ -52,7 +56,7 @@ Not tested, and why: (unchanged since vX, needs another OS, needs a real network
 - [ ] Guest: leaves and comes back; nothing is doubled or missing.
 - [ ] A guest with another build, then a guest without the mod: both get a message, and neither game crashes.
 
-### Checks and items (two PCs)
+### Checks and items (real network)
 
 - [ ] The host solves a puzzle: the server lists the check once.
 - [ ] The guest cuts a big key and places it: the server lists the cuts and the placement once each.
@@ -61,7 +65,7 @@ Not tested, and why: (unchanged since vX, needs another OS, needs a real network
 - [ ] A big key and its door received: the key is tinted and the door open for both.
 - [ ] Gourds deposited by both players: the deposit check goes out.
 
-### Options (one PC, loopback guest)
+### Options (loopback)
 
 - [ ] `tower_mode: by_item`: only the towers opened so far take gourds.
 - [ ] `lock_abilities`: locked actions are refused for both players, and work once received.
@@ -72,7 +76,7 @@ Not tested, and why: (unchanged since vX, needs another OS, needs a real network
 - [ ] `random_colors`: the same colours on both screens.
 - [ ] `big_climb`: the board in the hub ticks it.
 
-### Losing the connection (two PCs)
+### Losing the connection (real network)
 
 - [ ] The server stops, a check is made, the server comes back: the check reaches it.
 - [ ] The save is hosted again: nothing is received twice, and the gourds not deposited are back in the hub.
