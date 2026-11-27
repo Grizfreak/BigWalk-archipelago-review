@@ -19,6 +19,9 @@ LOG_DIR = HERE / "netsim-logs"
 # A packet that would wait longer than this behind --rate is dropped, as a full router queue would.
 MAX_QUEUE_SECONDS = 0.5
 
+# Two packets in a row leave at least this far apart, so they leave in order.
+TIE_SECONDS = 1e-9
+
 # A guest silent this long is forgotten: a guest that comes back joins from a new port.
 IDLE_SECONDS = 30.0
 
@@ -93,15 +96,18 @@ class Link:
             departure += max(s.jitter, 10.0) / 1000
             self.stats.reordered += 1
         else:
-            # Jitter alone keeps the order, as on most real links.
-            departure = max(departure, self._last_departure)
+            # Jitter alone keeps the order; a tie would let asyncio's timer heap swap two packets.
+            departure = max(departure, self._last_departure + TIE_SECONDS)
             self._last_departure = departure
 
         if departure > now:
             self.stats.delayed += 1
         if duplicated:
             self.stats.duplicated += 1
-            return [departure, departure]
+            copy = departure + TIE_SECONDS
+            if not reordered:
+                self._last_departure = copy
+            return [departure, copy]
         return [departure]
 
 
@@ -220,12 +226,10 @@ class Guest:
     def _send(self, link: Link, data: bytes, deliver) -> None:
         loop = asyncio.get_running_loop()
         now = loop.time()
+        # Always through the timer: sent at once, a packet would pass the ones still waiting.
         for departure in link.schedule(len(data), now, self.relay.cut):
             link.stats.sent += 1
-            if departure <= now:
-                deliver(data)
-            else:
-                loop.call_at(departure, deliver, data)
+            loop.call_at(departure, deliver, data)
 
 
 class _Protocol(asyncio.DatagramProtocol):
