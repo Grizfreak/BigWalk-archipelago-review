@@ -111,7 +111,7 @@ stateDiagram-v2
     Connecting --> Failed: refused, or no answer after 15 s
     Connected --> Failed: socket closed
     Failed --> Connecting: tried again every 10 s
-    Connected --> Connected: OnJustConnected resends the checks, then the item cursor
+    Connected --> Connected: OnJustConnected reads the item cursor, then resends the checks
 ```
 
 ## Saves and config
