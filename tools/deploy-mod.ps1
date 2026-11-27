@@ -76,6 +76,16 @@ foreach ($target in $Targets) {
     $hash = (Get-FileHash (Join-Path $pluginDir 'BigWalkArchipelago.dll') -Algorithm SHA256).Hash
     $results += [pscustomobject]@{ Target = $target; Hash = $hash }
     Write-Host ("  {0,-45} OK" -f $target) -ForegroundColor Green
+
+    # The loopback guest's own BepInEx (see tools/launch-guest.ps1) gets the same build.
+    $guestPluginDir = Join-Path $target 'BepInEx-guest\plugins\BigWalkArchipelago'
+    if (Test-Path (Join-Path $target 'BepInEx-guest\plugins')) {
+        New-Item -ItemType Directory -Path $guestPluginDir -Force | Out-Null
+        foreach ($dll in $dlls) { Copy-Item (Join-Path $buildOut $dll) $guestPluginDir -Force }
+        $hash = (Get-FileHash (Join-Path $guestPluginDir 'BigWalkArchipelago.dll') -Algorithm SHA256).Hash
+        $results += [pscustomobject]@{ Target = "$target (BepInEx-guest)"; Hash = $hash }
+        Write-Host ("  {0,-45} OK" -f "$target (BepInEx-guest)") -ForegroundColor Green
+    }
 }
 
 # The second machine takes its copy from the share's root: one copy on its side per update.

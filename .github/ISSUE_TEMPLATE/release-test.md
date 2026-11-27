@@ -5,25 +5,33 @@ title: "Test of version "
 labels: release-test
 ---
 
-Played with the apworld that is published, as a host and a guest, in two setups:
+Co-op is played on a Debug build of the release commit (loopback instances on one PC, with or without netsim);
+the published zip itself is smoke-tested as host.
 
-- **Loopback** (one PC): the Debug build of the same commit, with a loopback guest (`tools/launch-guest.ps1`)
-  that joins over 127.0.0.1 through Mirror like a real guest. Used for the seed settings (options, logic).
-- **Real network** (two PCs on the same local network): the published zip, the guest joining through the game's
-  own matchmaking (EOS). Used for what happens between players (joining, items, checks, leaving and coming back).
+- **Loopback** (one PC, one copy of the game): the Debug build of the release commit. The guests are more instances
+  of the same Steam install (`tools/launch-guest.ps1`), joining the host over Kcp on 127.0.0.1 as a real guest joins
+  through Mirror. With `-NetSim <preset>`, they join through `tools/netsim.py`, which delays, drops and cuts packets.
+- **Smoke test** (same PC): the published `BigWalkArchipelago.zip` in a clean install, played solo as host.
 
-Each section says which setup it was played in. Tick a line once it was seen on both screens.
-A line that fails stays unticked, with a comment on what happened.
+How to set it up: [mod/README.md, "Testing on one PC"](https://github.com/Grizfreak/BigWalk-archipelago-review/blob/master/mod/README.md#testing-on-one-pc).
+Tick a line once it was seen. A line that fails stays unticked, with a comment on what happened.
 
 - Version:
 - Commit:
-- SHA-256 of `BigWalkArchipelago.zip`:
-- SHA-256 of `bigwalk.apworld`:
-- Host PC:
-- Guest PC (same local network):
-- Loopback (Debug build, one PC) used for the options: yes / no
 - OS tested: Windows (Linux and the Steam Deck are not tested by the maintainer)
 - Date:
+
+Loopback, Debug build:
+- SHA-256 of the Debug `BigWalkArchipelago.dll`:
+- Fingerprint in the logs (`loaded (build ...)`), host and guests:
+- Host's `Debug.Enabled`: on / off (off needs the guest's own `BepInEx-guest` folder)
+- netsim: preset, seed and options (or "not used"):
+- netsim log attached: yes / no
+
+Published files:
+- SHA-256 of `BigWalkArchipelago.zip`:
+- SHA-256 of `bigwalk.apworld`:
+- Fingerprint of the zip's DLL in the smoke test log (`loaded (build ...)`):
 
 ## What changed since the last version
 
@@ -36,7 +44,12 @@ In a few lines:
 
 Tested:
 
-Not tested, and why: (unchanged since vX, needs another OS, needs a real network, ...)
+Not tested, and why:
+- The game's online transport (EpicTransport: EOS lobbies, relays, packet sizes): loopback guests join over Kcp.
+- Two different Steam accounts: the instances share one SteamID (see `mod/src/Debug/LoopbackGuest.cs`).
+- Two real machines (their own clocks, frame rates, NAT and drivers).
+- Co-op with the Release binary: only the Debug build of the same commit plays co-op.
+- (anything else: unchanged since vX, needs another OS, ...)
 
 ## If the apworld changed
 
@@ -45,18 +58,30 @@ Not tested, and why: (unchanged since vX, needs another OS, needs a real network
 - [ ] Each check whose logic changed was reached in game as the logic says (logic tour or by hand): list them.
 - [ ] A seed made with this apworld and the previous mod: the mod warns about the newer apworld.
 
-## If the mod changed
+## Smoke test of the published zip
 
-### Starting and joining (real network)
+- [ ] The zip is extracted into a clean install (no `BepInEx` folder left from a Debug build).
+- [ ] The game starts through Steam.
+- [ ] The log shows the expected version and fingerprint (`Big Walk Archipelago v... loaded (build ...)`).
+- [ ] Settings > Archipelago is there.
+- [ ] Test connection answers.
+- [ ] The host joins a room.
+- [ ] A few checks go out, and the server lists each one once.
+- [ ] An item received shows up in the world.
+- [ ] No `[Debug]` line in the log.
 
-- [ ] Both instances: the title screen shows no error, Settings > Archipelago is there, and the two logs name the same build.
-- [ ] Both instances: the `.cfg` of the last version keeps its values on the first start.
+## If the mod changed (loopback)
+
+### Starting and joining
+
+- [ ] Every instance: the title screen shows no error, Settings > Archipelago is there, and the logs name the same build.
+- [ ] Every instance: the `.cfg` of the last version keeps its values on the first start.
 - [ ] Host: Test connection answers in words, and the corner of the screen shows the connection.
 - [ ] Guest: joins, and sees the host's connection line.
 - [ ] Guest: leaves and comes back; nothing is doubled or missing.
-- [ ] A guest with another build, then a guest without the mod: both get a message, and neither game crashes.
+- [ ] A guest with another build, then a guest without the mod (`-Vanilla`): both get a message, and neither game crashes.
 
-### Checks and items (real network)
+### Checks and items
 
 - [ ] The host solves a puzzle: the server lists the check once.
 - [ ] The guest cuts a big key and places it: the server lists the cuts and the placement once each.
@@ -65,7 +90,7 @@ Not tested, and why: (unchanged since vX, needs another OS, needs a real network
 - [ ] A big key and its door received: the key is tinted and the door open for both.
 - [ ] Gourds deposited by both players: the deposit check goes out.
 
-### Options (loopback)
+### Options
 
 - [ ] `tower_mode: by_item`: only the towers opened so far take gourds.
 - [ ] `lock_abilities`: locked actions are refused for both players, and work once received.
@@ -76,20 +101,33 @@ Not tested, and why: (unchanged since vX, needs another OS, needs a real network
 - [ ] `random_colors`: the same colours on both screens.
 - [ ] `big_climb`: the board in the hub ticks it.
 
-### Losing the connection (real network)
+### Losing the connection
 
 - [ ] The server stops, a check is made, the server comes back: the check reaches it.
 - [ ] The save is hosted again: nothing is received twice, and the gourds not deposited are back in the hub.
 - [ ] The goal of a short seed: the server shows the slot as done.
 
+## Degraded network (netsim)
+
+Preset and seed above. A cut is `c` in the netsim window, or `--cut <s> --every <s>`.
+
+- [ ] A cut under 300 s (the game's Kcp timeout): the guest freezes, then catches up, nothing doubled or missing.
+- [ ] A cut over 300 s: the guest drops, then comes back (Ctrl+L in its window) and resyncs.
+- [ ] Items are received while the guest is cut off: they are on the guest's screen once the link is back.
+- [ ] Checks made by the guest under latency or losses: the server lists each one once.
+- [ ] The host loses the Archipelago server, then gets it back.
+- [ ] After the resync, nothing is doubled or missing on any screen.
+
 ## Logs
 
 - [ ] No `[Error` line from the mod in any log, or each one explained in a comment.
-- [ ] `LogOutput.log` of the host and of the guest attached, one per start.
+- [ ] `LogOutput.log` of the host and of each guest attached, one per start.
+- [ ] `LogOutput.log` of the smoke test attached.
+- [ ] The netsim log attached (`tools/netsim-logs/`), if netsim was used.
 - [ ] The session journal of the session attached.
 - [ ] The Archipelago server log of the room attached.
 
 ## Outside this test (optional)
 
-- [ ] A session with a remote player (real network): who, and what was seen.
+- [ ] A session with a remote player who owns the game (real network, Release zip): who, and what was seen.
 - [ ] Linux/Proton or Steam Deck, by a community tester: who, and what was seen.

@@ -8,6 +8,9 @@ apworld/dist/
 # Throwaway seeds made by tools/testroom.py.
 tools/out/
 
+# Logs of tools/netsim.py: attached to test issues, never committed.
+tools/netsim-logs/
+
 # Zips made by tools/package-mod.ps1.
 dist/
 
