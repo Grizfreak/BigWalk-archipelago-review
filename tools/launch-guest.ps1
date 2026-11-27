@@ -1,6 +1,11 @@
 <#
 .SYNOPSIS
     Starts a second instance of the game on this PC as the loopback guest, joining the first.
+.EXAMPLE
+    .\launch-guest.ps1 -NetSim wifi
+    Starts tools/netsim.py with the wifi preset in its own window; the guest joins through it.
+.EXAMPLE
+    .\launch-guest.ps1 -NetSim bad -NetSimArgs '--seed 12 --cut 8 --every 60'
 #>
 [CmdletBinding()]
 param(
@@ -11,14 +16,21 @@ param(
     [switch]$NoJoin,
     [switch]$Vanilla,
     [switch]$Force,
+    # A preset of tools/netsim-presets.json: the guest joins through tools/netsim.py.
+    [string]$NetSim = '',
+    # More options for netsim.py, such as '--seed 12 --cut 8 --every 60'.
+    [string]$NetSimArgs = '',
     [int]$WatchGuest = 0,
-    [string]$Snapshot = ''
+    [string]$Snapshot = '',
+    [string]$NetSimStop = ''
 )
 
 $ErrorActionPreference = 'Stop'
 
 $appId = '1478500'
 $kcpPort = 7777
+# netsim.py's listening port; the host keeps $kcpPort.
+$netSimPort = 7778
 $prefsKey = 'HKCU:\Software\House House\Big Walk'
 $unityLogDir = Join-Path (Split-Path $env:LOCALAPPDATA) 'LocalLow\House House\Big Walk'
 
@@ -33,7 +45,10 @@ if ($WatchGuest -ne 0) {
         $guests = @(Get-CimInstance Win32_Process -Filter "Name='Big Walk.exe'" -ErrorAction SilentlyContinue |
             Where-Object { $_.CommandLine -like '*--bwap-guest*' -or $_.CommandLine -like '*--bwap-vanilla*' })
     } while ($guests.Count -gt 0)
-    if (-not (Test-Path $Snapshot)) { exit 0 }
+
+    # netsim.py sees the file, writes its stats and exits.
+    if ($NetSimStop) { Set-Content -Path $NetSimStop -Value 'stop' }
+    if (-not $Snapshot -or -not (Test-Path $Snapshot)) { exit 0 }
 
     # Not wrapped in @(): Windows PowerShell's ConvertFrom-Json emits an array as one object.
     $entries = Get-Content $Snapshot -Raw | ConvertFrom-Json
@@ -88,6 +103,40 @@ if ($hosting) {
     Write-Host "The host is not hosting yet (nothing on UDP $kcpPort): host a world, then press Ctrl+L in the guest's window." -ForegroundColor Yellow
 }
 
+# The relay: started here with -NetSim, or already running from an earlier guest or by hand.
+function Test-NetSim { @(Get-NetUDPEndpoint -LocalPort $netSimPort -ErrorAction SilentlyContinue).Count -gt 0 }
+$netSimStop = ''
+if ($NetSim -and -not (Test-NetSim)) {
+    $python = $null
+    foreach ($candidate in @(@('py', '-3'), @('python'))) {
+        if (-not (Get-Command $candidate[0] -ErrorAction SilentlyContinue)) { continue }
+        $version = & $candidate[0] @($candidate | Select-Object -Skip 1) -c 'import sys; print(sys.version_info >= (3, 12))' 2>$null
+        if ($version -eq 'True') { $python = $candidate; break }
+    }
+    if (-not $python) {
+        throw 'netsim needs Python 3.12 or newer (py -3 or python on the PATH). Install it from python.org, or launch without -NetSim.'
+    }
+
+    $netSimScript = Join-Path $PSScriptRoot 'netsim.py'
+    $netSimStop = Join-Path $env:TEMP "bwap-netsim-stop-$PID"
+    Remove-Item $netSimStop -ErrorAction SilentlyContinue
+    $netSimArguments = @($python | Select-Object -Skip 1) + @("`"$netSimScript`"", '--preset', $NetSim,
+        '--listen', $netSimPort, '--target', $kcpPort, '--stop-file', "`"$netSimStop`"")
+    if ($NetSimArgs) { $netSimArguments += $NetSimArgs }
+    Start-Process -FilePath $python[0] -ArgumentList $netSimArguments -WorkingDirectory $PSScriptRoot | Out-Null
+
+    $deadline = (Get-Date).AddSeconds(10)
+    while ((Get-Date) -lt $deadline -and -not (Test-NetSim)) { Start-Sleep -Milliseconds 300 }
+    if (-not (Test-NetSim)) {
+        throw "netsim did not start. Run it by hand to see why: $($python -join ' ') `"$netSimScript`" --preset $NetSim $NetSimArgs"
+    }
+    Write-Host "netsim started in its own window (preset $NetSim): UDP $netSimPort -> $kcpPort. Its log is in tools\netsim-logs." -ForegroundColor Green
+}
+$viaNetSim = Test-NetSim
+if ($viaNetSim -and -not $NetSim) {
+    Write-Host "UDP $netSimPort is open (netsim.py): the guest joins through it, as Ctrl+L does." -ForegroundColor Yellow
+}
+
 # Which guest this is, 1 to 3; each one after the first sends the host its own identifier.
 $index = [Math]::Max(1, $running.Count)
 
@@ -107,6 +156,7 @@ if ($index -eq 1 -and (Test-Path $prefsKey)) {
 $unityLog = Join-Path $unityLogDir $(if ($index -gt 1) { "Player-guest$index.log" } else { 'Player-guest.log' })
 $role = if ($Vanilla) { "--bwap-vanilla" } else { "--bwap-guest" }
 $arguments = $role + " --bwap-guest-index $index" + $(if ($join) { " --bwap-join" } else { "" }) +
+    $(if ($viaNetSim) { " --bwap-port $netSimPort" } else { "" }) +
     " -logFile `"$unityLog`" -screen-fullscreen 0 -screen-width $Width -screen-height $Height"
 
 $previous = @{}
@@ -127,11 +177,13 @@ try {
 }
 Write-Host ("Guest started: process {0}, {1}x{2} windowed." -f $guest.Id, $Width, $Height) -ForegroundColor Green
 
-if ($saved -gt 0) {
-    Start-Process powershell -WindowStyle Hidden -ArgumentList @(
-        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"",
-        '-WatchGuest', $guest.Id, '-Snapshot', "`"$snapshotFile`"")
-    Write-Host "  $saved screen setting(s) saved; they are put back when the guest exits."
+if ($saved -gt 0 -or $netSimStop) {
+    $watchArguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"", '-WatchGuest', $guest.Id)
+    if ($saved -gt 0) { $watchArguments += @('-Snapshot', "`"$snapshotFile`"") }
+    if ($netSimStop) { $watchArguments += @('-NetSimStop', "`"$netSimStop`"") }
+    Start-Process powershell -WindowStyle Hidden -ArgumentList $watchArguments
+    if ($saved -gt 0) { Write-Host "  $saved screen setting(s) saved; they are put back when the guest exits." }
+    if ($netSimStop) { Write-Host '  netsim stops and writes its stats once the last guest exits.' }
 }
 
 # Say where its logs are, which also proves BepInEx loaded.
