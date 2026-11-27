@@ -50,9 +50,6 @@ namespace BigWalkArchipelago
             BigRunCompat.TryApply(_harmony);
             AudioBehaviourGuard.TryApply(_harmony);
             ErrorFloodWatch.Install();
-#if DEBUG
-            Debug.PerfProbe.TryApply(_harmony);
-#endif
 
             AddComponent<Core.Net.ApRuntime>();
             AddComponent<Core.Net.ApStatusOverlay>();
@@ -77,8 +74,12 @@ namespace BigWalkArchipelago
             AddComponent<ModVersionLabel>();
 
 #if DEBUG
+            // Debug/ is patched only here (not by PatchAll): off, it acts as Release.
             if (ModConfig.DebugModeEnabled.Value)
             {
+                Debug.PerfProbe.TryApply(_harmony);
+                Debug.DebugAudioLog.TryApply(_harmony);
+                Debug.PlayerArmsScreenSpacePatch.TryApply(_harmony);
                 Debug.LoopbackGuest.TryApply(_harmony);
                 if (Debug.LoopbackGuest.IsGuest)
                     AddComponent<Debug.LoopbackGuestMonitor>();
