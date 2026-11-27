@@ -78,3 +78,14 @@ jobs:
       - run: python3 tools/check_ids.py
       - name: Same version in the mod and the apworld
         run: python3 tools/check_versions.py
+
+  netsim:
+    name: Network relay of the loopback tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest
+      - run: python -m pytest tools/tests -q
