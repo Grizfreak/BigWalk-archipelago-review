@@ -162,12 +162,85 @@ load BepInEx.
 
 ## In-game tests
 
-Before a version is published, it is played with the zip and the apworld that will be published:
+Each version is played before it is published, at two levels:
 
-- **loopback**: seed settings (options, logic) on one PC, with the Debug build of the same commit and a loopback
-  guest (`tools/launch-guest.ps1`) that joins over 127.0.0.1 through Mirror like a real guest;
-- **real network**: what happens between players (joining, items, checks, leaving and coming back) on two PCs on
-  the same local network, with the published zip, the guest joining through the game's own matchmaking (EOS).
+- **co-op**: on a Debug build of the release commit, with loopback guests on one PC (see
+  [Testing on one PC](#testing-on-one-pc)), with or without netsim;
+- **smoke test**: the published zip itself, in a clean install, played solo as host: the version and the
+  fingerprint in the log, Settings > Archipelago, a room joined, a few checks sent, an item received, no `[Debug]`
+  line in the log.
 
-What was seen is ticked in an issue made from the "Release test" template, with the logs of every instance, and the
+Both binaries are named by their SHA-256 and by the fingerprint `Plugin.Load` writes in the log
+(`loaded (build ...)`: the first 16 digits of the DLL's SHA-256). The Release DLL is built from the source of the
+same commit (`tools/package-mod.ps1`), but co-op is not played with it: what differs between the two builds is
+listed in [Debug and Release builds](#debug-and-release-builds).
+
+What was seen is ticked in an issue made from the
+[Release test](../.github/ISSUE_TEMPLATE/release-test.md) template, with the logs of every instance, and the
 release links to it. Linux and the Steam Deck are not tested.
+
+## Testing on one PC
+
+Co-op can be played on one PC that owns the game: the guests are more instances of the same Steam install, on the
+same account. Nothing here starts the game without Steam or without a copy of it.
+
+It needs a Debug build (`tools/deploy-mod.ps1` builds in Debug by default), `BIGWALK_DIR` set to the game folder,
+and `Debug.Enabled = true` in the guest's `.cfg`. netsim needs Python 3.12 or newer.
+
+1. Start the game through Steam and host a world.
+2. Start a guest from a terminal:
+
+   ```powershell
+   .\tools\launch-guest.ps1                    # joins the host on 127.0.0.1:7777
+   .\tools\launch-guest.ps1 -NetSim wifi       # joins through tools/netsim.py on 127.0.0.1:7778
+   .\tools\launch-guest.ps1 -NetSim bad -NetSimArgs '--seed 12 --cut 8 --every 60'
+   ```
+
+   Run it again for a second and a third guest. Ctrl+L in the host does the same as the script; it goes through
+   netsim when netsim already listens on 7778, but it does not start netsim itself.
+3. Play. In the netsim window, `c` cuts the link or brings it back, `s` prints the statistics, `q` quits.
+4. When the last guest exits, netsim stops and writes its statistics (packets received, sent, lost, cut,
+   duplicated, delayed, reordered) to `tools/netsim-logs/`. Attach that log to the test issue.
+
+netsim runs on its own too: `python tools/netsim.py --preset flaky --seed 3`, then start the guests. The presets
+are in `tools/netsim-presets.json` (`python tools/netsim.py --list-presets`); each option on the command line
+(`--latency`, `--jitter`, `--loss`, `--dup`, `--reorder`, `--rate`) overrides the preset. The same seed gives the
+same losses and delays, so a run can be played again.
+
+| Preset | Latency (ms, one way) | Jitter (ms) | Loss | Dup | Reorder | Rate (kbit/s) |
+|---|---|---|---|---|---|---|
+| `good` | 15 | 2 | 0 % | 0 % | 0 % | no limit |
+| `wifi` | 30 | 15 | 1 % | 0 % | 0.5 % | no limit |
+| `bad` | 120 | 40 | 5 % | 1 % | 2 % | 2000 |
+| `mobile` | 80 | 60 | 2 % | 0.5 % | 1 % | 1000 |
+| `flaky` | 50 | 20 | 10 % | 2 % | 3 % | no limit |
+
+**Does the host need `Debug.Enabled`?** No. The game listens on UDP 7777 whenever it hosts, and the loopback
+patches run in the guest only. On the host, `Debug.Enabled` only gives the keys: Ctrl+L starts a guest, Ctrl+C
+calls the guests over, Ctrl+T switches windows. But the instances read the same `.cfg`, so the host has
+`Debug.Enabled` on too, unless the guest has its own BepInEx: copy `BepInEx` to `BepInEx-guest` once, turn
+`Debug.Enabled` on in `BepInEx-guest\config` and off in `BepInEx\config`. `launch-guest.ps1` and Ctrl+L then start
+the guest on `BepInEx-guest`, and `deploy-mod.ps1` updates both folders. With the host's `Debug.Enabled` off, start
+the guests with the script.
+
+**What it tests**: joining, leaving and coming back; the mod's messages between instances (`ModChannel` over
+Mirror); checks and items from either player; what each screen shows; the resync after losing the Archipelago
+server. With netsim: latency, losses, duplicates, reordering, and cuts long enough for Kcp to time out.
+
+**What it does not test**: the game's online transport (EpicTransport: EOS lobbies, relays, packet sizes), since
+the loopback guests join over Kcp; two Steam accounts, since the instances share one SteamID (the guests send the
+host another identifier, see `src/Debug/LoopbackGuest.cs`); two real machines; co-op with the Release binary.
+
+## Debug and Release builds
+
+The Release build leaves out `src/Debug/` (`<Compile Remove="Debug\**" />` in the `.csproj`) and the `#if DEBUG`
+lines of the shared code. In a Debug build with `Debug.Enabled = false`, the Debug code is compiled but does not
+run: its patches are applied by `Plugin.Load` only when `Debug.Enabled` is on, never by `PatchAll`, and
+`tools/check_debug_isolation.py` checks it in CI.
+
+What still differs from Release in a Debug build with `Debug.Enabled = false`:
+
+- the DLL holds the `Debug/` folder's classes (not run);
+- the `.cfg` has a `[Debug]` section with `Enabled`, and the debug `.cfg` file is read when it exists (it is
+  written only with `Debug.Enabled` on);
+- the build is not optimized (`dotnet build` in Debug).
