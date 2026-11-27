@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net.NetworkInformation;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Win32;
@@ -16,6 +17,9 @@ namespace BigWalkArchipelago.Debug
         private const int Height = 720;
         private const int MaxGuests = 3;
         private const string PrefsKey = @"Software\House House\Big Walk";
+
+        // tools/netsim.py's default port; while something listens there, the guest joins through it.
+        private const int NetSimPort = 7778;
 
         // withoutTheMod: the guest runs --bwap-vanilla, only the join.
         internal static void LaunchGuest(bool withoutTheMod)
@@ -47,6 +51,7 @@ namespace BigWalkArchipelago.Debug
             var arguments = (withoutTheMod ? LoopbackGuest.VanillaArgument : LoopbackGuest.GuestArgument)
                 + $" {LoopbackGuest.IndexArgument} {index}"
                 + (hosting ? " " + LoopbackGuest.JoinArgument : "")
+                + (NetSimRunning() ? $" {LoopbackGuest.PortArgument} {NetSimPort}" : "")
                 + $" -logFile \"{unityLog}\" -screen-fullscreen 0 -screen-width {Width} -screen-height {Height}";
 
             // A BepInEx-guest folder beside BepInEx gives the guest its own plugins.
@@ -105,6 +110,26 @@ namespace BigWalkArchipelago.Debug
 
             if (snapshot != null)
                 StartRestoreWatcher(guest.Id, snapshot);
+        }
+
+        private static bool NetSimRunning()
+        {
+            try
+            {
+                foreach (var endpoint in IPGlobalProperties.GetIPGlobalProperties().GetActiveUdpListeners())
+                {
+                    if (endpoint.Port == NetSimPort)
+                    {
+                        Plugin.Log.LogInfo($"{Tag} UDP {NetSimPort} is open (tools/netsim.py): the guest joins through it.");
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.LogWarning($"{Tag} Could not list the UDP ports; the guest joins the host directly: {ex.Message}");
+            }
+            return false;
         }
 
         // Same JSON as tools/launch-guest.ps1, so the watcher restores it the same way.
