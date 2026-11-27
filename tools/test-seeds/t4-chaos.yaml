@@ -1,0 +1,17 @@
+# Traps and DeathLink as strong as they go; play it with three players.
+name: BW_T4_Chaos
+game: Big Walk
+Big Walk:
+  trap_fill_percentage: 80
+  hard_traps: true
+  trap_duration: 60
+  traps_spare_the_gauntlet: false
+  gauntlet_mode: locked_stages
+  death_link: both
+  death_link_triggers: [puzzle_failed, big_fall]
+  death_link_amnesty: 0
+  death_link_effect: roulette
+  death_link_roulette_hard_traps: true
+  death_link_target: one_player
+  death_link_trap_on_send: true
+  trap_link: true

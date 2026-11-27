@@ -1,0 +1,13 @@
+# Items asked for twice: by start_inventory_from_pool and by the start_with_* options.
+name: BW_T2_Overlap
+game: Big Walk
+Big Walk:
+  lock_abilities: ambidextrous
+  start_with_abilities: [legs]
+  start_with_drawbridge_open: true
+  start_with_arch_doors_open: [First Arch Door]
+  start_inventory_from_pool:
+    Legs: 1
+    Drawbridge: 1
+    First Arch Door: 1
+    Seat: 1

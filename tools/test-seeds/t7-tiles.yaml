@@ -1,0 +1,9 @@
+# Every custom tile option, for a guest who joins during the game.
+name: BW_T7_Tiles
+game: Big Walk
+Big Walk:
+  custom_tiles: all
+  custom_drawings: true
+  mirrored_poses: 100
+  tile_thief: chaos
+  random_colors: true

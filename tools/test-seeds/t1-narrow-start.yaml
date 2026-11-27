@@ -1,0 +1,19 @@
+# The narrowest start: abilities, running, seats, puzzle needs and zone locks all locked.
+name: BW_T1_Narrow
+game: Big Walk
+Big Walk:
+  lock_abilities: handed
+  start_with_abilities: []
+  lock_running: early
+  rides_require_seat: true
+  lock_puzzle_needs: true
+  start_with_puzzle_needs: []
+  start_with_random_puzzle_need: true
+  zone_locks: true
+  start_with_arch_doors_open: []
+  tower_mode: in_order
+  first_tower_open: true
+  linear_keys: true
+  linear_arch_doors: true
+  linear_towers: one_deposit_box
+  linear_puzzles: true

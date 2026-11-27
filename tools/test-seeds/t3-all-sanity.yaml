@@ -1,0 +1,17 @@
+# Every sanity option on: the most checks and objects the host has to watch.
+name: BW_T3_AllSanity
+game: Big Walk
+Big Walk:
+  gourd_sanity: every_gourd
+  radio_sanity: true
+  pack_sanity: on
+  firework_sanity: true
+  flare_gun_sanity: on
+  object_sanity: every
+  object_sanity_items: any
+  light_sanity: lamps_and_switches
+  light_sanity_items: any
+  tunnel_sanity: true
+  cut_key_sanity: on
+  monument_sanity: true
+  tower_sanity: true

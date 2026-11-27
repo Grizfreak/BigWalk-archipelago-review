@@ -1,0 +1,13 @@
+# Towers opened by item, every deposit box linear, towers and keys as objectives.
+name: BW_T5_Towers
+game: Big Walk
+Big Walk:
+  tower_mode: by_item
+  first_tower_open: false
+  open_black_tower: false
+  monument_sanity: true
+  tower_sanity: true
+  linear_towers: all_deposit_boxes
+  objectives: [big_towers, big_keys]
+  towers_required: 5
+  keys_required: 5

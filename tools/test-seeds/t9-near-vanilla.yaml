@@ -1,0 +1,15 @@
+# Almost every option off (gourds every 5 make room): the mod must stay quiet with little to do.
+name: BW_T9_Vanilla
+game: Big Walk
+Big Walk:
+  gourd_sanity: every_5
+  radio_sanity: false
+  pack_sanity: vanilla
+  firework_sanity: false
+  flare_gun_sanity: off
+  cut_key_sanity: off
+  lock_puzzle_needs: false
+  lock_abilities: disabled
+  tower_mode: all_open
+  bonus_fill_percentage: 0
+  trap_fill_percentage: 0
