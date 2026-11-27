@@ -102,8 +102,9 @@ What the logic asks for:
 - `linear_towers`, `linear_keys`, `linear_puzzles`, `linear_arch_doors` bring back the game's own order.
 - `start_with_map_room_open`, `start_with_drawbridge_open`, `open_black_tower`, `fast_golf`, `tile_thief`, the Cabin
   Fever options, `teleport_buttons` and `tower_resync_stations` make things easier.
-- For keys hinted from the start, add `Big Keys` to Archipelago's `start_hints`. To keep `Zone Locks` or
-  `Gauntlet Doors` in your own world, add them to `local_items`.
+- `hint_keys: from_start` hints the seven big keys from the start, `zone_locks_local` keeps the zone items in your
+  own world, and `gauntlet_stages_local` (on) does the same for the Gauntlet's stage items. They fill Archipelago's
+  `start_hints` and `local_items` for you (`Big Keys`, `Zone Locks`, `Gauntlet Doors`), as some core worlds do.
 
 In the hub, `hint_board` (on) shows your hints and takes new ones, `tracker_board` counts the checks left, and
 `map_tracker` puts them on the Map Room's map. None of them works out the logic: for that, use Universal Tracker or a

@@ -216,6 +216,14 @@ class StartWithZoneLocks(OptionSet):
     default = frozenset()
 
 
+class ZoneLocksLocal(Toggle):
+    """
+    With Zone Locks on, keep the zone items in your own world.
+    """
+
+    display_name = "Zone Locks Local"
+
+
 class TunnelSanity(Toggle):
     """
     The tunnels open door by door: the Tunnels item gives way to 5 items, `Red Tunnel Door`, `Green Tunnel Door`,
