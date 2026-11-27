@@ -162,5 +162,12 @@ load BepInEx.
 
 ## In-game tests
 
-Before a version is published, it is played on two machines with the zip that will be published. What was seen is ticked
-in an issue made from the "Release test" template, with the logs of both machines, and the release links to it.
+Before a version is published, it is played with the zip and the apworld that will be published:
+
+- seed settings (options, logic) on one PC, with a loopback guest (`tools/launch-guest.ps1`) that joins through
+  Mirror like a real guest;
+- what happens between players (joining, items, checks, leaving and coming back) on two PCs on the same local
+  network, through Steam.
+
+What was seen is ticked in an issue made from the "Release test" template, with the logs of every instance, and the
+release links to it. Linux and the Steam Deck are not tested.
