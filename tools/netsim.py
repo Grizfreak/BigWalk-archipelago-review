@@ -350,6 +350,7 @@ async def _serve(args: argparse.Namespace, relay: Relay, log) -> None:
             break
         if args.stop_file and args.stop_file.exists():
             log(f"stop file found: {args.stop_file}")
+            args.stop_file.unlink(missing_ok=True)
             break
         try:
             await asyncio.wait_for(stop.wait(), 0.1)
