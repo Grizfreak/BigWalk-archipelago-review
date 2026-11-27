@@ -181,14 +181,16 @@ release links to it. Linux and the Steam Deck are not tested.
 
 ## Testing on one PC
 
-Since I don't have as many bucks as true business corporations. I only own the game once, so how could I test out multiplayer ?
-Using one licence (so you still need to own the game) it is possibles to run multiples instances of the **same steam directory install**. No trespassing allowed here !
+Since I don't have as many bucks as true business corporations, I only own the game once: so how could I test
+multiplayer? With one license (so you still need to own the game), it is possible to run multiple instances of
+the **same Steam install folder**. No trespassing allowed here!
 
 > [!WARNING]
 > This is a tool to test the mod, not a way to play co-op with one copy: every player needs their own copy of
 > the game. Nothing here starts the game without Steam.
 
-We then use another tool called `netsim` that allows to control the properties of the localhost loop, such as latency, jitter, loss and etc... 
+We then use another tool, `netsim`, which controls the traffic of the localhost loop: latency, jitter, losses,
+cuts and so on.
 
 It needs a Debug build (`tools/deploy-mod.ps1` builds in Debug by default), `BIGWALK_DIR` set to the game folder,
 and `Debug.Enabled = true` in the guest's `.cfg`. netsim needs Python 3.12 or newer.
@@ -237,7 +239,8 @@ the guests with the script.
 Mirror); checks and items from either player; what each screen shows; the resync after losing the Archipelago
 server. With netsim: latency, losses, duplicates, reordering, and cuts. The game's Kcp timeout is 300 s (the guest
 logs it when it joins): a shorter cut freezes the guest, which catches up once the link is back; a longer one
-drops it, as a real loss of network would.
+drops it, as a real loss of network would. With losses, a guest that quits may stay frozen on the host until
+the 300 s timeout: its leave message was lost. Without losses, it leaves at once.
 
 **What it does not test**: the game's online transport (EpicTransport: EOS lobbies, relays, packet sizes), since
 the loopback guests join over Kcp; two Steam accounts, since the instances share one SteamID (the guests send the
