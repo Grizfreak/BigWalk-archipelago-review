@@ -159,7 +159,7 @@ namespace BigWalkArchipelago.Debug
             {
                 var before = kcp.port;
                 kcp.port = Port;
-                Plugin.Log.LogInfo($"{Tag} KcpTransport on '{kcp.gameObject.name}': port {before} -> {Port}.");
+                Plugin.Log.LogInfo($"{Tag} KcpTransport on '{kcp.gameObject.name}': port {before} -> {Port} (timeout {kcp.Timeout} ms).");
             }
             if (kcps.Count == 0)
                 Plugin.Log.LogWarning($"{Tag} No KcpTransport found: {PortArgument} {Port} not applied.");
