@@ -111,7 +111,8 @@ Not tested, and why:
 
 Preset and seed above. A cut is `c` in the netsim window, or `--cut <s> --every <s>`.
 
-- [ ] The guest leaves and comes back during a cut (the cut long enough for the guest to drop).
+- [ ] A cut under 300 s (the game's Kcp timeout): the guest freezes, then catches up, nothing doubled or missing.
+- [ ] A cut over 300 s: the guest drops, then comes back (Ctrl+L in its window) and resyncs.
 - [ ] Items are received while the guest is cut off: they are on the guest's screen once the link is back.
 - [ ] Checks made by the guest under latency or losses: the server lists each one once.
 - [ ] The host loses the Archipelago server, then gets it back.

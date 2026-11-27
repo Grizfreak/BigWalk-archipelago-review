@@ -225,7 +225,9 @@ the guests with the script.
 
 **What it tests**: joining, leaving and coming back; the mod's messages between instances (`ModChannel` over
 Mirror); checks and items from either player; what each screen shows; the resync after losing the Archipelago
-server. With netsim: latency, losses, duplicates, reordering, and cuts long enough for Kcp to time out.
+server. With netsim: latency, losses, duplicates, reordering, and cuts. The game's Kcp timeout is 300 s (the guest
+logs it when it joins): a shorter cut freezes the guest, which catches up once the link is back; a longer one
+drops it, as a real loss of network would.
 
 **What it does not test**: the game's online transport (EpicTransport: EOS lobbies, relays, packet sizes), since
 the loopback guests join over Kcp; two Steam accounts, since the instances share one SteamID (the guests send the
