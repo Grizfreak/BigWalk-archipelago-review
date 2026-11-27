@@ -33,6 +33,7 @@ def _cabin_fever_waits(world: BigWalkWorld) -> dict[str, dict[str, object]]:
 
 
 def generate_early(world: BigWalkWorld) -> None:
+    """Settles the options against each other, then draws what the seed needs before its regions."""
     # `linear_keys` puts the Tunnels on the Yellow key's deposit: no doors to shuffle then.
     if world.options.linear_keys and world.options.tunnel_sanity:
         logging.warning(f"Big Walk ({world.player_name}): tunnel_sanity is off with linear_keys, whose Yellow key "
@@ -227,6 +228,7 @@ def _objective_allowed(world: BigWalkWorld, key: str) -> bool:
 
 
 def _pick_deposit_amounts(world: BigWalkWorld, total_slots: int) -> tuple[int, ...]:
+    """`gourd_sanity`: the gourd counts whose deposit is a check."""
     choice = world.options.gourd_sanity
     if choice == bigwalk_options.GourdSanity.option_off:
         return ()
@@ -326,4 +328,5 @@ def place_local_items(world: BigWalkWorld) -> None:
 
 
 def local_items_left(world: BigWalkWorld) -> list[Item]:
+    """Items set aside whose check plando took: the main fill places them."""
     return [item for _, own in world.local_placements for item in own if item.location is None]
