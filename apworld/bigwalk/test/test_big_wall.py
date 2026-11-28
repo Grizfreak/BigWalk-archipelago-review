@@ -5,7 +5,7 @@ from BaseClasses import CollectionState
 from .. import data, locations, regions
 from .bases import BigWalkTestBase
 
-LAMPS = ("Lamp (Big Wall)", "Pedestal Lamp (Big Wall)")
+LAMPS = ("Pedestal Lamp (past Big Wall 2)", "Pedestal Lamp (past Big Wall)")
 LIGHTS = tuple(f"{name} Lit" for name in LAMPS)
 
 
