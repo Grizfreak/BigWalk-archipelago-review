@@ -340,10 +340,13 @@ def create_all_items(world: BigWalkWorld) -> None:
     if filler_needed < 0 and getattr(world.multiworld, "re_gen_passthrough", None):
         filler_needed = 0
     if filler_needed < 0:
+        advice = ("lock_puzzle_needs adds up to 17 items; raise gourd_sanity, turn radio_sanity on, list more "
+                  "start_with_puzzle_needs, or turn lock_puzzle_needs off to make room."
+                  if world.options.lock_puzzle_needs else
+                  "Raise gourd_sanity, or turn radio_sanity or another sanity option on to make room.")
         raise OptionError(
             f"Big Walk: {world.player_name}'s options need {len(pool)} items for only {unfilled} "
-            "locations. lock_puzzle_needs adds up to 17 items; raise gourd_sanity, turn radio_sanity "
-            "on, list more start_with_puzzle_needs, or turn lock_puzzle_needs off to make room.")
+            f"locations. {advice}")
     # A few bags are guaranteed, from the filler headroom only: a tight pool loses them first.
     for name, option in GUARANTEED_GEAR.items():
         take = 0 if packs_give_themselves(world) else min(getattr(world.options, option).value, filler_needed)

@@ -13,7 +13,7 @@ from . import (checks, data, generation, items, locations, logic_export, monumen
                web_world)
 from . import options as bigwalk_options
 
-WORLD_VERSION = "1.0.15"
+WORLD_VERSION = "1.1.0"
 """Kept in step with archipelago.json; sent in slot_data so the mod can check it."""
 
 TRACKER_OPTIONS = {

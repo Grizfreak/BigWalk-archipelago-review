@@ -32,6 +32,22 @@ class FastGolf(Toggle):
     display_name = "Fast Golf"
 
 
+class HintKeys(Choice):
+    """
+    Whether the server tells you, from the first minute, where the seven big
+    keys are in the multiworld.
+
+    - off: nothing is hinted.
+    - from_start: the seven Big Key items are hinted at the start, as if
+      they were listed in Start Hints. Anything you list there stays.
+    """
+
+    display_name = "Hint Keys"
+    option_off = 0
+    option_from_start = 1
+    default = option_off
+
+
 class TeleportBackToHub(Toggle):
     """
     With Teleport Buttons, a button back to the hub in each destination.

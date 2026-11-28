@@ -13,7 +13,7 @@ namespace BigWalkArchipelago
         // Also names the .cfg file: changing it loses the user's settings to a fresh file.
         public const string PluginGuid = "com.grizfreak.bigwalk.archipelago";
         public const string PluginName = "Big Walk Archipelago";
-        public const string PluginVersion = "1.0.15";
+        public const string PluginVersion = "1.1.0";
 
         // BasePlugin.Log is an instance property; a static one lets patches log without a Plugin.
         internal static new ManualLogSource Log;
@@ -50,9 +50,6 @@ namespace BigWalkArchipelago
             BigRunCompat.TryApply(_harmony);
             AudioBehaviourGuard.TryApply(_harmony);
             ErrorFloodWatch.Install();
-#if DEBUG
-            Debug.PerfProbe.TryApply(_harmony);
-#endif
 
             AddComponent<Core.Net.ApRuntime>();
             AddComponent<Core.Net.ApStatusOverlay>();
@@ -77,8 +74,12 @@ namespace BigWalkArchipelago
             AddComponent<ModVersionLabel>();
 
 #if DEBUG
+            // Debug/ is patched only here (not by PatchAll): off, it acts as Release.
             if (ModConfig.DebugModeEnabled.Value)
             {
+                Debug.PerfProbe.TryApply(_harmony);
+                Debug.DebugAudioLog.TryApply(_harmony);
+                Debug.PlayerArmsScreenSpacePatch.TryApply(_harmony);
                 Debug.LoopbackGuest.TryApply(_harmony);
                 if (Debug.LoopbackGuest.IsGuest)
                     AddComponent<Debug.LoopbackGuestMonitor>();

@@ -82,3 +82,21 @@ class TestTooManyItems(BigWalkTestBase):
     def test_it_is_refused_with_the_count(self) -> None:
         with self.assertRaisesRegex(OptionError, r"need \d+ items for only \d+ locations"):
             self.world_setup()
+
+    def test_it_points_at_the_puzzle_needs(self) -> None:
+        with self.assertRaisesRegex(OptionError, "turn lock_puzzle_needs off"):
+            self.world_setup()
+
+
+class TestTooManyItemsWithoutNeeds(BigWalkTestBase):
+    auto_construct = False
+    options = {"gourd_sanity": "off", "radio_sanity": False, "pack_sanity": "vanilla", "firework_sanity": False,
+               "flare_gun_sanity": "off", "cut_key_sanity": "off", "lock_puzzle_needs": False,
+               "lock_abilities": "disabled", "tower_mode": "all_open", "bonus_fill_percentage": 0,
+               "trap_fill_percentage": 0}
+
+    def test_it_does_not_ask_to_turn_off_what_is_off(self) -> None:
+        with self.assertRaises(OptionError) as refused:
+            self.world_setup()
+        self.assertNotIn("lock_puzzle_needs", str(refused.exception))
+        self.assertIn("Raise gourd_sanity", str(refused.exception))

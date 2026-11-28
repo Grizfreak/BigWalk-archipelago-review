@@ -1,0 +1,8 @@
+{
+  "_about": "Presets of tools/netsim.py. Each value is one way: latency and jitter in ms, loss, dup and reorder in %, rate in kbit/s (0: no limit).",
+  "good": {"latency": 15, "jitter": 2, "loss": 0, "dup": 0, "reorder": 0, "rate": 0},
+  "wifi": {"latency": 30, "jitter": 15, "loss": 1, "dup": 0, "reorder": 0.5, "rate": 0},
+  "bad": {"latency": 120, "jitter": 40, "loss": 5, "dup": 1, "reorder": 2, "rate": 2000},
+  "mobile": {"latency": 80, "jitter": 60, "loss": 2, "dup": 0.5, "reorder": 1, "rate": 1000},
+  "flaky": {"latency": 50, "jitter": 20, "loss": 10, "dup": 2, "reorder": 3, "rate": 0}
+}

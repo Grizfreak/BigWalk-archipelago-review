@@ -61,6 +61,14 @@ jobs:
         if: matrix.archipelago == 'main'
         working-directory: archipelago
         run: python Launcher.py "Build APWorlds" -- "Big Walk" --skip_open_folder
+      - name: The release test seeds generate
+        working-directory: archipelago
+        run: |
+          for seed in ../bigwalk/tools/test-seeds/*.yaml; do
+            dir="$RUNNER_TEMP/seeds/$(basename "$seed" .yaml)"
+            mkdir -p "$dir" && cp "$seed" "$dir/"
+            python Generate.py --player_files_path "$dir" --outputpath "$dir/out" --seed 1 < /dev/null
+          done
 
   ids:
     name: Same ids in the mod and the apworld
@@ -68,3 +76,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 tools/check_ids.py
+      - name: Same version in the mod and the apworld
+        run: python3 tools/check_versions.py
+
+  tools:
+    name: Test tools and Debug isolation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest
+      - name: The netsim relay and the isolation check
+        run: python -m pytest tools/tests -q
+      - name: Debug/ code runs only with Debug.Enabled
+        run: python tools/check_debug_isolation.py

@@ -12,6 +12,28 @@ namespace BigWalkArchipelago.Debug
         private static readonly Dictionary<string, float> Last = new();
         private static string _file;
 
+        // Applied by Plugin.Load only with Debug.Enabled, never by PatchAll.
+        internal static void TryApply(Harmony harmony)
+        {
+            try
+            {
+                harmony.Patch(AccessTools.Method(typeof(AudioPlayHelper), nameof(AudioPlayHelper.Play)),
+                    prefix: new HarmonyMethod(typeof(DebugAudioLog), nameof(PlayPrefix)));
+                harmony.Patch(AccessTools.Method(typeof(AudioPlayHelper), nameof(AudioPlayHelper.CreateEventAndPlay)),
+                    prefix: new HarmonyMethod(typeof(DebugAudioLog), nameof(CreateEventPrefix)));
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Log.LogWarning($"[{nameof(DebugAudioLog)}] Sounds not logged: {ex.Message}");
+            }
+        }
+
+        private static void PlayPrefix(AudioAsset audioAsset, Vector3 worldPosition, UnityEngine.Object owner) =>
+            Write("Play", audioAsset, worldPosition, owner);
+
+        private static void CreateEventPrefix(AudioAsset audioAsset, Vector3 worldPosition, UnityEngine.Object owner) =>
+            Write("CreateEventAndPlay", audioAsset, worldPosition, owner);
+
         internal static void Write(string source, AudioAsset asset, Vector3 position, UnityEngine.Object owner)
         {
             if (Mute || asset == null || !ModConfig.DebugModeEnabled.Value)
@@ -34,19 +56,5 @@ namespace BigWalkArchipelago.Debug
                 // A diagnostic: never let it break a sound.
             }
         }
-    }
-
-    [HarmonyPatch(typeof(AudioPlayHelper), nameof(AudioPlayHelper.Play))]
-    internal static class DebugAudioPlayPatch
-    {
-        private static void Prefix(AudioAsset audioAsset, Vector3 worldPosition, UnityEngine.Object owner) =>
-            DebugAudioLog.Write("Play", audioAsset, worldPosition, owner);
-    }
-
-    [HarmonyPatch(typeof(AudioPlayHelper), nameof(AudioPlayHelper.CreateEventAndPlay))]
-    internal static class DebugAudioCreateEventPatch
-    {
-        private static void Prefix(AudioAsset audioAsset, Vector3 worldPosition, UnityEngine.Object owner) =>
-            DebugAudioLog.Write("CreateEventAndPlay", audioAsset, worldPosition, owner);
     }
 }

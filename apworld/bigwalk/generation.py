@@ -33,6 +33,7 @@ def _cabin_fever_waits(world: BigWalkWorld) -> dict[str, dict[str, object]]:
 
 
 def generate_early(world: BigWalkWorld) -> None:
+    """Settles the options against each other, then draws what the seed needs before its regions."""
     # `linear_keys` puts the Tunnels on the Yellow key's deposit: no doors to shuffle then.
     if world.options.linear_keys and world.options.tunnel_sanity:
         logging.warning(f"Big Walk ({world.player_name}): tunnel_sanity is off with linear_keys, whose Yellow key "
@@ -72,6 +73,10 @@ def generate_early(world: BigWalkWorld) -> None:
     _ask_for_an_early_way_out(world)
     _ask_for_the_first_monument_early(world)
     _ask_for_the_far_doors_early(world)
+    _hint_the_keys(world)
+    _keep_the_gauntlet_stages_local(world)
+    if world.options.zone_locks_local:
+        world.options.local_items.value |= {lock.item_name for lock in checks.zone_locks(world)}
 
 
 def _draw_the_tiles(world: BigWalkWorld) -> tuple[str, ...]:
@@ -93,6 +98,20 @@ def _draw_the_tiles(world: BigWalkWorld) -> tuple[str, ...]:
     own = random.Random(f"{world.multiworld.seed}-{world.player}-tiles")
     return tiles.draw(own, candidates, world.options.custom_tile_weights.value,
                       sorted(world.options.custom_tile_choices.value), preferred)
+
+
+def _keep_the_gauntlet_stages_local(world: BigWalkWorld) -> None:
+    """`gauntlet_stages_local`: the stage items go to Archipelago's `local_items`."""
+    locked = world.options.gauntlet_mode == bigwalk_options.GauntletMode.option_locked_stages
+    if locked and world.options.gauntlet_stages_local:
+        world.options.local_items.value |= set(items.GAUNTLET_ITEM_NAMES) | {data.PROGRESSIVE_GAUNTLET_ITEM_NAME}
+
+
+def _hint_the_keys(world: BigWalkWorld) -> None:
+    """`hint_keys: from_start`: the seven big keys go to Archipelago's `start_hints`."""
+    if world.options.hint_keys != bigwalk_options.HintKeys.option_from_start:
+        return
+    world.options.start_hints.value |= {data.key_item_name(tower) for tower in world.towers}
 
 
 def _pick_a_random_puzzle_need(world: BigWalkWorld) -> None:
@@ -227,6 +246,7 @@ def _objective_allowed(world: BigWalkWorld, key: str) -> bool:
 
 
 def _pick_deposit_amounts(world: BigWalkWorld, total_slots: int) -> tuple[int, ...]:
+    """`gourd_sanity`: the gourd counts whose deposit is a check."""
     choice = world.options.gourd_sanity
     if choice == bigwalk_options.GourdSanity.option_off:
         return ()
@@ -326,4 +346,5 @@ def place_local_items(world: BigWalkWorld) -> None:
 
 
 def local_items_left(world: BigWalkWorld) -> list[Item]:
+    """Items set aside whose check plando took: the main fill places them."""
     return [item for _, own in world.local_placements for item in own if item.location is None]

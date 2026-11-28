@@ -1,0 +1,26 @@
+# A real multiworld: two Big Walk slots and another game, for ids, hints, release and collect.
+name: BW_T8_SlotA
+game: Big Walk
+Big Walk:
+  hint_discovered_key_locations: true
+  hint_discovered_deposit_boxes: true
+  hint_board: true
+  map_tracker: all
+  tracker_board: true
+  local_items: [Drawbridge]
+  object_sanity: first_pickup
+  object_sanity_items: local
+---
+name: BW_T8_SlotB
+game: Big Walk
+Big Walk:
+  goal: big_wall
+  gauntlet_mode: vanilla
+  light_sanity: lamps
+  light_sanity_items: junk
+  teleport_buttons: with_towers
+  teleport_back_to_hub: true
+---
+name: BW_T8_Other
+game: APQuest
+APQuest: {}

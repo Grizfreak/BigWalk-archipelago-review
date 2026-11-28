@@ -18,14 +18,14 @@ from .goal_options import (
 from .sanity_options import (
     GourdSanity, GOURD_SANITY_ON_THE_WIRE, RadioSanity, PackSanity, FireworkSanity, ObjectSanity, ObjectSanityKinds,
     ObjectSanityItems, LightSanity, LightSanityItems, ObjectSanityJunkPercentage, LightSanityJunkPercentage, ZoneLocks,
-    StartWithZoneLocks, TunnelSanity, FlareGunSanity, TowerSanity, ShuffleRadioMusic, MonumentSanity,
+    StartWithZoneLocks, ZoneLocksLocal, TunnelSanity, FlareGunSanity, TowerSanity, ShuffleRadioMusic, MonumentSanity,
     CutKeySanity,
 )
 from .logic_options import (
     StartWithDrawbridgeOpen, StartWithMapRoomOpen, LinearKeys, LinearArchDoors, LinearTowers, LinearPuzzles,
     IncludeBigGamePuzzles, StartWithArchDoorsOpen, RequireArchDoors, LockPuzzleNeeds, StartWithPuzzleNeeds,
     StartWithRandomPuzzleNeed, GauntletMode, GauntletPuzzlesRequired, LockGauntletNeeds, GauntletStageItems,
-    OpenBlackTower,
+    GauntletStagesLocal, OpenBlackTower,
 )
 from .movement_options import LockAbilities, StartWithAbilities, LockRunning, RidesRequireSeat
 from .pool_options import (
@@ -40,7 +40,7 @@ from .cosmetic_options import (
     RandomColors, CustomTiles, CustomDrawings, MirroredPoses, CustomTileChoices, CustomTileWeights,
 )
 from .qol_options import (
-    HintDiscoveredKeyLocations, HintDiscoveredDepositBoxes, FastGolf, TeleportBackToHub, TrackerBoard,
+    HintDiscoveredKeyLocations, HintDiscoveredDepositBoxes, FastGolf, HintKeys, TeleportBackToHub, TrackerBoard,
     MapTracker, HintBoard, TowerResyncStations, TeleportButtons, CabinFeverSeconds, CabinFeverHelp,
     CabinFeverHideTimer, CabinFeverLongSeconds, CabinFeverLongHelp, CabinFeverLongHideTimer, TileThief,
 )
@@ -80,6 +80,7 @@ class BigWalkOptions(PerGameCommonOptions):
     lock_running: LockRunning
     rides_require_seat: RidesRequireSeat
     fast_golf: FastGolf
+    hint_keys: HintKeys
     open_black_tower: OpenBlackTower
     tower_resync_stations: TowerResyncStations
     tracker_board: TrackerBoard
@@ -102,6 +103,7 @@ class BigWalkOptions(PerGameCommonOptions):
     gauntlet_mode: GauntletMode
     gauntlet_puzzles_required: GauntletPuzzlesRequired
     lock_gauntlet_needs: LockGauntletNeeds
+    gauntlet_stages_local: GauntletStagesLocal
     gauntlet_stage_items: GauntletStageItems
     trap_fill_percentage: TrapFillPercentage
     trap_weights: TrapWeights
@@ -133,6 +135,7 @@ class BigWalkOptions(PerGameCommonOptions):
     light_sanity_junk_percentage: LightSanityJunkPercentage
     zone_locks: ZoneLocks
     start_with_zone_locks: StartWithZoneLocks
+    zone_locks_local: ZoneLocksLocal
     tunnel_sanity: TunnelSanity
     lights_required: LightsRequired
     objects_required: ObjectsRequired
@@ -157,12 +160,12 @@ option_groups = [
         GourdSanity, RadioSanity, ShuffleRadioMusic, PackSanity, FireworkSanity, FlareGunSanity, TowerSanity,
         MonumentSanity, CutKeySanity,
         ObjectSanity, ObjectSanityKinds, ObjectSanityItems, ObjectSanityJunkPercentage, LightSanity, LightSanityItems,
-        LightSanityJunkPercentage, ZoneLocks, StartWithZoneLocks, TunnelSanity,
+        LightSanityJunkPercentage, ZoneLocks, StartWithZoneLocks, ZoneLocksLocal, TunnelSanity,
     ]),
     OptionGroup("Logic", [
         StartWithDrawbridgeOpen, StartWithMapRoomOpen, StartWithArchDoorsOpen, RequireArchDoors, OpenBlackTower,
         LockPuzzleNeeds, StartWithPuzzleNeeds, StartWithRandomPuzzleNeed, IncludeBigGamePuzzles,
-        GauntletMode, GauntletStageItems, GauntletPuzzlesRequired, LockGauntletNeeds,
+        GauntletMode, GauntletStageItems, GauntletPuzzlesRequired, LockGauntletNeeds, GauntletStagesLocal,
     ]),
     OptionGroup("Vanilla Behaviours", [LinearKeys, LinearArchDoors, LinearTowers, LinearPuzzles]),
     OptionGroup("Movement Locking", [LockAbilities, StartWithAbilities, LockRunning, RidesRequireSeat]),
@@ -178,7 +181,7 @@ option_groups = [
         DeathLinkRouletteHardTraps, DeathLinkTrapOnSend, DeathLinkTarget,
     ]),
     OptionGroup("QoL", [
-        HintDiscoveredKeyLocations, HintDiscoveredDepositBoxes, HintBoard, TrackerBoard, MapTracker,
+        HintKeys, HintDiscoveredKeyLocations, HintDiscoveredDepositBoxes, HintBoard, TrackerBoard, MapTracker,
         TeleportButtons, TeleportBackToHub, TowerResyncStations,
     ]),
     OptionGroup("Puzzle QoL", [

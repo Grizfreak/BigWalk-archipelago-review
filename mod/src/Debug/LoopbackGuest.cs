@@ -1,4 +1,5 @@
 using HarmonyLib;
+using kcp2k;
 using Mirror;
 using UnityEngine;
 
@@ -18,6 +19,9 @@ namespace BigWalkArchipelago.Debug
         // Which guest this is, 1 to 3.
         internal const string IndexArgument = "--bwap-guest-index";
 
+        // The port this guest joins instead of 7777, such as tools/netsim.py's relay.
+        internal const string PortArgument = "--bwap-port";
+
         internal const string HostAddress = "127.0.0.1";
 
         private const string Tag = "[" + nameof(LoopbackGuest) + "]";
@@ -29,6 +33,9 @@ namespace BigWalkArchipelago.Debug
         internal static bool AutoJoin { get; private set; }
 
         internal static int Index { get; private set; } = 1;
+
+        // 0: the game's own port.
+        internal static ushort Port { get; private set; }
 
         internal static string RoleName =>
             IsVanilla ? "loopback guest without the mod" : IsGuest ? "loopback guest" : "host or solo";
@@ -42,6 +49,9 @@ namespace BigWalkArchipelago.Debug
                 if (string.Equals(argument, IndexArgument, StringComparison.OrdinalIgnoreCase)
                     && i + 1 < arguments.Length && int.TryParse(arguments[i + 1], out var index) && index >= 1)
                     Index = index;
+                else if (string.Equals(argument, PortArgument, StringComparison.OrdinalIgnoreCase)
+                    && i + 1 < arguments.Length && ushort.TryParse(arguments[i + 1], out var port) && port > 0)
+                    Port = port;
                 else if (string.Equals(argument, GuestArgument, StringComparison.OrdinalIgnoreCase))
                     IsGuest = true;
                 else if (string.Equals(argument, VanillaArgument, StringComparison.OrdinalIgnoreCase))
@@ -55,6 +65,7 @@ namespace BigWalkArchipelago.Debug
             Plugin.Log.LogInfo(IsGuest
                 ? $"{Tag} Role: {RoleName} {Index} ({(IsVanilla ? VanillaArgument : GuestArgument)} is on the command line); "
                   + (AutoJoin ? $"joins {HostAddress} as soon as the title menu is up." : "press Ctrl+L to join.")
+                  + (Port > 0 ? $" Joins port {Port} ({PortArgument})." : "")
                 : $"{Tag} Role: host or solo (no {GuestArgument} on the command line).");
         }
 
@@ -115,9 +126,50 @@ namespace BigWalkArchipelago.Debug
                 return;
             }
 
+            SetGuestPort();
             Plugin.Log.LogInfo($"{Tag} Joining {HostAddress} over Kcp (NetworkMinder.SetTransportAndConnect)...");
             NetworkMinder.SetTransportAndConnect(HostAddress);
             ShowConnectingMenu();
+        }
+
+        // Only in this guest's process: the host's own KcpTransport keeps listening on its port.
+        private static void SetGuestPort()
+        {
+            if (Port == 0)
+                return;
+
+            var manager = NetworkManager.singleton;
+            if (manager == null)
+            {
+                Plugin.Log.LogWarning($"{Tag} No NetworkManager: {PortArgument} {Port} not applied.");
+                return;
+            }
+
+            // The KcpTransport sits inside the MultiplexTransport, as DebugNetworkLookup shows.
+            var found = new HashSet<IntPtr>();
+            var kcps = new List<KcpTransport>();
+            foreach (var transport in manager.GetComponentsInChildren<Transport>(true))
+                AddKcp(transport, found, kcps);
+            var multiplex = Transport.active?.TryCast<MultiplexTransport>();
+            if (multiplex?.transports != null)
+                foreach (var inner in multiplex.transports)
+                    AddKcp(inner, found, kcps);
+
+            foreach (var kcp in kcps)
+            {
+                var before = kcp.port;
+                kcp.port = Port;
+                Plugin.Log.LogInfo($"{Tag} KcpTransport on '{kcp.gameObject.name}': port {before} -> {Port} (timeout {kcp.Timeout} ms).");
+            }
+            if (kcps.Count == 0)
+                Plugin.Log.LogWarning($"{Tag} No KcpTransport found: {PortArgument} {Port} not applied.");
+        }
+
+        private static void AddKcp(Transport transport, HashSet<IntPtr> found, List<KcpTransport> kcps)
+        {
+            var kcp = transport?.TryCast<KcpTransport>();
+            if (kcp != null && found.Add(kcp.Pointer))
+                kcps.Add(kcp);
         }
 
         // Beside the host, not inside them.

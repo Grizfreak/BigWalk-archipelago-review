@@ -1,0 +1,13 @@
+# Locked endings and objectives that need every player; play it with two or three players.
+name: BW_T6_Objectives
+game: Big Walk
+Big Walk:
+  goal: big_game
+  gauntlet_mode: locked_stages
+  gauntlet_stage_items: individual
+  lock_endings_until_objectives: true
+  everyone_gathers: true
+  objectives: [big_climb, big_party, big_doof, big_makeover, big_lights]
+  lights_required: 30
+  shuffle_radio_music: true
+  tunnel_sanity: true
